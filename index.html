@@ -4,6 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI 小游戏平台 - 创意无限的游戏世界</title>
+    <meta name="description" content="探索由 AI 助力创造的精彩游戏世界，包含贪吃蛇、俄罗斯方块、创意简历游戏等多款精品小游戏，支持PC和移动端。">
+    <meta name="keywords" content="AI游戏,小游戏,贪吃蛇,俄罗斯方块,HTML5游戏,网页游戏,移动游戏">
+    <meta name="author" content="Lucius Wang">
+    
+    <!-- PWA 支持 -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#4ecdc4">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AI Games">
+    
+    <!-- 移动端优化 -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="msapplication-TileColor" content="#4ecdc4">
+    <meta name="msapplication-tap-highlight" content="no">
+    
+    <!-- 字体和图标 -->
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+SC:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -718,6 +736,63 @@
 
         console.log('🎮 AI Mini Game Platform - Welcome!');
         console.log('🚀 Powered by AI & Creative Coding');
+
+        // PWA 安装支持
+        let deferredPrompt;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // 显示安装提示
+            const installBanner = document.createElement('div');
+            installBanner.innerHTML = `
+                <div style="
+                    position: fixed; 
+                    bottom: 20px; 
+                    left: 50%; 
+                    transform: translateX(-50%);
+                    background: linear-gradient(45deg, #4ecdc4, #45b7d1);
+                    color: white;
+                    padding: 15px 20px;
+                    border-radius: 25px;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                    z-index: 2000;
+                    font-family: 'Noto Sans SC', sans-serif;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                " onclick="installPWA()" onmouseover="this.style.transform='translateX(-50%) translateY(-2px)'" onmouseout="this.style.transform='translateX(-50%)'">
+                    <i class="fas fa-download" style="margin-right: 8px;"></i>
+                    安装到手机桌面
+                </div>
+            `;
+            document.body.appendChild(installBanner);
+            
+            setTimeout(() => {
+                if (installBanner.parentNode) {
+                    installBanner.remove();
+                }
+            }, 8000);
+        });
+
+        window.installPWA = async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`User response to the install prompt: ${outcome}`);
+                deferredPrompt = null;
+            }
+        };
+
+        // 性能监控
+        window.addEventListener('load', () => {
+            console.log('🎯 页面加载完成');
+            
+            // 检查网络状态
+            if ('onLine' in navigator) {
+                console.log(`📶 网络状态: ${navigator.onLine ? '在线' : '离线'}`);
+            }
+        });
     </script>
 </body>
 </html> 

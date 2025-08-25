@@ -1,0 +1,26 @@
+{
+  "name": "AI 小游戏平台",
+  "short_name": "AI Games",
+  "description": "探索由 AI 助力创造的精彩游戏世界",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#4ecdc4",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDE5MiAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiByeD0iMjQiIGZpbGw9InVybCgjZ3JhZGllbnQwXzApIi8+CjxwYXRoIGQ9Ik05NiA0OEM3My45MDg2IDQ4IDU2IDY1LjkwODYgNTYgODhWMTA0QzU2IDEyNi4wOTEgNzMuOTA4NiAxNDQgOTYgMTQ0QzExOC4wOTEgMTQ0IDEzNiAxMjYuMDkxIDEzNiAxMDRWODhDMTM2IDY1LjkwODYgMTE4LjA5MSA0OCA5NiA0OFoiIGZpbGw9IiM0ZWNkYzQiLz4KPGNpcmNsZSBjeD0iODAiIGN5PSI4MCIgcj0iNCIgZmlsbD0iIzAwMDAwMCIvPgo8Y2lyY2xlIGN4PSIxMTIiIGN5PSI4MCIgcj0iNCIgZmlsbD0iIzAwMDAwMCIvPgo8cGF0aCBkPSJNODAgMTA0QzgwIDEwNCA4OCA5NiA5NiA5NkMxMDQgOTYgMTEyIDEwNCAxMTIgMTA0IiBzdHJva2U9IiMwMDAwMDAiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIvPgo8ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJncmFkaWVudDBfMCIgeDE9IjAiIHkxPSIwIiB4Mj0iMTkyIiB5Mj0iMTkyIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CjxzdG9wIHN0b3AtY29sb3I9IiMxYTFhMmUiLz4KPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMTMzZTdjIi8+CjwvbGluZWFyR3JhZGllbnQ+CjwvZGVmcz4KPHN2Zz4=",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iNjQiIGZpbGw9InVybCgjZ3JhZGllbnQwXzApIi8+CjxwYXRoIGQ9Ik0yNTYgMTI4QzE5Ny4xNTcgMTI4IDE0OCAxNzcuMTU3IDE0OCAyMzZWMjc2QzE0OCAzMzQuODQzIDE5Ny4xNTcgMzg0IDI1NiAzODRDMzE0Ljg0MyAzODQgMzY0IDMzNC44NDMgMzY0IDI3NlYyMzZDMzY0IDE3Ny4xNTcgMzE0Ljg0MyAxMjggMjU2IDEyOFoiIGZpbGw9IiM0ZWNkYzQiLz4KPGNpcmNsZSBjeD0iMjE2IiBjeT0iMjE2IiByPSIxMiIgZmlsbD0iIzAwMDAwMCIvPgo8Y2lyY2xlIGN4PSIyOTYiIGN5PSIyMTYiIHI9IjEyIiBmaWxsPSIjMDAwMDAwIi8+CjxwYXRoIGQ9Ik0yMTYgMjc2QzIxNiAyNzYgMjQwIDI1NiAyNTYgMjU2QzI3MiAyNTYgMjk2IDI3NiAyOTYgMjc2IiBzdHJva2U9IiMwMDAwMDAiIHN0cm9rZS13aWR0aD0iOCIgZmlsbD0ibm9uZSIvPgo8ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJncmFkaWVudDBfMCIgeDE9IjAiIHkxPSIwIiB4Mj0iNTEyIiB5Mj0iNTEyIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CjxzdG9wIHN0b3AtY29sb3I9IiMxYTFhMmUiLz4KPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMTMzZTdjIi8+CjwvbGluZWFyR3JhZGllbnQ+CjwvZGVmcz4KPHN2Zz4=",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["games", "entertainment"],
+  "lang": "zh-CN",
+  "scope": "/",
+  "prefer_related_applications": false
+} 
