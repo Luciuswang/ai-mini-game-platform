@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lucius · 创意艺术简历</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Noto+Serif+SC:wght@400;700&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Noto Serif SC', serif;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0a0f, #1e1e28);
+            color: #e6e6e6;
+            position: fixed;
+            perspective: 1000px;
+        }
+
+        .game-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        canvas {
+            display: block;
+            /* background: radial-gradient(ellipse at center, rgba(10, 15, 40, 0.8) 0%, rgba(5, 10, 30, 0.9) 100%); */
+            background: transparent;
+            width: 100%;
+            height: 100%;
+            transform: translateZ(0);
+        }
+
+        #shaderCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1; /* Place it behind the game canvas */
+        }
+
+        #info {
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 1px solid #5d8aa8;
+            font-size: 14px;
+            backdrop-filter: blur(5px);
+            font-family: 'ZCOOL KuaiLe', sans-serif;
+            z-index: 10;
+        }
+
+        #score {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffd700;
+            border: 1px solid #ffd700;
+            backdrop-filter: blur(5px);
+            z-index: 10;
+        }
+
+        #health {
+            position: absolute;
+            top: 60px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 16px;
+            color: #ff6b6b;
+            border: 1px solid #ff6b6b;
+            backdrop-filter: blur(5px);
+            z-index: 10;
+        }
+
+        .screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(10, 15, 40, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            transition: opacity 0.5s;
+        }
+
+        #startScreen {
+            z-index: 2000;
+            background: linear-gradient(rgba(10, 15, 40, 0.9), rgba(5, 10, 30, 0.95));
+        }
+
+        #resumeScreen {
+            display: none;
+            overflow-y: auto;
+            padding: 0;
+            background: linear-gradient(rgba(10, 15, 40, 0.95), rgba(5, 10, 30, 0.95));
+        }
+
+        .title {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            background: linear-gradient(to right, #d4af37, #ffd700);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+            font-family: 'Anton', sans-serif;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+
+        .subtitle {
+            font-size: 1.5rem;
+            margin-bottom: 40px;
+            color: #a1c4fd;
+            max-width: 90%;
+            text-align: center;
+            line-height: 1.6;
+            font-weight: 300;
+            padding: 0 20px;
+        }
+
+        .btn {
+            background: linear-gradient(to right, #d4af37, #ffd700);
+            color: #1a1a2e;
+            border: none;
+            padding: 15px 45px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+            font-weight: bold;
+            letter-spacing: 1px;
+            font-family: 'ZCOOL KuaiLe', sans-serif;
+            z-index: 1000;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.6);
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to right, #ffd700, #d4af37);
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: -1;
+        }
+
+        .btn:hover::after {
+            opacity: 1;
+        }
+
+        .resume-content {
+            max-width: 900px;
+            width: 90%;
+            background: rgba(20, 25, 40, 0.8);
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            backdrop-filter: blur(10px);
+            margin: 40px auto;
+        }
+
+        .resume-header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+            position: relative;
+        }
+
+        .header-art {
+            width: 100%;
+            height: 300px;
+            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/Luciuswang/Luciuswang.github.io/main/2d_art_100.jpg') center/cover;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-art::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100px;
+            background: linear-gradient(to top, rgba(10,15,40,0.9), transparent);
+        }
+
+        .resume-header h2 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            color: #d4af37;
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+            font-family: 'Anton', sans-serif;
+        }
+
+        .resume-section {
+            margin-bottom: 35px;
+            position: relative;
+            padding-left: 20px;
+            border-left: 3px solid rgba(212, 175, 55, 0.5);
+        }
+
+        .resume-section h3 {
+            font-size: 1.8rem;
+            color: #ffd700;
+            margin-bottom: 20px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+            font-family: 'Anton', sans-serif;
+        }
+
+        .resume-section p {
+            line-height: 1.8;
+            margin-bottom: 15px;
+            color: #e6e6e6;
+            font-size: 1.1rem;
+        }
+
+        .project-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+            margin-top: 25px;
+        }
+
+        .project-card {
+            background: rgba(30, 40, 60, 0.7);
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            background-size: cover;
+            background-position: center;
+        }
+
+        .project-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to top, rgba(10,15,40,0.9), transparent);
+            z-index: 1;
+        }
+
+        .project-card:hover {
+            transform: translateY(-5px);
+            border-color: #d4af37;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+
+        .project-card h4 {
+            color: #ffd700;
+            margin-bottom: 15px;
+            font-size: 1.4rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .project-card p {
+            color: #cce7ff;
+            font-size: 1rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .floating-text {
+            position: absolute;
+            color: #ffd700;
+            font-size: 28px;
+            font-weight: bold;
+            pointer-events: none;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+            animation: rise 1.5s ease-out forwards;
+            font-family: 'ZCOOL KuaiLe', sans-serif;
+            z-index: 50;
+        }
+
+        @keyframes rise {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-100px) scale(1.5); }
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(255, 215, 0, 0.7);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particle-rise 1s ease-out forwards;
+            z-index: 10;
+        }
+
+        @keyframes particle-rise {
+            0% { opacity: 1; transform: translate(0, 0) scale(0.5); }
+            100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0); }
+        }
+
+        #stars {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle var(--duration) infinite ease-in-out;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.2; }
+            50% { opacity: 1; }
+        }
+
+        .performance-warning {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 107, 107, 0.8);
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            display: none;
+            z-index: 100;
+        }
+
+        .mobile-controls {
+            position: absolute;
+            bottom: 30px;
+            width: 100%;
+            display: none;
+            justify-content: space-between;
+            padding: 0 30px;
+            z-index: 10;
+        }
+
+        .control-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: rgba(255, 215, 0, 0.3);
+            border: 2px solid #d4af37;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            color: white;
+            backdrop-filter: blur(5px);
+        }
+
+        .game-title {
+            position: absolute;
+            top: 30px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 2.5rem;
+            font-family: 'Anton', sans-serif;
+            color: #ffd700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            z-index: 10;
+        }
+
+        @media (max-width: 768px) {
+            .title {
+                font-size: 2.5rem;
+            }
+            .subtitle {
+                font-size: 1.1rem;
+            }
+            .mobile-controls {
+                display: flex;
+            }
+            .resume-content {
+                padding: 20px;
+            }
+            .resume-header h2 {
+                font-size: 2rem;
+            }
+            .resume-section h3 {
+                font-size: 1.5rem;
+            }
+            .game-title {
+                font-size: 1.8rem;
+                top: 20px;
+            }
+            .control-btn {
+                width: 60px;
+                height: 60px;
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="shaderCanvas"></canvas>
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="score">击毁敌机: <span id="scoreValue">0</span>/10</div>
+        <div id="health">生命值: <span id="healthValue">100</span>%</div>
+        
+        <div id="performanceWarning" class="performance-warning">
+            <i class="fas fa-exclamation-triangle"></i> 性能提示：已启用优化模式
+        </div>
+        
+        <div class="mobile-controls">
+            <div class="control-btn" id="leftBtn">
+                <i class="fas fa-arrow-left"></i>
+            </div>
+            <div class="control-btn" id="shootBtn">
+                <i class="fas fa-bullseye"></i>
+            </div>
+            <div class="control-btn" id="rightBtn">
+                <i class="fas fa-arrow-right"></i>
+            </div>
+        </div>
+        
+        <div id="startScreen" class="screen">
+            <h1 class="title">Lucius · 创意艺术简历</h1>
+            <p class="subtitle">通过射击游戏解锁美术总监的职业生涯 - 移动鼠标控制飞船，点击射击敌机</p>
+            <button id="startBtn" class="btn">开始游戏</button>
+            <div style="position: absolute; bottom: 30px; color: #5d8aa8; font-size: 14px;">
+                美术总监 | 特效艺术家 | 团队领导者
+            </div>
+        </div>
+        
+        <div id="resumeScreen" class="screen">
+            <div class="resume-content">
+                <div class="resume-header">
+                    <div class="header-art"></div>
+                    <h2>Lucius - 美术总监</h2>
+                    <p>luxi_007@163.com | 13564009387</p>
+                </div>
+                
+                <div class="resume-section">
+                    <h3><i class="fas fa-user"></i> 个人简介</h3>
+                    <p>1977年生于上海，2000年毕业于天津美术学院雕塑系。拥有20+年游戏行业经验，专注于游戏美术、特效与团队管理。将艺术与技术完美结合，创造出令人难忘的视觉体验。</p>
+                </div>
+                
+                <div class="resume-section">
+                    <h3><i class="fas fa-briefcase"></i> 工作经历</h3>
+                    <p><strong>Garena (2014-至今)</strong> - 美术总监</p>
+                    <p>主导《FreeFire》视觉开发，负责整体美术风格把控，管理50+人美术团队。项目全球用户超10亿，成为移动端最成功的射击游戏之一。</p>
+                    
+                    <p><strong>Ubisoft (2000-2014)</strong> - 高级特效美术师</p>
+                    <p>参与《孤岛惊魂3》、《细胞分裂》等AAA级项目，负责特效系统设计与实现。开发了多项创新视觉技术，提升了游戏沉浸感。</p>
+                </div>
+                
+                <div class="resume-section">
+                    <h3><i class="fas fa-star"></i> 专业技能</h3>
+                    <div class="skills">
+                        <p>• 美术总监 & 团队管理 | • 特效设计(SFX) | • 着色器开发(Shader)</p>
+                        <p>• 3D建模与雕刻 | • 游戏动画 | • 视觉风格开发</p>
+                        <p>• 技术美术 | • 性能优化 | • 跨团队协作</p>
+                    </div>
+                </div>
+                
+                <div class="resume-section">
+                    <h3><i class="fas fa-gamepad"></i> 代表作品</h3>
+                    <div class="project-grid">
+                        <div class="project-card" style="background-image: url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')">
+                            <h4>FreeFire</h4>
+                            <p>全球现象级移动端大逃杀游戏，下载量超10亿</p>
+                        </div>
+                        <div class="project-card" style="background-image: url('https://images.unsplash.com/photo-1534423861386-85a16f5d13fd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')">
+                            <h4>孤岛惊魂3</h4>
+                            <p>开放世界第一人称射击游戏，视觉风格开创者</p>
+                        </div>
+                        <div class="project-card" style="background-image: url('https://images.unsplash.com/photo-1511512578047-dfb367046420?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2071&q=80')">
+                            <h4>细胞分裂</h4>
+                            <p>潜行动作游戏系列，电影级视觉效果</p>
+                        </div>
+                        <div class="project-card" style="background-image: url('https://images.unsplash.com/photo-1552820728-8b83bb6b773f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')">
+                            <h4>Breakout</h4>
+                            <p>多人在线射击游戏，创新美术风格</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="resume-section">
+                    <h3><i class="fas fa-palette"></i> 艺术理念</h3>
+                    <p>"游戏美术不仅是视觉表现，更是情感传递的媒介。我追求在技术限制下创造无限可能，让每个像素都承载故事，每个特效都唤起情感。"</p>
+                </div>
+            </div>
+            <button id="backBtn" class="btn">返回游戏</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('页面加载完成，开始初始化...');
+            
+            // Create ocean background using Canvas 2D API
+            const shaderCanvas = document.getElementById('shaderCanvas');
+            const shaderCtx = shaderCanvas.getContext('2d');
+            let animationTime = 0;
+            
+            function drawOceanBackground() {
+                const width = shaderCanvas.width;
+                const height = shaderCanvas.height;
+                
+                // Create gradient for ocean
+                const gradient = shaderCtx.createLinearGradient(0, 0, 0, height);
+                gradient.addColorStop(0, `rgba(${Math.floor(25 + 15 * Math.sin(animationTime * 0.01))}, ${Math.floor(50 + 25 * Math.sin(animationTime * 0.015))}, ${Math.floor(120 + 30 * Math.sin(animationTime * 0.008))}, 1)`);
+                gradient.addColorStop(0.5, `rgba(${Math.floor(40 + 20 * Math.sin(animationTime * 0.012))}, ${Math.floor(80 + 30 * Math.sin(animationTime * 0.018))}, ${Math.floor(150 + 40 * Math.sin(animationTime * 0.006))}, 1)`);
+                gradient.addColorStop(1, `rgba(${Math.floor(15 + 10 * Math.sin(animationTime * 0.009))}, ${Math.floor(35 + 15 * Math.sin(animationTime * 0.014))}, ${Math.floor(80 + 20 * Math.sin(animationTime * 0.011))}, 1)`);
+                
+                shaderCtx.fillStyle = gradient;
+                shaderCtx.fillRect(0, 0, width, height);
+                
+                // Draw wave patterns
+                for (let i = 0; i < 5; i++) {
+                    const amplitude = 10 + i * 5;
+                    const frequency = 0.01 + i * 0.005;
+                    const phase = animationTime * (0.02 + i * 0.01);
+                    
+                    shaderCtx.beginPath();
+                    shaderCtx.strokeStyle = `rgba(255, 255, 255, ${0.1 - i * 0.015})`;
+                    shaderCtx.lineWidth = 2;
+                    
+                    for (let x = 0; x <= width; x += 5) {
+                        const y = height * 0.3 + amplitude * Math.sin(x * frequency + phase) + 
+                                  amplitude * 0.5 * Math.sin(x * frequency * 2 + phase * 1.5);
+                        if (x === 0) {
+                            shaderCtx.moveTo(x, y);
+                        } else {
+                            shaderCtx.lineTo(x, y);
+                        }
+                    }
+                    shaderCtx.stroke();
+                }
+                
+                // Add sparkles/reflections
+                for (let i = 0; i < 20; i++) {
+                    const x = (animationTime * (2 + i * 0.1) + i * 100) % width;
+                    const y = height * 0.2 + 50 * Math.sin(animationTime * 0.02 + i);
+                    const size = Math.max(0.5, 2 + 3 * Math.sin(animationTime * 0.05 + i));
+                    const opacity = Math.max(0, 0.3 + 0.4 * Math.sin(animationTime * 0.03 + i));
+                    
+                    if (size > 0 && opacity > 0) {
+                        shaderCtx.beginPath();
+                        shaderCtx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+                        shaderCtx.arc(x, y, size, 0, Math.PI * 2);
+                        shaderCtx.fill();
+                    }
+                }
+                
+                animationTime++;
+                requestAnimationFrame(drawOceanBackground);
+            }
+            
+            function resizeShaderCanvas() {
+                shaderCanvas.width = window.innerWidth;
+                shaderCanvas.height = window.innerHeight;
+            }
+            
+            window.addEventListener('resize', resizeShaderCanvas);
+            resizeShaderCanvas();
+            drawOceanBackground();
+
+            // 游戏变量
+            const gameCanvas = document.getElementById('gameCanvas');
+            const ctx = gameCanvas.getContext('2d');
+            const startScreen = document.getElementById('startScreen');
+            const resumeScreen = document.getElementById('resumeScreen');
+            const startBtn = document.getElementById('startBtn');
+            const backBtn = document.getElementById('backBtn');
+            const scoreDisplay = document.getElementById('scoreValue');
+            const healthDisplay = document.getElementById('healthValue');
+            const perfWarning = document.getElementById('performanceWarning');
+            const leftBtn = document.getElementById('leftBtn');
+            const rightBtn = document.getElementById('rightBtn');
+            const shootBtn = document.getElementById('shootBtn');
+
+            // 游戏状态
+            let gameState = {
+                bullets: [],
+                enemies: [],
+                particles: [],
+                plane: { x: 0, y: 0, width: 60, height: 40 },
+                running: false,
+                score: 0,
+                health: 100,
+                gameLoopId: null,
+                enemyInterval: null,
+                lastFrameTime: 0,
+                fps: 0,
+                lowFpsCount: 0,
+                resumeText: 'Lucius 2000年毕业于天津美术学院雕塑系。2000至2014年在Ubisoft参与《孤岛惊魂》《细胞分裂》等项目，任特效及贴图美术。2014年加入Garena，主导《FreeFire》等项目视觉开发。擅长SFX、Shader、特效管理与团队建设。',
+                isMobile: false,
+                planeSpeed: 8,
+                touchX: 0
+            };
+
+            // 对象池
+            const bulletPool = [];
+            const enemyPool = [];
+            const particlePool = [];
+
+            // 设置画布尺寸
+            function resizeCanvas() {
+                gameCanvas.width = window.innerWidth;
+                gameCanvas.height = window.innerHeight;
+                
+                if (gameState.running) {
+                    gameState.plane.x = gameCanvas.width / 2 - gameState.plane.width / 2;
+                    gameState.plane.y = gameCanvas.height - 150;
+                }
+            }
+
+            // 性能监控
+            function monitorPerformance(now) {
+                if (gameState.lastFrameTime) {
+                    const delta = now - gameState.lastFrameTime;
+                    gameState.fps = Math.round(1000 / delta);
+                    
+                    if (gameState.fps < 45) {
+                        gameState.lowFpsCount++;
+                        if (gameState.lowFpsCount > 10) {
+                            perfWarning.style.display = 'block';
+                            gameState.particles = gameState.particles.slice(0, Math.floor(gameState.particles.length * 0.6));
+                        }
+                    } else {
+                        gameState.lowFpsCount = 0;
+                        perfWarning.style.display = 'none';
+                    }
+                }
+                gameState.lastFrameTime = now;
+            }
+
+            // 初始化游戏
+            function initGame() {
+                console.log('游戏初始化开始');
+                
+                gameState.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                
+                gameState.bullets = [];
+                gameState.enemies = [];
+                gameState.particles = [];
+                gameState.plane.x = gameCanvas.width / 2 - gameState.plane.width / 2;
+                gameState.plane.y = gameCanvas.height - 150;
+                gameState.score = 0;
+                gameState.health = 100;
+                gameState.lowFpsCount = 0;
+                
+                scoreDisplay.textContent = gameState.score;
+                healthDisplay.textContent = gameState.health;
+                
+                startScreen.style.display = 'none';
+                resumeScreen.style.display = 'none';
+                perfWarning.style.display = 'none';
+                gameState.running = true;
+                
+                if (gameState.enemyInterval) {
+                    clearInterval(gameState.enemyInterval);
+                }
+                
+                gameState.enemyInterval = setInterval(() => {
+                    const baseSpeed = 2 + Math.min(gameState.score / 10, 3);
+                    
+                    if (Math.random() < 0.7) {
+                        let enemy;
+                        if (enemyPool.length > 0) {
+                            enemy = enemyPool.pop();
+                            Object.assign(enemy, {
+                                x: Math.random() * (gameCanvas.width - 40),
+                                y: -40,
+                                width: 40,
+                                height: 40,
+                                speed: baseSpeed + Math.random() * 1,
+                                health: 1
+                            });
+                        } else {
+                            enemy = {
+                                x: Math.random() * (gameCanvas.width - 40),
+                                y: -40,
+                                width: 40,
+                                height: 40,
+                                speed: baseSpeed + Math.random() * 1,
+                                health: 1
+                            };
+                        }
+                        gameState.enemies.push(enemy);
+                    }
+                    
+                    if (Math.random() < 0.1) {
+                        let enemy;
+                        if (enemyPool.length > 0) {
+                            enemy = enemyPool.pop();
+                            Object.assign(enemy, {
+                                x: Math.random() * (gameCanvas.width - 60),
+                                y: -60,
+                                width: 60,
+                                height: 60,
+                                speed: baseSpeed * 0.7,
+                                health: 3
+                            });
+                        } else {
+                            enemy = {
+                                x: Math.random() * (gameCanvas.width - 60),
+                                y: -60,
+                                width: 60,
+                                height: 60,
+                                speed: baseSpeed * 0.7,
+                                health: 3
+                            };
+                        }
+                        gameState.enemies.push(enemy);
+                    }
+                }, gameState.isMobile ? 1200 : 800);
+                
+                if (gameState.gameLoopId) {
+                    cancelAnimationFrame(gameState.gameLoopId);
+                }
+                gameLoop();
+                
+                console.log('游戏初始化完成');
+            }
+
+            // 绘制飞机
+            function drawPlane() {
+                ctx.save();
+                
+                ctx.fillStyle = '#d4af37';
+                ctx.beginPath();
+                ctx.moveTo(gameState.plane.x, gameState.plane.y + gameState.plane.height);
+                ctx.lineTo(gameState.plane.x + gameState.plane.width, gameState.plane.y + gameState.plane.height);
+                ctx.lineTo(gameState.plane.x + gameState.plane.width / 2, gameState.plane.y);
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.fillStyle = '#ffd700';
+                ctx.fillRect(gameState.plane.x + 15, gameState.plane.y + 10, 30, 15);
+                
+                ctx.strokeStyle = '#ffd700';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(gameState.plane.x + 5, gameState.plane.y + 30);
+                ctx.lineTo(gameState.plane.x + gameState.plane.width - 5, gameState.plane.y + 30);
+                ctx.stroke();
+                
+                ctx.fillStyle = '#ff6b6b';
+                ctx.beginPath();
+                ctx.ellipse(gameState.plane.x + gameState.plane.width / 2, 
+                            gameState.plane.y + gameState.plane.height + 5, 
+                            5, 15, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            }
+
+            // 绘制子弹
+            function drawBullets() {
+                ctx.fillStyle = '#ffd700';
+                
+                for (let i = gameState.bullets.length - 1; i >= 0; i--) {
+                    const b = gameState.bullets[i];
+                    b.y -= gameState.isMobile ? 10 : 8;
+                    
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    const gradient = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, 10);
+                    gradient.addColorStop(0, 'rgba(255, 215, 0, 0.8)');
+                    gradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                    
+                    if (b.y < 0) {
+                        gameState.bullets.splice(i, 1);
+                        bulletPool.push(b);
+                    }
+                }
+            }
+
+            // 绘制敌机
+            function drawEnemies() {
+                for (let i = gameState.enemies.length - 1; i >= 0; i--) {
+                    const e = gameState.enemies[i];
+                    e.y += e.speed;
+                    
+                    ctx.save();
+                    ctx.fillStyle = e.health > 1 ? '#b22222' : '#dc143c';
+                    ctx.beginPath();
+                    ctx.moveTo(e.x, e.y);
+                    ctx.lineTo(e.x + e.width, e.y);
+                    ctx.lineTo(e.x + e.width - 15, e.y + e.height);
+                    ctx.lineTo(e.x + 15, e.y + e.height);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    ctx.fillStyle = '#ff8a8a';
+                    ctx.fillRect(e.x + 10, e.y + 5, e.width - 20, 8);
+                    
+                    if (e.health > 1) {
+                        ctx.fillStyle = '#ff8a8a';
+                        ctx.fillRect(e.x + 5, e.y + 20, e.width - 10, 10);
+                        
+                        ctx.strokeStyle = '#ffd700';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(e.x + e.width/2, e.y + e.height/2, 15, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                    
+                    ctx.restore();
+                    
+                    if (e.y > gameCanvas.height) {
+                        gameState.enemies.splice(i, 1);
+                        enemyPool.push(e);
+                    }
+                }
+            }
+
+            // 绘制粒子
+            function drawParticles() {
+                for (let i = gameState.particles.length - 1; i >= 0; i--) {
+                    const p = gameState.particles[i];
+                    p.life--;
+                    
+                    if (p.life <= 0) {
+                        gameState.particles.splice(i, 1);
+                        particlePool.push(p);
+                        continue;
+                    }
+                    
+                    ctx.save();
+                    ctx.globalAlpha = p.life / 100;
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                    
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.05;
+                }
+            }
+
+            // 显示浮动文字
+            function showFloatingText(char, x, y) {
+                const text = document.createElement('div');
+                text.className = 'floating-text';
+                text.style.left = `${x}px`;
+                text.style.top = `${y}px`;
+                text.textContent = char;
+                document.body.appendChild(text);
+                
+                setTimeout(() => {
+                    text.remove();
+                }, 1500);
+            }
+
+            // 创建爆炸效果
+            function createExplosion(x, y, color = '#ffd700') {
+                const particleCount = gameState.fps > 45 ? (gameState.isMobile ? 15 : 20) : 10;
+                
+                for (let i = 0; i < particleCount; i++) {
+                    let p;
+                    if (particlePool.length > 0) {
+                        p = particlePool.pop();
+                        Object.assign(p, {
+                            x: x,
+                            y: y,
+                            vx: (Math.random() - 0.5) * 4,
+                            vy: (Math.random() - 0.5) * 4 - 2,
+                            size: Math.random() * 3 + 1,
+                            color: color,
+                            life: Math.random() * 50 + 50
+                        });
+                    } else {
+                        p = {
+                            x: x,
+                            y: y,
+                            vx: (Math.random() - 0.5) * 4,
+                            vy: (Math.random() - 0.5) * 4 - 2,
+                            size: Math.random() * 3 + 1,
+                            color: color,
+                            life: Math.random() * 50 + 50
+                        };
+                    }
+                    gameState.particles.push(p);
+                }
+            }
+
+            // 碰撞检测
+            function checkCollisions() {
+                for (let i = gameState.bullets.length - 1; i >= 0; i--) {
+                    const b = gameState.bullets[i];
+                    
+                    for (let j = gameState.enemies.length - 1; j >= 0; j--) {
+                        const e = gameState.enemies[j];
+                        
+                        if (b.x > e.x && b.x < e.x + e.width &&
+                            b.y > e.y && b.y < e.y + e.height) {
+                            createExplosion(b.x, b.y);
+                            gameState.bullets.splice(i, 1);
+                            bulletPool.push(b);
+                            
+                            e.health--;
+                            if (e.health <= 0) {
+                                createExplosion(e.x + e.width/2, e.y + e.height/2, '#dc143c');
+                                gameState.enemies.splice(j, 1);
+                                enemyPool.push(e);
+                                gameState.score++;
+                                scoreDisplay.textContent = gameState.score;
+                                
+                                if (gameState.score < gameState.resumeText.length) {
+                                    showFloatingText(gameState.resumeText[gameState.score], e.x + e.width/2, e.y + e.height/2);
+                                }
+                                
+                                if (gameState.score >= 10) {
+                                    gameState.running = false;
+                                    clearInterval(gameState.enemyInterval);
+                                    cancelAnimationFrame(gameState.gameLoopId);
+                                    
+                                    setTimeout(() => {
+                                        resumeScreen.style.display = 'flex';
+                                    }, 1000);
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+                
+                for (let i = gameState.enemies.length - 1; i >= 0; i--) {
+                    const e = gameState.enemies[i];
+                    
+                    if (gameState.plane.x < e.x + e.width &&
+                        gameState.plane.x + gameState.plane.width > e.x &&
+                        gameState.plane.y < e.y + e.height &&
+                        gameState.plane.y + gameState.plane.height > e.y) {
+                        createExplosion(e.x + e.width/2, e.y + e.height/2, '#dc143c');
+                        gameState.enemies.splice(i, 1);
+                        enemyPool.push(e);
+                        gameState.health -= 20;
+                        healthDisplay.textContent = gameState.health;
+                        
+                        if (gameState.health <= 0) {
+                            gameState.running = false;
+                            clearInterval(gameState.enemyInterval);
+                            cancelAnimationFrame(gameState.gameLoopId);
+                            
+                            setTimeout(() => {
+                                alert('游戏结束！点击确定重新开始。');
+                                startScreen.style.display = 'flex';
+                            }, 500);
+                        }
+                    }
+                }
+            }
+
+            // 游戏主循环
+            function gameLoop(timestamp) {
+                if (!gameState.running) return;
+                
+                monitorPerformance(timestamp);
+                
+                ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+                
+                drawPlane();
+                drawBullets();
+                drawEnemies();
+                drawParticles();
+                checkCollisions();
+                
+                gameState.gameLoopId = requestAnimationFrame(gameLoop);
+            }
+
+            // 事件监听
+            gameCanvas.addEventListener('mousemove', (e) => {
+                if (!gameState.running) return;
+                
+                gameState.plane.x = e.clientX - gameState.plane.width / 2;
+                gameState.plane.y = e.clientY - gameState.plane.height / 2;
+                
+                gameState.plane.x = Math.max(0, Math.min(gameCanvas.width - gameState.plane.width, gameState.plane.x));
+                gameState.plane.y = Math.max(0, Math.min(gameCanvas.height - gameState.plane.height, gameState.plane.y));
+            });
+
+            gameCanvas.addEventListener('click', () => {
+                if (!gameState.running) return;
+                shoot();
+            });
+
+            function shoot() {
+                let bullet;
+                if (bulletPool.length > 0) {
+                    bullet = bulletPool.pop();
+                    Object.assign(bullet, {
+                        x: gameState.plane.x + gameState.plane.width / 2,
+                        y: gameState.plane.y
+                    });
+                } else {
+                    bullet = {
+                        x: gameState.plane.x + gameState.plane.width / 2,
+                        y: gameState.plane.y
+                    };
+                }
+                gameState.bullets.push(bullet);
+            }
+
+            console.log('绑定按钮事件...');
+            console.log('startBtn:', startBtn);
+            console.log('initGame函数:', typeof initGame);
+            
+            startBtn.addEventListener('click', function() {
+                console.log('开始游戏按钮被点击！');
+                initGame();
+            });
+            
+            backBtn.addEventListener('click', () => {
+                resumeScreen.style.display = 'none';
+                initGame();
+            });
+
+            // 移动控制
+            leftBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                gameState.touchX = -gameState.planeSpeed;
+            });
+
+            leftBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                gameState.touchX = 0;
+            });
+
+            rightBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                gameState.touchX = gameState.planeSpeed;
+            });
+
+            rightBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                gameState.touchX = 0;
+            });
+
+            shootBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                shoot();
+            });
+
+            // 键盘控制
+            document.addEventListener('keydown', (e) => {
+                if (!gameState.running) return;
+                
+                if (e.code === 'Space') {
+                    shoot();
+                } else if (e.code === 'ArrowLeft') {
+                    gameState.plane.x -= gameState.planeSpeed;
+                } else if (e.code === 'ArrowRight') {
+                    gameState.plane.x += gameState.planeSpeed;
+                } else if (e.code === 'Escape') {
+                    gameState.running = false;
+                    startScreen.style.display = 'flex';
+                    clearInterval(gameState.enemyInterval);
+                    cancelAnimationFrame(gameState.gameLoopId);
+                }
+                
+                gameState.plane.x = Math.max(0, Math.min(gameCanvas.width - gameState.plane.width, gameState.plane.x));
+            });
+
+            // 移动设备触摸控制
+            gameCanvas.addEventListener('touchmove', (e) => {
+                if (!gameState.running) return;
+                e.preventDefault();
+                
+                const touch = e.touches[0];
+                gameState.plane.x = touch.clientX - gameState.plane.width / 2;
+                gameState.plane.y = touch.clientY - gameState.plane.height / 2;
+                
+                gameState.plane.x = Math.max(0, Math.min(gameCanvas.width - gameState.plane.width, gameState.plane.x));
+                gameState.plane.y = Math.max(0, Math.min(gameCanvas.height - gameState.plane.height, gameState.plane.y));
+            });
+
+            gameCanvas.addEventListener('touchend', (e) => {
+                if (!gameState.running) return;
+                e.preventDefault();
+            });
+
+            // 初始化
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            // 移动设备控制循环
+            function mobileControlLoop() {
+                if (gameState.running && gameState.isMobile) {
+                    if (gameState.touchX !== 0) {
+                        gameState.plane.x += gameState.touchX;
+                        gameState.plane.x = Math.max(0, Math.min(gameCanvas.width - gameState.plane.width, gameState.plane.x));
+                    }
+                }
+                requestAnimationFrame(mobileControlLoop);
+            }
+            mobileControlLoop();
+        });
+    </script>
+</body>
+</html>
