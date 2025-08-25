@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 小游戏平台 - 创意无限的游戏世界</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+SC:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 25%, #16213e 50%, #0e3658 75%, #133e7c 100%);
+            color: #fff;
+            font-family: 'Noto Sans SC', sans-serif;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* 动态背景 */
+        .background-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .floating-shape {
+            position: absolute;
+            background: linear-gradient(45deg, rgba(78, 205, 196, 0.1), rgba(255, 107, 107, 0.1));
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
+
+        /* 导航栏 */
+        .navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 20px 50px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .navbar.scrolled {
+            padding: 10px 50px;
+            background: rgba(0, 0, 0, 0.9);
+        }
+
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.8rem;
+            font-weight: 900;
+            background: linear-gradient(45deg, #4ecdc4, #ff6b6b);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 30px;
+        }
+
+        .nav-links a {
+            color: #fff;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .nav-links a:hover {
+            color: #4ecdc4;
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: -5px;
+            left: 0;
+            background: linear-gradient(45deg, #4ecdc4, #ff6b6b);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        /* 主标题区域 */
+        .hero {
+            padding: 120px 50px 80px;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero h1 {
+            font-family: 'Orbitron', monospace;
+            font-size: 4rem;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #4ecdc4, #ff6b6b, #45b7d1, #96ceb4);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: glow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { filter: drop-shadow(0 0 20px rgba(78, 205, 196, 0.7)); }
+            to { filter: drop-shadow(0 0 30px rgba(255, 107, 107, 0.7)); }
+        }
+
+        .hero .subtitle {
+            font-size: 1.5rem;
+            margin-bottom: 40px;
+            color: rgba(255, 255, 255, 0.8);
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            margin-top: 50px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 20px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-number {
+            font-family: 'Orbitron', monospace;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #4ecdc4;
+            display: block;
+        }
+
+        .stat-label {
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 5px;
+        }
+
+        /* 游戏展示区域 */
+        .games-section {
+            padding: 80px 50px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            text-align: center;
+            font-family: 'Orbitron', monospace;
+            font-size: 2.5rem;
+            margin-bottom: 60px;
+            background: linear-gradient(45deg, #4ecdc4, #ff6b6b);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 40px;
+            margin-top: 40px;
+        }
+
+        .game-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            border-color: rgba(78, 205, 196, 0.5);
+        }
+
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(78, 205, 196, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .game-card:hover::before {
+            left: 100%;
+        }
+
+        .game-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .snake-icon { color: #00ff00; }
+        .tetris-icon { color: #ff6b6b; }
+        .shooter-icon { color: #4ecdc4; }
+
+        .game-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #fff;
+        }
+
+        .game-description {
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+
+        .game-features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 25px;
+        }
+
+        .feature-tag {
+            background: rgba(78, 205, 196, 0.2);
+            color: #4ecdc4;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            border: 1px solid rgba(78, 205, 196, 0.3);
+        }
+
+        .play-button {
+            background: linear-gradient(45deg, #4ecdc4, #45b7d1);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .play-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(78, 205, 196, 0.3);
+        }
+
+        .play-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #45b7d1, #4ecdc4);
+            transition: left 0.3s ease;
+            z-index: -1;
+        }
+
+        .play-button:hover::before {
+            left: 0;
+        }
+
+        /* 特色区域 */
+        .features-section {
+            padding: 80px 50px;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .feature-item {
+            text-align: center;
+            padding: 30px 20px;
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            color: #4ecdc4;
+            margin-bottom: 20px;
+        }
+
+        .feature-title {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: #fff;
+        }
+
+        .feature-text {
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.6;
+        }
+
+        /* 页脚 */
+        .footer {
+            padding: 50px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.5);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: #4ecdc4;
+        }
+
+        .copyright {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.9rem;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 15px 20px;
+            }
+
+            .nav-links {
+                gap: 20px;
+            }
+
+            .hero {
+                padding: 100px 20px 60px;
+            }
+
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero .subtitle {
+                font-size: 1.2rem;
+            }
+
+            .stats {
+                flex-direction: column;
+                gap: 20px;
+                align-items: center;
+            }
+
+            .games-section {
+                padding: 60px 20px;
+            }
+
+            .games-grid {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+
+            .footer-links {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+
+        /* 加载动画 */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s ease;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <!-- 动态背景 -->
+    <div class="background-animation"></div>
+
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="#" class="logo">🎮 AI GAMES</a>
+            <ul class="nav-links">
+                <li><a href="#home">首页</a></li>
+                <li><a href="#games">游戏</a></li>
+                <li><a href="#features">特色</a></li>
+                <li><a href="#about">关于</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- 主标题区域 -->
+    <section id="home" class="hero">
+        <h1>AI 小游戏平台</h1>
+        <p class="subtitle">
+            探索由 AI 助力创造的精彩游戏世界，每一个游戏都承载着创意与技术的完美融合。
+            在这里，经典游戏焕发新生，创新玩法层出不穷。
+        </p>
+        
+        <div class="stats">
+            <div class="stat-item fade-in">
+                <span class="stat-number">3</span>
+                <div class="stat-label">精品游戏</div>
+            </div>
+            <div class="stat-item fade-in">
+                <span class="stat-number">∞</span>
+                <div class="stat-label">创意无限</div>
+            </div>
+            <div class="stat-item fade-in">
+                <span class="stat-number">100%</span>
+                <div class="stat-label">免费畅玩</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 游戏展示区域 -->
+    <section id="games" class="games-section">
+        <h2 class="section-title">🎮 游戏大厅</h2>
+        
+        <div class="games-grid">
+            <!-- 贪吃蛇游戏 -->
+            <div class="game-card fade-in">
+                <i class="fas fa-snake snake-icon game-icon"></i>
+                <h3 class="game-title">🐍 贪吃蛇</h3>
+                <p class="game-description">
+                    经典贪吃蛇游戏的现代演绎，采用霓虹灯风格设计，
+                    支持等级递增、速度加快和本地高分记录。
+                </p>
+                <div class="game-features">
+                    <span class="feature-tag">霓虹风格</span>
+                    <span class="feature-tag">等级系统</span>
+                    <span class="feature-tag">高分记录</span>
+                    <span class="feature-tag">触屏支持</span>
+                </div>
+                <a href="./games/snake/index.html" class="play-button">
+                    <i class="fas fa-play"></i> 开始游戏
+                </a>
+            </div>
+
+            <!-- 俄罗斯方块游戏 -->
+            <div class="game-card fade-in">
+                <i class="fas fa-th-large tetris-icon game-icon"></i>
+                <h3 class="game-title">🧩 俄罗斯方块</h3>
+                <p class="game-description">
+                    全新设计的俄罗斯方块，包含7种经典方块形状，
+                    完整的行消除系统和渐进式难度设计。
+                </p>
+                <div class="game-features">
+                    <span class="feature-tag">经典玩法</span>
+                    <span class="feature-tag">渐进难度</span>
+                    <span class="feature-tag">行消除</span>
+                    <span class="feature-tag">方块预览</span>
+                </div>
+                <a href="./games/tetris/index.html" class="play-button">
+                    <i class="fas fa-play"></i> 开始游戏
+                </a>
+            </div>
+
+            <!-- Lucius 简历射击游戏 -->
+            <div class="game-card fade-in">
+                <i class="fas fa-rocket shooter-icon game-icon"></i>
+                <h3 class="game-title">🚀 Lucius 简历</h3>
+                <p class="game-description">
+                    创意简历展示游戏，通过射击闯关的方式展示个人履历，
+                    具有海洋背景和动态特效。
+                </p>
+                <div class="game-features">
+                    <span class="feature-tag">创意简历</span>
+                    <span class="feature-tag">海洋背景</span>
+                    <span class="feature-tag">射击闯关</span>
+                    <span class="feature-tag">个人展示</span>
+                </div>
+                <a href="./games/shooter/index.html" class="play-button">
+                    <i class="fas fa-play"></i> 开始游戏
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- 特色功能区域 -->
+    <section id="features" class="features-section">
+        <h2 class="section-title">✨ 平台特色</h2>
+        
+        <div class="features-grid">
+            <div class="feature-item fade-in">
+                <i class="fas fa-brain feature-icon"></i>
+                <h3 class="feature-title">AI 助力开发</h3>
+                <p class="feature-text">
+                    利用人工智能技术辅助游戏开发，让创意快速转化为现实，
+                    降低开发门槛，提升开发效率。
+                </p>
+            </div>
+
+            <div class="feature-item fade-in">
+                <i class="fas fa-mobile-alt feature-icon"></i>
+                <h3 class="feature-title">跨平台兼容</h3>
+                <p class="feature-text">
+                    支持桌面端和移动端，响应式设计确保在任何设备上
+                    都能获得最佳的游戏体验。
+                </p>
+            </div>
+
+            <div class="feature-item fade-in">
+                <i class="fas fa-palette feature-icon"></i>
+                <h3 class="feature-title">现代化设计</h3>
+                <p class="feature-text">
+                    采用现代化的UI设计理念，霓虹灯效果、动态背景
+                    和流畅动画，带来沉浸式的视觉体验。
+                </p>
+            </div>
+
+            <div class="feature-item fade-in">
+                <i class="fas fa-code feature-icon"></i>
+                <h3 class="feature-title">开源共享</h3>
+                <p class="feature-text">
+                    所有游戏代码开源共享，欢迎开发者贡献创意，
+                    共同构建更丰富的游戏生态。
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer id="about" class="footer">
+        <div class="footer-content">
+            <div class="footer-links">
+                <a href="https://github.com/Luciuswang/ai-mini-game-platform">
+                    <i class="fab fa-github"></i> GitHub
+                </a>
+                <a href="#contact">联系我们</a>
+                <a href="#privacy">隐私政策</a>
+                <a href="#terms">使用条款</a>
+            </div>
+            <div class="copyright">
+                © 2025 AI Mini Game Platform. Made with ❤️ by Lucius Wang.
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // 动态背景效果
+        function createFloatingShapes() {
+            const container = document.querySelector('.background-animation');
+            
+            for (let i = 0; i < 6; i++) {
+                const shape = document.createElement('div');
+                shape.className = 'floating-shape';
+                shape.style.width = Math.random() * 100 + 50 + 'px';
+                shape.style.height = shape.style.width;
+                shape.style.left = Math.random() * 100 + '%';
+                shape.style.top = Math.random() * 100 + '%';
+                shape.style.animationDelay = Math.random() * 6 + 's';
+                shape.style.animationDuration = (Math.random() * 4 + 4) + 's';
+                container.appendChild(shape);
+            }
+        }
+
+        // 导航栏滚动效果
+        window.addEventListener('scroll', () => {
+            const navbar = document.querySelector('.navbar');
+            if (window.scrollY > 50) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        });
+
+        // 滚动动画
+        function handleScrollAnimation() {
+            const elements = document.querySelectorAll('.fade-in');
+            
+            elements.forEach(element => {
+                const elementTop = element.getBoundingClientRect().top;
+                const elementVisible = 150;
+                
+                if (elementTop < window.innerHeight - elementVisible) {
+                    element.classList.add('visible');
+                }
+            });
+        }
+
+        // 平滑滚动
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // 统计数字动画
+        function animateNumbers() {
+            const statNumbers = document.querySelectorAll('.stat-number');
+            
+            statNumbers.forEach(number => {
+                if (number.textContent === '∞') return;
+                
+                const target = parseInt(number.textContent);
+                let current = 0;
+                const increment = target / 30;
+                
+                const timer = setInterval(() => {
+                    current += increment;
+                    if (current >= target) {
+                        current = target;
+                        clearInterval(timer);
+                    }
+                    number.textContent = Math.floor(current);
+                }, 50);
+            });
+        }
+
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', () => {
+            createFloatingShapes();
+            handleScrollAnimation();
+            
+            // 延迟执行数字动画
+            setTimeout(animateNumbers, 1000);
+        });
+
+        // 滚动时执行动画检查
+        window.addEventListener('scroll', handleScrollAnimation);
+
+        // 游戏卡片点击效果
+        document.querySelectorAll('.game-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.background = 'rgba(78, 205, 196, 0.1)';
+            });
+            
+            card.addEventListener('mouseleave', () => {
+                card.style.background = 'rgba(255, 255, 255, 0.05)';
+            });
+        });
+
+        // 添加键盘导航支持
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                // ESC键返回顶部
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        });
+
+        console.log('🎮 AI Mini Game Platform - Welcome!');
+        console.log('🚀 Powered by AI & Creative Coding');
+    </script>
+</body>
+</html> 
