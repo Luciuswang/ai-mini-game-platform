@@ -40,6 +40,9 @@
             font-family: 'Noto Sans SC', sans-serif;
             overflow-x: hidden;
             min-height: 100vh;
+            /* 移动端滚动优化 */
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
         }
 
         /* 动态背景 */
@@ -400,6 +403,25 @@
         .copyright {
             color: rgba(255, 255, 255, 0.5);
             font-size: 0.9rem;
+        }
+
+        /* 移动端滚动优化 */
+        @media (max-width: 768px) {
+            html, body {
+                touch-action: pan-y;
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior: contain;
+            }
+            
+            /* 确保所有非游戏区域可以正常滚动 */
+            .container, .hero, .games-section, .features-section, .footer {
+                touch-action: pan-y;
+            }
+            
+            /* 游戏卡片内部禁止滚动 */
+            .game-card canvas {
+                touch-action: none;
+            }
         }
 
         /* 响应式设计 */

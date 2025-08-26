@@ -57,9 +57,14 @@
                 lastTouchEnd = now;
             }, false);
             
-            // 优化滚动
+            // 优化滚动 - 只在游戏Canvas中阻止默认行为
             document.addEventListener('touchmove', function(e) {
-                if (e.target.tagName !== 'CANVAS') {
+                // 只在Canvas元素中阻止默认滚动，其他地方允许正常滚动
+                if (e.target.tagName === 'CANVAS') {
+                    e.preventDefault();
+                }
+                // 在游戏区域内阻止滚动
+                if (e.target.closest('.game-card') || e.target.closest('canvas')) {
                     e.preventDefault();
                 }
             }, { passive: false });
