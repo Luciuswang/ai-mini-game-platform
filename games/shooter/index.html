@@ -997,9 +997,23 @@
                                     cancelAnimationFrame(gameState.gameLoopId);
                                     
                                     setTimeout(() => {
-                                        // 重置滚动位置到顶部
+                                        // 强制重置滚动位置 - 多次尝试确保生效
                                         resumeScreen.scrollTop = 0;
                                         resumeScreen.style.display = 'flex';
+                                        
+                                        // 再次确保滚动到顶部（移动端可能需要延迟）
+                                        setTimeout(() => {
+                                            resumeScreen.scrollTop = 0;
+                                            const resumeContent = resumeScreen.querySelector('.resume-content');
+                                            if (resumeContent) {
+                                                resumeContent.scrollTop = 0;
+                                            }
+                                            // 使用 scrollIntoView 确保顶部可见
+                                            const firstElement = resumeScreen.querySelector('.resume-header');
+                                            if (firstElement) {
+                                                firstElement.scrollIntoView({ behavior: 'instant', block: 'start' });
+                                            }
+                                        }, 100);
                                     }, 1000);
                                 }
                             }
@@ -1096,8 +1110,12 @@
             
             backBtn.addEventListener('click', () => {
                 resumeScreen.style.display = 'none';
-                // 重置滚动位置
+                // 强制重置滚动位置
                 resumeScreen.scrollTop = 0;
+                const resumeContent = resumeScreen.querySelector('.resume-content');
+                if (resumeContent) {
+                    resumeContent.scrollTop = 0;
+                }
                 initGame();
             });
 
