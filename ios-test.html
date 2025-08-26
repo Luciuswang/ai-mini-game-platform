@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="msapplication-tap-highlight" content="no">
+    <title>iOS 兼容性测试 - AI 小游戏平台</title>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0a0a0f, #1a1a2e, #16213e);
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            -webkit-text-size-adjust: 100%;
+            touch-action: manipulation;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 30px;
+            color: #4ecdc4;
+        }
+        
+        .test-item {
+            background: rgba(255, 255, 255, 0.1);
+            margin: 15px 0;
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-left: 10px;
+        }
+        
+        .pass { background: #4ecdc4; color: #000; }
+        .fail { background: #ff6b6b; color: #fff; }
+        
+        .game-link {
+            display: block;
+            background: linear-gradient(45deg, #4ecdc4, #45b7d1);
+            color: white;
+            text-decoration: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            margin: 10px 0;
+            font-weight: 600;
+            transition: transform 0.3s ease;
+            touch-action: manipulation;
+        }
+        
+        .game-link:hover, .game-link:active {
+            transform: translateY(-2px);
+        }
+        
+        .back-link {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+        
+        canvas {
+            border: 2px solid #4ecdc4;
+            border-radius: 10px;
+            background: #000;
+            margin: 10px 0;
+            touch-action: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍎 iOS Safari 兼容性测试</h1>
+        
+        <div class="test-item">
+            <strong>用户代理检测:</strong>
+            <span id="userAgent" class="status">检测中...</span>
+        </div>
+        
+        <div class="test-item">
+            <strong>Canvas 支持:</strong>
+            <span id="canvasSupport" class="status">检测中...</span>
+        </div>
+        
+        <div class="test-item">
+            <strong>触摸事件支持:</strong>
+            <span id="touchSupport" class="status">检测中...</span>
+        </div>
+        
+        <div class="test-item">
+            <strong>本地存储支持:</strong>
+            <span id="storageSupport" class="status">检测中...</span>
+        </div>
+        
+        <div class="test-item">
+            <strong>PWA 支持:</strong>
+            <span id="pwaSupport" class="status">检测中...</span>
+        </div>
+        
+        <div class="test-item">
+            <strong>触摸测试:</strong>
+            <canvas id="touchTest" width="300" height="150"></canvas>
+            <div>在canvas上滑动测试触摸响应</div>
+        </div>
+        
+        <h2 style="margin: 30px 0 20px; color: #45b7d1;">🎮 游戏链接测试</h2>
+        
+        <a href="./games/snake/index.html" class="game-link">🐍 贪吃蛇</a>
+        <a href="./games/tetris/index.html" class="game-link">🧩 俄罗斯方块</a>
+        <a href="./games/shooter/index.html" class="game-link">🚀 Lucius 简历游戏</a>
+        
+        <a href="./" class="game-link back-link">← 返回主页</a>
+    </div>
+
+    <script>
+        // 用户代理检测
+        const ua = navigator.userAgent;
+        const isIOS = /iPad|iPhone|iPod/.test(ua);
+        const isSafari = /Safari/.test(ua) && !/Chrome/.test(ua);
+        document.getElementById('userAgent').textContent = isIOS ? 'iOS 设备' : '非iOS设备';
+        document.getElementById('userAgent').className = `status ${isIOS ? 'pass' : 'fail'}`;
+        
+        // Canvas支持检测
+        try {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const hasCanvas = !!(ctx && ctx.fillRect);
+            document.getElementById('canvasSupport').textContent = hasCanvas ? '支持' : '不支持';
+            document.getElementById('canvasSupport').className = `status ${hasCanvas ? 'pass' : 'fail'}`;
+        } catch (e) {
+            document.getElementById('canvasSupport').textContent = '不支持';
+            document.getElementById('canvasSupport').className = 'status fail';
+        }
+        
+        // 触摸事件支持检测
+        const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        document.getElementById('touchSupport').textContent = hasTouch ? '支持' : '不支持';
+        document.getElementById('touchSupport').className = `status ${hasTouch ? 'pass' : 'fail'}`;
+        
+        // 本地存储支持检测
+        try {
+            localStorage.setItem('test', 'test');
+            localStorage.removeItem('test');
+            document.getElementById('storageSupport').textContent = '支持';
+            document.getElementById('storageSupport').className = 'status pass';
+        } catch (e) {
+            document.getElementById('storageSupport').textContent = '不支持';
+            document.getElementById('storageSupport').className = 'status fail';
+        }
+        
+        // PWA支持检测
+        const hasPWA = 'serviceWorker' in navigator && 'manifest' in document.createElement('link');
+        document.getElementById('pwaSupport').textContent = hasPWA ? '支持' : '不支持';
+        document.getElementById('pwaSupport').className = `status ${hasPWA ? 'pass' : 'fail'}`;
+        
+        // 触摸测试Canvas
+        const touchCanvas = document.getElementById('touchTest');
+        const touchCtx = touchCanvas.getContext('2d');
+        
+        touchCtx.fillStyle = '#4ecdc4';
+        touchCtx.fillRect(0, 0, touchCanvas.width, touchCanvas.height);
+        touchCtx.fillStyle = '#fff';
+        touchCtx.font = '16px Arial';
+        touchCtx.textAlign = 'center';
+        touchCtx.fillText('在这里滑动测试触摸', touchCanvas.width/2, touchCanvas.height/2);
+        
+        let isDrawing = false;
+        
+        function startDrawing(x, y) {
+            isDrawing = true;
+            touchCtx.strokeStyle = '#ff6b6b';
+            touchCtx.lineWidth = 3;
+            touchCtx.lineCap = 'round';
+            touchCtx.beginPath();
+            touchCtx.moveTo(x, y);
+        }
+        
+        function draw(x, y) {
+            if (isDrawing) {
+                touchCtx.lineTo(x, y);
+                touchCtx.stroke();
+            }
+        }
+        
+        function stopDrawing() {
+            isDrawing = false;
+        }
+        
+        // 鼠标事件
+        touchCanvas.addEventListener('mousedown', (e) => {
+            const rect = touchCanvas.getBoundingClientRect();
+            startDrawing(e.clientX - rect.left, e.clientY - rect.top);
+        });
+        
+        touchCanvas.addEventListener('mousemove', (e) => {
+            const rect = touchCanvas.getBoundingClientRect();
+            draw(e.clientX - rect.left, e.clientY - rect.top);
+        });
+        
+        touchCanvas.addEventListener('mouseup', stopDrawing);
+        touchCanvas.addEventListener('mouseout', stopDrawing);
+        
+        // 触摸事件
+        touchCanvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const rect = touchCanvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            startDrawing(touch.clientX - rect.left, touch.clientY - rect.top);
+        }, { passive: false });
+        
+        touchCanvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const rect = touchCanvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            draw(touch.clientX - rect.left, touch.clientY - rect.top);
+        }, { passive: false });
+        
+        touchCanvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            stopDrawing();
+        }, { passive: false });
+        
+        // iOS Safari特定修复
+        if (isIOS) {
+            // 禁用手势缩放
+            document.addEventListener('gesturestart', function (e) {
+                e.preventDefault();
+            }, { passive: false });
+            
+            document.addEventListener('gesturechange', function (e) {
+                e.preventDefault();
+            }, { passive: false });
+            
+            document.addEventListener('gestureend', function (e) {
+                e.preventDefault();
+            }, { passive: false });
+            
+            // 防止双击缩放
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', function (e) {
+                const now = (new Date()).getTime();
+                if (now - lastTouchEnd <= 300) {
+                    e.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, { passive: false });
+        }
+        
+        console.log('iOS兼容性测试页面已加载');
+        console.log('设备信息:', {
+            userAgent: ua,
+            isIOS: isIOS,
+            isSafari: isSafari,
+            hasTouch: hasTouch,
+            screenSize: `${screen.width}x${screen.height}`,
+            viewportSize: `${window.innerWidth}x${window.innerHeight}`
+        });
+    </script>
+</body>
+</html> 

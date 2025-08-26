@@ -856,7 +856,34 @@
             e.preventDefault();
         }, { passive: false });
 
+        // iOS Safari 兼容性修复
+        function iosCanvasFix() {
+            const canvas = document.getElementById('gameCanvas');
+            const nextCanvas = document.getElementById('nextCanvas');
+            
+            // 强制重新绘制以修复iOS渲染问题
+            [canvas, nextCanvas].forEach(c => {
+                const ctx = c.getContext('2d');
+                ctx.fillStyle = 'transparent';
+                ctx.fillRect(0, 0, 1, 1);
+            });
+            
+            // 禁用iOS Safari的自动缩放
+            document.addEventListener('gesturestart', function (e) {
+                e.preventDefault();
+            });
+            
+            document.addEventListener('gesturechange', function (e) {
+                e.preventDefault();
+            });
+            
+            document.addEventListener('gestureend', function (e) {
+                e.preventDefault();
+            });
+        }
+
         // 初始化
+        iosCanvasFix();
         drawBoard();
         drawNextPiece();
     </script>

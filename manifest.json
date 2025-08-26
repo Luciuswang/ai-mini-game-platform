@@ -2,7 +2,7 @@
   "name": "AI 小游戏平台",
   "short_name": "AI Games",
   "description": "探索由 AI 助力创造的精彩游戏世界",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#0a0a0f",
   "theme_color": "#4ecdc4",
@@ -21,6 +21,6 @@
   ],
   "categories": ["games", "entertainment"],
   "lang": "zh-CN",
-  "scope": "/",
+  "scope": "./",
   "prefer_related_applications": false
 } 
