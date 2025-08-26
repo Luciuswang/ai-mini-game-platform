@@ -2,7 +2,12 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="msapplication-tap-highlight" content="no">
     <title>俄罗斯方块 - AI Mini Game Platform</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+SC:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
@@ -21,6 +26,14 @@
             align-items: center;
             min-height: 100vh;
             overflow: hidden;
+            /* 移动端优化 */
+            -webkit-overflow-scrolling: touch;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
 
         .game-container {
@@ -62,6 +75,14 @@
             box-shadow: 
                 0 0 50px rgba(78, 205, 196, 0.3),
                 inset 0 0 50px rgba(0, 0, 0, 0.5);
+            /* 移动端触摸优化 */
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
 
         .game-info {
@@ -302,6 +323,16 @@
                 <div class="control-item">
                     <span>暂停</span>
                     <span><span class="key">P</span></span>
+                </div>
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(78, 205, 196, 0.3);">
+                    <h4 style="color: #4ecdc4; margin-bottom: 10px; font-size: 0.9rem;">📱 移动端</h4>
+                    <div style="font-size: 0.8rem; line-height: 1.5;">
+                        <div>• 左右滑动：移动</div>
+                        <div>• 点击：旋转</div>
+                        <div>• 下滑：软降</div>
+                        <div>• 上滑：硬降</div>
+                        <div>• 长按：硬降</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -758,6 +789,72 @@
                     break;
             }
         });
+
+        // 移动端触摸控制
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchTime = 0;
+        const SWIPE_THRESHOLD = 30;
+        const TAP_TIME_THRESHOLD = 200;
+
+        gameCanvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            touchTime = Date.now();
+        }, { passive: false });
+
+        gameCanvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (!gameRunning || gamePaused) return;
+            
+            const touch = e.changedTouches[0];
+            const touchEndX = touch.clientX;
+            const touchEndY = touch.clientY;
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+            const deltaTime = Date.now() - touchTime;
+            
+            // 判断是点击还是滑动
+            if (Math.abs(deltaX) < SWIPE_THRESHOLD && Math.abs(deltaY) < SWIPE_THRESHOLD) {
+                // 点击操作
+                if (deltaTime < TAP_TIME_THRESHOLD) {
+                    // 短点击 = 旋转
+                    rotatePiece(currentPiece);
+                } else {
+                    // 长按 = 硬降
+                    hardDrop();
+                }
+            } else {
+                // 滑动操作
+                if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    // 水平滑动
+                    if (deltaX > SWIPE_THRESHOLD) {
+                        movePiece(1, 0); // 右移
+                    } else if (deltaX < -SWIPE_THRESHOLD) {
+                        movePiece(-1, 0); // 左移
+                    }
+                } else {
+                    // 垂直滑动
+                    if (deltaY > SWIPE_THRESHOLD) {
+                        // 向下滑动 = 软降
+                        if (movePiece(0, 1)) {
+                            score += 1;
+                            scoreElement.textContent = score;
+                        }
+                    } else if (deltaY < -SWIPE_THRESHOLD) {
+                        // 向上滑动 = 硬降
+                        hardDrop();
+                    }
+                }
+            }
+        }, { passive: false });
+
+        // 防止触摸时页面滚动
+        gameCanvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+        }, { passive: false });
 
         // 初始化
         drawBoard();

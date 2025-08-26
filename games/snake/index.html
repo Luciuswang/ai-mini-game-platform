@@ -2,7 +2,12 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="msapplication-tap-highlight" content="no">
     <title>贪吃蛇 - AI Mini Game Platform</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+SC:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
@@ -21,6 +26,14 @@
             align-items: center;
             min-height: 100vh;
             overflow: hidden;
+            /* 移动端优化 */
+            -webkit-overflow-scrolling: touch;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
 
         .game-container {
@@ -79,6 +92,14 @@
             box-shadow: 
                 0 0 50px rgba(0, 245, 255, 0.3),
                 inset 0 0 50px rgba(0, 0, 0, 0.5);
+            /* 移动端触摸优化 */
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
 
         .controls {
@@ -209,6 +230,9 @@
             <span>↑↓←→</span> 移动
             <span>空格</span> 暂停
             <span>R</span> 重新开始
+            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2); font-size: 0.8rem;">
+                📱 <span style="color: #00f5ff;">移动端：滑动屏幕控制方向</span>
+            </div>
         </div>
 
         <div class="pause-info">
