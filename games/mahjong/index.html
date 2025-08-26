@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>AI智能麻将 - 单机版</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+        }
+        .start-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 1000;
+        }
+        .start-title {
+            font-size: 3rem; color: #ffd700; margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .start-subtitle {
+            font-size: 1.2rem; margin-bottom: 40px; text-align: center; line-height: 1.6;
+        }
+        .start-btn {
+            padding: 15px 40px; font-size: 1.3rem;
+            background: linear-gradient(145deg, #ffd700, #ff8f00);
+            border: none; border-radius: 30px; color: #333; font-weight: bold;
+            cursor: pointer; transition: all 0.3s ease;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+        }
+        .start-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 24px rgba(255, 215, 0, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="start-screen">
+        <h1 class="start-title"> AI智能麻将</h1>
+        <p class="start-subtitle">
+            经典国标麻将游戏<br>
+             移动端：点击选择，再次点击打出<br>
+             桌面端：点击选择牌，空格键打出<br>
+             目标：胡牌获胜！
+        </p>
+        <button class="start-btn" onclick="alert('麻将游戏开发中...')">开始游戏</button>
+    </div>
+</body>
+</html>
