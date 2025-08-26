@@ -1,0 +1,27 @@
+{
+  "name": "ai-game-platform-frontend",
+  "version": "1.0.0",
+  "description": "AI小游戏平台前端应用",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "vite --host 0.0.0.0"
+  },
+  "dependencies": {
+    "vue": "^3.3.0",
+    "vue-router": "^4.2.0",
+    "pinia": "^2.1.0",
+    "axios": "^1.4.0",
+    "@vueuse/core": "^10.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.2.0",
+    "vite": "^4.3.0",
+    "vite-plugin-pwa": "^0.16.0"
+  },
+  "keywords": ["AI", "游戏", "Vue3", "小游戏平台"],
+  "author": "Lucius Wang",
+  "license": "MIT"
+}
