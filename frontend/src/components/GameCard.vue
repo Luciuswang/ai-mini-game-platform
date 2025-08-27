@@ -54,7 +54,8 @@ export default {
         snake: 'fas fa-snake',
         tetris: 'fas fa-th-large',
         shooter: 'fas fa-rocket',
-        mahjong: 'fas fa-dice'
+        mahjong: 'fas fa-dice',
+        '2048': 'fas fa-th'
       }
       return `${iconMap[game.id] || 'fas fa-gamepad'} game-icon-${game.id}`
     }
@@ -73,7 +74,8 @@ export default {
         classic: '经典',
         creative: '创意',
         strategy: '策略',
-        action: '动作'
+        action: '动作',
+        puzzle: '益智'
       }
       return textMap[category] || category
     }
@@ -169,6 +171,10 @@ export default {
 
 .game-icon-mahjong {
   color: #ffd700;
+}
+
+.game-icon-2048 {
+  color: #ff6b6b;
 }
 
 .game-title {
@@ -325,3 +331,4 @@ export default {
   }
 }
 </style>
+

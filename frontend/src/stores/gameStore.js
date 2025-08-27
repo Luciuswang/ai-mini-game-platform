@@ -68,6 +68,17 @@ export const useGameStore = defineStore('game', () => {
         category: 'strategy',
         difficulty: 'hard',
         color: '#ffd700'
+      },
+      {
+        id: '2048',
+        name: '2048',
+        icon: '🔢',
+        description: '经典数字合成益智游戏，滑动合并相同数字，挑战达到2048的智慧极限',
+        features: ['数字合成', '益智挑战', '撤销功能', '触屏支持'],
+        path: '/games/2048/index.html',
+        category: 'puzzle',
+        difficulty: 'medium',
+        color: '#ff6b6b'
       }
     ]
   }
@@ -259,3 +270,4 @@ export const useGameStore = defineStore('game', () => {
     logout
   }
 })
+

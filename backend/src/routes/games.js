@@ -70,6 +70,23 @@ const gamesData = [
     playCount: 432,
     averageRating: 4.6,
     tags: ['策略', '麻将', 'AI', '传统']
+  },
+  {
+    id: '2048',
+    name: '2048',
+    icon: '🔢',
+    description: '经典数字合成益智游戏，滑动合并相同数字，挑战达到2048的智慧极限',
+    features: ['数字合成', '益智挑战', '撤销功能', '触屏支持'],
+    path: '/games/2048/index.html',
+    category: 'puzzle',
+    difficulty: 'medium',
+    color: '#ff6b6b',
+    version: '1.0.0',
+    createdAt: '2025-01-18',
+    updatedAt: '2025-01-18',
+    playCount: 0,
+    averageRating: 5.0,
+    tags: ['益智', '数字', '合成', '挑战']
   }
 ]
 
@@ -256,3 +273,4 @@ router.get('/stats/summary', (req, res) => {
 })
 
 module.exports = router
+
