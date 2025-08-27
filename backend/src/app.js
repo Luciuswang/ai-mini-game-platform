@@ -3,9 +3,19 @@ const cors = require('cors')
 const helmet = require('helmet')
 const morgan = require('morgan')
 const rateLimit = require('express-rate-limit')
+const { createServer } = require('http')
+const { Server } = require('socket.io')
 require('dotenv').config()
 
 const app = express()
+const server = createServer(app)
+const io = new Server(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true
+  }
+})
+
 const PORT = process.env.PORT || 5000
 
 // 中间件配置
@@ -31,6 +41,7 @@ app.use('/api/games', require('./routes/games'))
 app.use('/api/users', require('./routes/users'))
 app.use('/api/scores', require('./routes/scores'))
 app.use('/api/auth', require('./routes/auth'))
+app.use('/api/realtime', require('./routes/realtime'))
 
 // 健康检查
 app.get('/health', (req, res) => {
@@ -69,13 +80,17 @@ app.use((err, req, res, next) => {
   })
 })
 
+// WebSocket 事件处理
+require('./websocket/socketHandlers')(io)
+
 // 启动服务器
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🚀 AI游戏平台后端服务已启动`)
   console.log(`📍 服务地址: http://localhost:${PORT}`)
+  console.log(`🌐 WebSocket: ws://localhost:${PORT}`)
   console.log(`🌍 环境: ${process.env.NODE_ENV || 'development'}`)
   console.log(`⚡ 进程ID: ${process.pid}`)
 })
 
-module.exports = app
+module.exports = { app, server, io }
 
