@@ -16,6 +16,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <!-- AI助手 -->
+    <script src="./ai-helper.js"></script>
+    
     <style>
         * {
             margin: 0;
@@ -507,6 +510,286 @@
             color: #333;
             transform: translateX(-2px);
         }
+
+        /* AI助手按钮 */
+        .ai-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(45deg, var(--secondary-color), var(--accent-color));
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .ai-btn:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .ai-btn.active {
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            animation: pulse 2s infinite;
+        }
+
+        /* AI助手面板 */
+        .ai-panel {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            width: 350px;
+            max-height: 80vh;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.2);
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-50%) translateX(100%);
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            overflow-y: auto;
+        }
+
+        .ai-panel.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(-50%) translateX(0);
+        }
+
+        .ai-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .ai-panel-title {
+            font-family: var(--font-display);
+            font-size: 1.4rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ai-close-btn {
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 5px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .ai-close-btn:hover {
+            color: #666;
+            background: rgba(0,0,0,0.1);
+        }
+
+        .ai-suggestion {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .ai-direction {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .ai-confidence {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .ai-analysis {
+            margin-bottom: 20px;
+        }
+
+        .ai-section-title {
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ai-stats {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .ai-stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .ai-stat-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .ai-stat-label {
+            color: #666;
+        }
+
+        .ai-stat-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .ai-strategy {
+            background: linear-gradient(135deg, #e8f5e8, #f0f8ff);
+            border-left: 4px solid var(--success-color);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: #333;
+        }
+
+        .ai-loading {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+        }
+
+        .ai-spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        .ai-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .ai-control-btn {
+            flex: 1;
+            background: white;
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .ai-control-btn:hover {
+            background: var(--primary-color);
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .ai-control-btn:active {
+            transform: translateY(0);
+        }
+
+        .ai-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .ai-switch {
+            position: relative;
+            width: 50px;
+            height: 24px;
+            background: #ddd;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .ai-switch.active {
+            background: var(--primary-color);
+        }
+
+        .ai-switch-handle {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .ai-switch.active .ai-switch-handle {
+            transform: translateX(26px);
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .ai-panel {
+                position: fixed;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                max-height: 100vh;
+                border-radius: 0;
+                transform: translateY(100%);
+            }
+
+            .ai-panel.show {
+                transform: translateY(0);
+            }
+
+            .ai-btn {
+                width: 45px;
+                height: 45px;
+                font-size: 1.1rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -514,6 +797,10 @@
         <a href="../../index.html" class="back-btn" title="返回主页">
             <i class="fas fa-arrow-left"></i>
         </a>
+        
+        <button class="ai-btn" onclick="toggleAIPanel()" title="AI智能助手">
+            <i class="fas fa-robot"></i>
+        </button>
 
         <div class="header">
             <h1 class="title">2048</h1>
@@ -606,6 +893,42 @@
                 <button class="control-btn" onclick="hideOverlay()">
                     <i class="fas fa-times"></i> 继续查看
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI助手面板 -->
+    <div class="ai-panel" id="aiPanel">
+        <div class="ai-panel-header">
+            <h3 class="ai-panel-title">
+                <i class="fas fa-robot"></i>
+                AI智能助手
+            </h3>
+            <button class="ai-close-btn" onclick="toggleAIPanel()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="ai-toggle">
+            <span>自动提示</span>
+            <div class="ai-switch" id="autoHintSwitch" onclick="toggleAutoHint()">
+                <div class="ai-switch-handle"></div>
+            </div>
+        </div>
+
+        <div class="ai-controls">
+            <button class="ai-control-btn" onclick="getAIHint()">
+                <i class="fas fa-lightbulb"></i> 获取提示
+            </button>
+            <button class="ai-control-btn" onclick="analyzePosition()">
+                <i class="fas fa-chart-line"></i> 分析局面
+            </button>
+        </div>
+
+        <div id="aiContent">
+            <div class="ai-loading">
+                <div class="ai-spinner"></div>
+                <p>AI正在思考中...</p>
             </div>
         </div>
     </div>
@@ -962,17 +1285,24 @@
 
         // 初始化游戏
         let game;
+        let aiHelper;
+        let autoHint = false;
 
         document.addEventListener('DOMContentLoaded', () => {
             game = new Game2048();
+            aiHelper = new AI2048Helper();
             
             // 显示加载完成消息
             console.log('🎮 2048游戏加载完成！');
+            console.log('🤖 AI助手已就绪！');
             
             // 防止页面滚动
             document.body.addEventListener('touchmove', (e) => {
                 e.preventDefault();
             }, { passive: false });
+            
+            // 初始化AI面板
+            initializeAIPanel();
         });
 
         // 页面可见性API - 游戏暂停恢复
@@ -985,6 +1315,231 @@
                 console.log('🎮 游戏恢复');
             }
         });
+
+        // AI助手相关功能
+        function initializeAIPanel() {
+            // 隐藏加载状态，显示欢迎信息
+            setTimeout(() => {
+                updateAIContent(`
+                    <div class="ai-strategy">
+                        🤖 <strong>AI助手已就绪！</strong><br>
+                        点击"获取提示"按钮让AI分析当前局面，或开启自动提示功能。
+                    </div>
+                `);
+            }, 1000);
+        }
+
+        function toggleAIPanel() {
+            const panel = document.getElementById('aiPanel');
+            const btn = document.querySelector('.ai-btn');
+            
+            if (panel.classList.contains('show')) {
+                panel.classList.remove('show');
+                btn.classList.remove('active');
+            } else {
+                panel.classList.add('show');
+                btn.classList.add('active');
+                
+                // 如果自动提示开启，立即获取提示
+                if (autoHint) {
+                    setTimeout(getAIHint, 300);
+                }
+            }
+        }
+
+        function toggleAutoHint() {
+            const switchEl = document.getElementById('autoHintSwitch');
+            autoHint = !autoHint;
+            
+            if (autoHint) {
+                switchEl.classList.add('active');
+                // 立即获取一次提示
+                if (document.getElementById('aiPanel').classList.contains('show')) {
+                    getAIHint();
+                }
+            } else {
+                switchEl.classList.remove('active');
+            }
+            
+            // 保存设置到本地存储
+            localStorage.setItem('2048-auto-hint', autoHint.toString());
+        }
+
+        function getAIHint() {
+            if (!game || !aiHelper) return;
+            
+            updateAIContent(`
+                <div class="ai-loading">
+                    <div class="ai-spinner"></div>
+                    <p>AI正在分析最佳移动...</p>
+                </div>
+            `);
+
+            // 异步执行AI分析
+            setTimeout(() => {
+                try {
+                    const hint = aiHelper.getBestMove(game.grid, 3);
+                    
+                    if (hint.bestMove) {
+                        const confidence = hint.confidence;
+                        const direction = aiHelper.getDirectionText(hint.bestMove);
+                        
+                        let confidenceColor = '#4caf50';
+                        if (confidence < 70) confidenceColor = '#ff9800';
+                        if (confidence < 50) confidenceColor = '#f44336';
+                        
+                        updateAIContent(`
+                            <div class="ai-suggestion">
+                                <div class="ai-direction">${direction}</div>
+                                <div class="ai-confidence" style="color: ${confidenceColor}">
+                                    信心度: ${confidence}%
+                                </div>
+                            </div>
+                            
+                            <div class="ai-analysis">
+                                <div class="ai-section-title">
+                                    <i class="fas fa-chart-bar"></i>
+                                    分析详情
+                                </div>
+                                <div class="ai-stats">
+                                    ${Object.keys(hint.analysis).map(dir => {
+                                        const analysis = hint.analysis[dir];
+                                        const isRecommended = dir === hint.bestMove;
+                                        return `
+                                            <div class="ai-stat-row" style="${isRecommended ? 'background: rgba(76, 175, 80, 0.1); border-radius: 6px; padding: 4px 8px; margin: 4px -8px;' : ''}">
+                                                <span class="ai-stat-label">${aiHelper.getDirectionText(dir)}:</span>
+                                                <span class="ai-stat-value" style="color: ${isRecommended ? '#4caf50' : '#333'}">
+                                                    ${Math.round(analysis.score)} 分
+                                                    ${isRecommended ? '✨' : ''}
+                                                </span>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            </div>
+                            
+                            <div class="ai-strategy">
+                                <strong>💡 策略建议:</strong><br>
+                                ${hint.strategy}
+                            </div>
+                        `);
+                    } else {
+                        updateAIContent(`
+                            <div class="ai-strategy">
+                                ❌ <strong>无可用移动</strong><br>
+                                游戏已结束，没有可以执行的移动。
+                            </div>
+                        `);
+                    }
+                } catch (error) {
+                    console.error('AI分析错误:', error);
+                    updateAIContent(`
+                        <div class="ai-strategy">
+                            ⚠️ <strong>分析失败</strong><br>
+                            AI分析遇到错误，请稍后重试。
+                        </div>
+                    `);
+                }
+            }, 500);
+        }
+
+        function analyzePosition() {
+            if (!game || !aiHelper) return;
+            
+            updateAIContent(`
+                <div class="ai-loading">
+                    <div class="ai-spinner"></div>
+                    <p>AI正在分析当前局面...</p>
+                </div>
+            `);
+
+            setTimeout(() => {
+                try {
+                    const analysis = aiHelper.analyzePosition(game.grid);
+                    
+                    updateAIContent(`
+                        <div class="ai-analysis">
+                            <div class="ai-section-title">
+                                <i class="fas fa-microscope"></i>
+                                局面分析
+                            </div>
+                            <div class="ai-stats">
+                                <div class="ai-stat-row">
+                                    <span class="ai-stat-label">空格数量:</span>
+                                    <span class="ai-stat-value">${analysis.emptyCells} 个</span>
+                                </div>
+                                <div class="ai-stat-row">
+                                    <span class="ai-stat-label">最大数字:</span>
+                                    <span class="ai-stat-value">${analysis.maxTile}</span>
+                                </div>
+                                <div class="ai-stat-row">
+                                    <span class="ai-stat-label">局面评分:</span>
+                                    <span class="ai-stat-value">${Math.round(analysis.score)}</span>
+                                </div>
+                                <div class="ai-stat-row">
+                                    <span class="ai-stat-label">危险等级:</span>
+                                    <span class="ai-stat-value">${analysis.dangerLevel}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="ai-strategy">
+                            <strong>📊 详细评估:</strong><br>
+                            
+                            <strong>单调性:</strong> ${Math.round(analysis.monotonicity)} 
+                            ${analysis.monotonicity > 10 ? '✅ 良好' : '⚠️ 需改善'}<br>
+                            
+                            <strong>平滑度:</strong> ${Math.round(analysis.smoothness)} 
+                            ${analysis.smoothness > -50 ? '✅ 良好' : '⚠️ 碎片化'}<br>
+                            
+                            <strong>角落奖励:</strong> ${Math.round(analysis.cornerBonus)} 
+                            ${analysis.cornerBonus > 0 ? '✅ 最大值在角落' : '⚠️ 考虑移向角落'}
+                        </div>
+                    `);
+                } catch (error) {
+                    console.error('局面分析错误:', error);
+                    updateAIContent(`
+                        <div class="ai-strategy">
+                            ⚠️ <strong>分析失败</strong><br>
+                            局面分析遇到错误，请稍后重试。
+                        </div>
+                    `);
+                }
+            }, 300);
+        }
+
+        function updateAIContent(html) {
+            document.getElementById('aiContent').innerHTML = html;
+        }
+
+        // 扩展原游戏类，添加AI集成
+        const originalMove = game ? game.move : null;
+        
+        // 在页面加载完成后重写move方法
+        setTimeout(() => {
+            if (game && game.move) {
+                const originalMove = game.move.bind(game);
+                
+                game.move = function(direction) {
+                    const result = originalMove(direction);
+                    
+                    // 如果开启自动提示且AI面板可见，自动更新提示
+                    if (autoHint && document.getElementById('aiPanel').classList.contains('show')) {
+                        setTimeout(getAIHint, 200);
+                    }
+                    
+                    return result;
+                };
+            }
+        }, 100);
+
+        // 从本地存储加载自动提示设置
+        setTimeout(() => {
+            const savedAutoHint = localStorage.getItem('2048-auto-hint');
+            if (savedAutoHint === 'true') {
+                toggleAutoHint();
+            }
+        }, 100);
     </script>
 </body>
 </html>
