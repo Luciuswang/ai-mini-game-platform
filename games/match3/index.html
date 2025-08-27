@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>消消乐 - AI游戏平台</title>
+    <meta name="description" content="经典三消益智游戏，消除相同颜色的宝石获得高分">
+    
+    <!-- 移动端优化 -->
+    <meta name="theme-color" content="#ff6b6b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="消消乐">
+    
+    <!-- 字体和图标 -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #ff6b6b;
+            --secondary-color: #4ecdc4;
+            --accent-color: #45b7d1;
+            --success-color: #96ceb4;
+            --warning-color: #ffa726;
+            --background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --game-bg: #f8f9fa;
+            --grid-bg: #ffffff;
+            --shadow-card: 0 20px 40px rgba(0, 0, 0, 0.1);
+            --shadow-hover: 0 25px 50px rgba(0, 0, 0, 0.15);
+            
+            /* 宝石颜色 */
+            --gem-red: #ff6b6b;
+            --gem-blue: #4ecdc4;
+            --gem-green: #96ceb4;
+            --gem-yellow: #ffd93d;
+            --gem-purple: #a8a8ff;
+            --gem-orange: #ff9500;
+            --gem-pink: #ff69b4;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: var(--background);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            touch-action: manipulation;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .game-container {
+            background: white;
+            border-radius: 25px;
+            padding: 30px;
+            box-shadow: var(--shadow-card);
+            max-width: 500px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color), var(--accent-color));
+            border-radius: 25px 25px 0 0;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .title {
+            font-family: 'Orbitron', monospace;
+            font-size: 2.5rem;
+            font-weight: 900;
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+
+        .game-stats {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .stat-box {
+            flex: 1;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border: 2px solid #dee2e6;
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-box:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .game-board {
+            background: var(--grid-bg);
+            border-radius: 20px;
+            padding: 15px;
+            margin-bottom: 25px;
+            box-shadow: inset 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            gap: 4px;
+            aspect-ratio: 1;
+            position: relative;
+        }
+
+        .cell {
+            background: rgba(0,0,0,0.05);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cell:hover {
+            background: rgba(0,0,0,0.1);
+        }
+
+        .gem {
+            width: 85%;
+            height: 85%;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            box-shadow: 
+                0 4px 8px rgba(0,0,0,0.2),
+                inset 0 2px 4px rgba(255,255,255,0.3);
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+            cursor: pointer;
+        }
+
+        .gem::before {
+            content: '';
+            position: absolute;
+            top: 15%;
+            left: 20%;
+            width: 30%;
+            height: 30%;
+            background: rgba(255,255,255,0.6);
+            border-radius: 50%;
+            filter: blur(4px);
+        }
+
+        .gem.selected {
+            transform: scale(1.1);
+            box-shadow: 
+                0 0 20px rgba(255,255,255,0.8),
+                0 6px 12px rgba(0,0,0,0.3),
+                inset 0 2px 4px rgba(255,255,255,0.4);
+            z-index: 10;
+        }
+
+        .gem.falling {
+            animation: fall 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .gem.matched {
+            animation: explode 0.4s ease-out forwards;
+        }
+
+        .gem.new {
+            animation: appear 0.4s ease-out;
+        }
+
+        /* 宝石颜色样式 */
+        .gem-red { background: linear-gradient(135deg, var(--gem-red), #e74c3c); }
+        .gem-blue { background: linear-gradient(135deg, var(--gem-blue), #3498db); }
+        .gem-green { background: linear-gradient(135deg, var(--gem-green), #27ae60); }
+        .gem-yellow { background: linear-gradient(135deg, var(--gem-yellow), #f39c12); }
+        .gem-purple { background: linear-gradient(135deg, var(--gem-purple), #9b59b6); }
+        .gem-orange { background: linear-gradient(135deg, var(--gem-orange), #e67e22); }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .control-btn {
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+        .control-btn:active {
+            transform: translateY(0);
+        }
+
+        .progress-bar {
+            background: #e9ecef;
+            border-radius: 15px;
+            height: 8px;
+            margin-bottom: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
+            height: 100%;
+            border-radius: 15px;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shine 2s infinite;
+        }
+
+        .combo-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(45deg, #ff6b6b, #ffd93d);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 20px;
+            font-family: 'Orbitron', monospace;
+            font-size: 1.5rem;
+            font-weight: 900;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .combo-display.show {
+            animation: comboShow 1s ease-out;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.1);
+            color: #666;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .back-btn:hover {
+            background: rgba(0,0,0,0.2);
+            color: #333;
+            transform: translateX(-2px);
+        }
+
+        /* 游戏结束覆盖层 */
+        .game-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 25px;
+            z-index: 200;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .game-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .overlay-content {
+            text-align: center;
+            color: white;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+
+        .game-overlay.show .overlay-content {
+            transform: translateY(0);
+        }
+
+        .overlay-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 2.5rem;
+            font-weight: 900;
+            margin-bottom: 15px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .overlay-message {
+            font-size: 1.1rem;
+            margin-bottom: 25px;
+            opacity: 0.9;
+        }
+
+        /* 动画 */
+        @keyframes fall {
+            0% {
+                transform: translateY(-100px);
+                opacity: 0;
+            }
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes explode {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.3);
+                opacity: 0.7;
+            }
+            100% {
+                transform: scale(0);
+                opacity: 0;
+            }
+        }
+
+        @keyframes appear {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        @keyframes comboShow {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+            50% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.2);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .game-container {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            .title {
+                font-size: 2rem;
+            }
+
+            .game-stats {
+                gap: 10px;
+            }
+
+            .stat-box {
+                padding: 10px;
+            }
+
+            .stat-value {
+                font-size: 1.2rem;
+            }
+
+            .gem {
+                font-size: 1rem;
+            }
+
+            .controls {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .control-btn {
+                padding: 10px 16px;
+                font-size: 0.85rem;
+            }
+
+            .overlay-title {
+                font-size: 2rem;
+            }
+
+            .overlay-message {
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+
+            .game-container {
+                padding: 15px;
+            }
+
+            .title {
+                font-size: 1.8rem;
+            }
+
+            .grid {
+                gap: 2px;
+            }
+
+            .gem {
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <a href="../../index.html" class="back-btn" title="返回主页">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+
+        <div class="header">
+            <h1 class="title">消消乐</h1>
+            <p class="subtitle">💎 三个相同消除，挑战你的反应力</p>
+        </div>
+
+        <div class="game-stats">
+            <div class="stat-box">
+                <div class="stat-label">分数</div>
+                <div class="stat-value" id="score">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">移动</div>
+                <div class="stat-value" id="moves">30</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">目标</div>
+                <div class="stat-value" id="target">1000</div>
+            </div>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressBar" style="width: 0%"></div>
+        </div>
+
+        <div class="controls">
+            <button class="control-btn" onclick="game.restart()">
+                <i class="fas fa-redo"></i> 重新开始
+            </button>
+            <button class="control-btn" onclick="game.hint()" id="hintBtn">
+                <i class="fas fa-lightbulb"></i> 提示
+            </button>
+            <button class="control-btn" onclick="game.shuffle()" id="shuffleBtn">
+                <i class="fas fa-random"></i> 重排
+            </button>
+        </div>
+
+        <div class="game-board">
+            <div class="grid" id="gameGrid"></div>
+        </div>
+
+        <!-- 连击显示 -->
+        <div class="combo-display" id="comboDisplay">COMBO x2</div>
+
+        <!-- 游戏结束覆盖层 -->
+        <div class="game-overlay" id="gameOverlay">
+            <div class="overlay-content">
+                <h2 class="overlay-title" id="overlayTitle">游戏结束</h2>
+                <p class="overlay-message" id="overlayMessage">很遗憾，移动次数用完了！</p>
+                <button class="control-btn" onclick="game.restart()">
+                    <i class="fas fa-play"></i> 再来一局
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class Match3Game {
+            constructor() {
+                this.size = 8;
+                this.grid = [];
+                this.score = 0;
+                this.moves = 30;
+                this.target = 1000;
+                this.level = 1;
+                this.combo = 0;
+                this.gameOver = false;
+                this.selectedGem = null;
+                this.hints = 3;
+                this.shuffles = 2;
+                
+                this.gemTypes = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
+                this.gemIcons = {
+                    'red': '♦',
+                    'blue': '♠',
+                    'green': '♣',
+                    'yellow': '★',
+                    'purple': '♥',
+                    'orange': '●'
+                };
+                
+                this.scoreElement = document.getElementById('score');
+                this.movesElement = document.getElementById('moves');
+                this.targetElement = document.getElementById('target');
+                this.progressBar = document.getElementById('progressBar');
+                this.gameGrid = document.getElementById('gameGrid');
+                this.comboDisplay = document.getElementById('comboDisplay');
+                
+                this.init();
+                this.setupEventListeners();
+            }
+
+            init() {
+                this.score = 0;
+                this.moves = 30;
+                this.target = 1000 + (this.level - 1) * 500;
+                this.combo = 0;
+                this.gameOver = false;
+                this.selectedGem = null;
+                
+                this.generateGrid();
+                this.renderGrid();
+                this.updateDisplay();
+                
+                // 确保初始状态有可消除的组合
+                while (!this.hasValidMoves()) {
+                    this.generateGrid();
+                    this.renderGrid();
+                }
+            }
+
+            generateGrid() {
+                this.grid = [];
+                for (let row = 0; row < this.size; row++) {
+                    this.grid[row] = [];
+                    for (let col = 0; col < this.size; col++) {
+                        let gem;
+                        do {
+                            gem = this.getRandomGem();
+                        } while (this.wouldCreateMatch(row, col, gem));
+                        
+                        this.grid[row][col] = {
+                            type: gem,
+                            row: row,
+                            col: col,
+                            id: `${row}-${col}`
+                        };
+                    }
+                }
+            }
+
+            getRandomGem() {
+                return this.gemTypes[Math.floor(Math.random() * this.gemTypes.length)];
+            }
+
+            wouldCreateMatch(row, col, gemType) {
+                // 检查水平方向
+                let horizontalCount = 1;
+                
+                // 向左检查
+                for (let c = col - 1; c >= 0 && this.grid[row] && this.grid[row][c] && this.grid[row][c].type === gemType; c--) {
+                    horizontalCount++;
+                }
+                
+                // 向右检查
+                for (let c = col + 1; c < this.size && this.grid[row] && this.grid[row][c] && this.grid[row][c].type === gemType; c++) {
+                    horizontalCount++;
+                }
+                
+                if (horizontalCount >= 3) return true;
+                
+                // 检查垂直方向
+                let verticalCount = 1;
+                
+                // 向上检查
+                for (let r = row - 1; r >= 0 && this.grid[r] && this.grid[r][col] && this.grid[r][col].type === gemType; r--) {
+                    verticalCount++;
+                }
+                
+                // 向下检查
+                for (let r = row + 1; r < this.size && this.grid[r] && this.grid[r][col] && this.grid[r][col].type === gemType; r++) {
+                    verticalCount++;
+                }
+                
+                return verticalCount >= 3;
+            }
+
+            setupEventListeners() {
+                this.gameGrid.addEventListener('click', (e) => {
+                    if (this.gameOver) return;
+                    
+                    const cell = e.target.closest('.cell');
+                    if (!cell) return;
+                    
+                    const row = parseInt(cell.dataset.row);
+                    const col = parseInt(cell.dataset.col);
+                    
+                    this.handleCellClick(row, col);
+                });
+            }
+
+            handleCellClick(row, col) {
+                if (!this.selectedGem) {
+                    this.selectGem(row, col);
+                } else {
+                    if (this.selectedGem.row === row && this.selectedGem.col === col) {
+                        this.deselectGem();
+                    } else if (this.isAdjacent(this.selectedGem, { row, col })) {
+                        this.attemptSwap(this.selectedGem, { row, col });
+                    } else {
+                        this.deselectGem();
+                        this.selectGem(row, col);
+                    }
+                }
+            }
+
+            selectGem(row, col) {
+                this.selectedGem = { row, col };
+                this.updateGemDisplay();
+            }
+
+            deselectGem() {
+                this.selectedGem = null;
+                this.updateGemDisplay();
+            }
+
+            isAdjacent(gem1, gem2) {
+                const rowDiff = Math.abs(gem1.row - gem2.row);
+                const colDiff = Math.abs(gem1.col - gem2.col);
+                return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+            }
+
+            async attemptSwap(gem1, gem2) {
+                // 交换宝石
+                this.swapGems(gem1, gem2);
+                this.renderGrid();
+                
+                // 检查是否有匹配
+                const matches = this.findMatches();
+                
+                if (matches.length > 0) {
+                    this.moves--;
+                    this.combo = 0;
+                    await this.processMatches();
+                    this.checkGameStatus();
+                } else {
+                    // 没有匹配，交换回来
+                    setTimeout(() => {
+                        this.swapGems(gem1, gem2);
+                        this.renderGrid();
+                    }, 200);
+                }
+                
+                this.deselectGem();
+                this.updateDisplay();
+            }
+
+            swapGems(gem1, gem2) {
+                const temp = this.grid[gem1.row][gem1.col];
+                this.grid[gem1.row][gem1.col] = this.grid[gem2.row][gem2.col];
+                this.grid[gem2.row][gem2.col] = temp;
+                
+                // 更新位置信息
+                this.grid[gem1.row][gem1.col].row = gem1.row;
+                this.grid[gem1.row][gem1.col].col = gem1.col;
+                this.grid[gem2.row][gem2.col].row = gem2.row;
+                this.grid[gem2.row][gem2.col].col = gem2.col;
+            }
+
+            async processMatches() {
+                let hasMatches = true;
+                
+                while (hasMatches) {
+                    const matches = this.findMatches();
+                    
+                    if (matches.length === 0) {
+                        hasMatches = false;
+                        break;
+                    }
+                    
+                    this.combo++;
+                    this.showCombo();
+                    
+                    // 计算分数
+                    const baseScore = matches.length * 10;
+                    const comboBonus = this.combo > 1 ? (this.combo - 1) * 5 : 0;
+                    const scoreGained = baseScore + comboBonus;
+                    this.score += scoreGained;
+                    
+                    // 移除匹配的宝石
+                    await this.removeMatches(matches);
+                    
+                    // 掉落宝石
+                    await this.dropGems();
+                    
+                    // 填充新宝石
+                    this.fillEmptySpaces();
+                    this.renderGrid();
+                    
+                    await this.sleep(300);
+                }
+            }
+
+            findMatches() {
+                const matches = [];
+                const visited = new Set();
+                
+                // 查找水平匹配
+                for (let row = 0; row < this.size; row++) {
+                    let count = 1;
+                    let currentType = this.grid[row][0].type;
+                    
+                    for (let col = 1; col < this.size; col++) {
+                        if (this.grid[row][col].type === currentType) {
+                            count++;
+                        } else {
+                            if (count >= 3) {
+                                for (let i = col - count; i < col; i++) {
+                                    if (!visited.has(`${row}-${i}`)) {
+                                        matches.push({ row, col: i });
+                                        visited.add(`${row}-${i}`);
+                                    }
+                                }
+                            }
+                            count = 1;
+                            currentType = this.grid[row][col].type;
+                        }
+                    }
+                    
+                    if (count >= 3) {
+                        for (let i = this.size - count; i < this.size; i++) {
+                            if (!visited.has(`${row}-${i}`)) {
+                                matches.push({ row, col: i });
+                                visited.add(`${row}-${i}`);
+                            }
+                        }
+                    }
+                }
+                
+                // 查找垂直匹配
+                for (let col = 0; col < this.size; col++) {
+                    let count = 1;
+                    let currentType = this.grid[0][col].type;
+                    
+                    for (let row = 1; row < this.size; row++) {
+                        if (this.grid[row][col].type === currentType) {
+                            count++;
+                        } else {
+                            if (count >= 3) {
+                                for (let i = row - count; i < row; i++) {
+                                    if (!visited.has(`${i}-${col}`)) {
+                                        matches.push({ row: i, col });
+                                        visited.add(`${i}-${col}`);
+                                    }
+                                }
+                            }
+                            count = 1;
+                            currentType = this.grid[row][col].type;
+                        }
+                    }
+                    
+                    if (count >= 3) {
+                        for (let i = this.size - count; i < this.size; i++) {
+                            if (!visited.has(`${i}-${col}`)) {
+                                matches.push({ row: i, col });
+                                visited.add(`${i}-${col}`);
+                            }
+                        }
+                    }
+                }
+                
+                return matches;
+            }
+
+            async removeMatches(matches) {
+                matches.forEach(match => {
+                    const cell = document.querySelector(`[data-row="${match.row}"][data-col="${match.col}"]`);
+                    if (cell) {
+                        const gem = cell.querySelector('.gem');
+                        if (gem) {
+                            gem.classList.add('matched');
+                        }
+                    }
+                });
+                
+                await this.sleep(400);
+                
+                matches.forEach(match => {
+                    this.grid[match.row][match.col] = null;
+                });
+            }
+
+            async dropGems() {
+                for (let col = 0; col < this.size; col++) {
+                    let writePos = this.size - 1;
+                    
+                    for (let row = this.size - 1; row >= 0; row--) {
+                        if (this.grid[row][col] !== null) {
+                            if (writePos !== row) {
+                                this.grid[writePos][col] = this.grid[row][col];
+                                this.grid[writePos][col].row = writePos;
+                                this.grid[row][col] = null;
+                            }
+                            writePos--;
+                        }
+                    }
+                }
+                
+                this.renderGrid();
+                await this.sleep(300);
+            }
+
+            fillEmptySpaces() {
+                for (let col = 0; col < this.size; col++) {
+                    for (let row = 0; row < this.size; row++) {
+                        if (this.grid[row][col] === null) {
+                            this.grid[row][col] = {
+                                type: this.getRandomGem(),
+                                row: row,
+                                col: col,
+                                id: `${row}-${col}`,
+                                isNew: true
+                            };
+                        }
+                    }
+                }
+            }
+
+            hasValidMoves() {
+                // 检查是否有可能的匹配
+                for (let row = 0; row < this.size; row++) {
+                    for (let col = 0; col < this.size; col++) {
+                        // 检查向右交换
+                        if (col < this.size - 1) {
+                            this.swapGems({ row, col }, { row, col: col + 1 });
+                            const hasMatch = this.findMatches().length > 0;
+                            this.swapGems({ row, col }, { row, col: col + 1 }); // 交换回来
+                            if (hasMatch) return true;
+                        }
+                        
+                        // 检查向下交换
+                        if (row < this.size - 1) {
+                            this.swapGems({ row, col }, { row: row + 1, col });
+                            const hasMatch = this.findMatches().length > 0;
+                            this.swapGems({ row, col }, { row: row + 1, col }); // 交换回来
+                            if (hasMatch) return true;
+                        }
+                    }
+                }
+                return false;
+            }
+
+            hint() {
+                if (this.hints <= 0) return;
+                
+                this.hints--;
+                
+                // 找到一个可能的移动
+                for (let row = 0; row < this.size; row++) {
+                    for (let col = 0; col < this.size; col++) {
+                        // 检查向右交换
+                        if (col < this.size - 1) {
+                            this.swapGems({ row, col }, { row, col: col + 1 });
+                            const hasMatch = this.findMatches().length > 0;
+                            this.swapGems({ row, col }, { row, col: col + 1 });
+                            
+                            if (hasMatch) {
+                                this.highlightHint(row, col, row, col + 1);
+                                return;
+                            }
+                        }
+                        
+                        // 检查向下交换
+                        if (row < this.size - 1) {
+                            this.swapGems({ row, col }, { row: row + 1, col });
+                            const hasMatch = this.findMatches().length > 0;
+                            this.swapGems({ row, col }, { row: row + 1, col });
+                            
+                            if (hasMatch) {
+                                this.highlightHint(row, col, row + 1, col);
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+
+            highlightHint(row1, col1, row2, col2) {
+                const cell1 = document.querySelector(`[data-row="${row1}"][data-col="${col1}"]`);
+                const cell2 = document.querySelector(`[data-row="${row2}"][data-col="${col2}"]`);
+                
+                [cell1, cell2].forEach(cell => {
+                    const gem = cell.querySelector('.gem');
+                    if (gem) {
+                        gem.style.animation = 'pulse 1s ease-in-out 3';
+                    }
+                });
+                
+                setTimeout(() => {
+                    [cell1, cell2].forEach(cell => {
+                        const gem = cell.querySelector('.gem');
+                        if (gem) {
+                            gem.style.animation = '';
+                        }
+                    });
+                }, 3000);
+            }
+
+            shuffle() {
+                if (this.shuffles <= 0) return;
+                
+                this.shuffles--;
+                
+                // 重新生成网格
+                this.generateGrid();
+                this.renderGrid();
+                
+                // 确保有可用移动
+                while (!this.hasValidMoves()) {
+                    this.generateGrid();
+                    this.renderGrid();
+                }
+            }
+
+            showCombo() {
+                if (this.combo > 1) {
+                    this.comboDisplay.textContent = `COMBO x${this.combo}!`;
+                    this.comboDisplay.classList.add('show');
+                    
+                    setTimeout(() => {
+                        this.comboDisplay.classList.remove('show');
+                    }, 1000);
+                }
+            }
+
+            checkGameStatus() {
+                if (this.score >= this.target) {
+                    this.gameWin();
+                } else if (this.moves <= 0) {
+                    this.gameOver = true;
+                    this.showGameOver();
+                } else if (!this.hasValidMoves()) {
+                    if (this.shuffles > 0) {
+                        this.shuffle();
+                    } else {
+                        this.gameOver = true;
+                        this.showGameOver();
+                    }
+                }
+            }
+
+            gameWin() {
+                this.level++;
+                setTimeout(() => {
+                    this.showGameWin();
+                }, 500);
+            }
+
+            showGameWin() {
+                document.getElementById('overlayTitle').textContent = '🎉 恭喜过关！';
+                document.getElementById('overlayMessage').textContent = `太棒了！你达到了目标分数 ${this.target}！\n准备挑战第 ${this.level} 关吗？`;
+                document.getElementById('gameOverlay').classList.add('show');
+            }
+
+            showGameOver() {
+                document.getElementById('overlayTitle').textContent = '😔 游戏结束';
+                document.getElementById('overlayMessage').textContent = `最终分数：${this.score}\n目标分数：${this.target}`;
+                document.getElementById('gameOverlay').classList.add('show');
+            }
+
+            hideOverlay() {
+                document.getElementById('gameOverlay').classList.remove('show');
+            }
+
+            restart() {
+                this.hideOverlay();
+                this.hints = 3;
+                this.shuffles = 2;
+                this.init();
+            }
+
+            renderGrid() {
+                this.gameGrid.innerHTML = '';
+                
+                for (let row = 0; row < this.size; row++) {
+                    for (let col = 0; col < this.size; col++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        cell.dataset.row = row;
+                        cell.dataset.col = col;
+                        
+                        const gem = this.grid[row][col];
+                        if (gem) {
+                            const gemElement = document.createElement('div');
+                            gemElement.className = `gem gem-${gem.type}`;
+                            gemElement.textContent = this.gemIcons[gem.type];
+                            
+                            if (gem.isNew) {
+                                gemElement.classList.add('new');
+                                gem.isNew = false;
+                            }
+                            
+                            cell.appendChild(gemElement);
+                        }
+                        
+                        this.gameGrid.appendChild(cell);
+                    }
+                }
+                
+                this.updateGemDisplay();
+            }
+
+            updateGemDisplay() {
+                // 清除所有选择状态
+                document.querySelectorAll('.gem.selected').forEach(gem => {
+                    gem.classList.remove('selected');
+                });
+                
+                // 高亮选中的宝石
+                if (this.selectedGem) {
+                    const cell = document.querySelector(`[data-row="${this.selectedGem.row}"][data-col="${this.selectedGem.col}"]`);
+                    if (cell) {
+                        const gem = cell.querySelector('.gem');
+                        if (gem) {
+                            gem.classList.add('selected');
+                        }
+                    }
+                }
+            }
+
+            updateDisplay() {
+                this.scoreElement.textContent = this.score.toLocaleString();
+                this.movesElement.textContent = this.moves;
+                this.targetElement.textContent = this.target.toLocaleString();
+                
+                const progress = Math.min((this.score / this.target) * 100, 100);
+                this.progressBar.style.width = `${progress}%`;
+                
+                // 更新按钮状态
+                document.getElementById('hintBtn').style.opacity = this.hints > 0 ? '1' : '0.5';
+                document.getElementById('shuffleBtn').style.opacity = this.shuffles > 0 ? '1' : '0.5';
+            }
+
+            sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+
+        // 初始化游戏
+        let game;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            game = new Match3Game();
+            
+            console.log('🎮 消消乐游戏加载完成！');
+            
+            // 防止页面滚动
+            document.body.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+            }, { passive: false });
+        });
+
+        // 全局函数
+        function hideOverlay() {
+            game.hideOverlay();
+        }
+    </script>
+</body>
+</html>

@@ -55,7 +55,8 @@ export default {
         tetris: 'fas fa-th-large',
         shooter: 'fas fa-rocket',
         mahjong: 'fas fa-dice',
-        '2048': 'fas fa-th'
+        '2048': 'fas fa-th',
+        match3: 'fas fa-gem'
       }
       return `${iconMap[game.id] || 'fas fa-gamepad'} game-icon-${game.id}`
     }
@@ -175,6 +176,10 @@ export default {
 
 .game-icon-2048 {
   color: #ff6b6b;
+}
+
+.game-icon-match3 {
+  color: #ff69b4;
 }
 
 .game-title {

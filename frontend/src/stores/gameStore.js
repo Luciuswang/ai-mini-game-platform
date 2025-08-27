@@ -79,6 +79,17 @@ export const useGameStore = defineStore('game', () => {
         category: 'puzzle',
         difficulty: 'medium',
         color: '#ff6b6b'
+      },
+      {
+        id: 'match3',
+        name: '消消乐',
+        icon: '💎',
+        description: '经典三消益智游戏，点击交换相邻宝石，消除三个或更多相同宝石获得高分',
+        features: ['三消消除', '连击系统', '关卡挑战', '特效动画'],
+        path: '/games/match3/index.html',
+        category: 'puzzle',
+        difficulty: 'easy',
+        color: '#ff69b4'
       }
     ]
   }
