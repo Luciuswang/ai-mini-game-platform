@@ -1,0 +1,38 @@
+{
+  "name": "ai-mini-game-platform",
+  "version": "1.0.0",
+  "description": "AI驱动的小游戏平台 - 支持实时对战和智能助手",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "build": "cd frontend && npm install && npm run build",
+    "install-deps": "cd backend && npm install && cd ../frontend && npm install"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.0",
+    "socket.io": "^4.7.0",
+    "uuid": "^9.0.0",
+    "path": "^0.12.7"
+  },
+  "keywords": [
+    "ai",
+    "games",
+    "realtime",
+    "websocket",
+    "vue",
+    "nodejs"
+  ],
+  "author": "Lucius Wang",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Luciuswang/ai-mini-game-platform.git"
+  }
+}

@@ -39,20 +39,20 @@ const gamesData = [
   },
   {
     id: 'shooter',
-    name: 'Lucius 简历',
-    icon: '🚀',
-    description: '创意简历展示游戏，通过射击闯关的方式展示个人履历',
-    features: ['创意简历', '海洋背景', '射击闯关', '个人展示'],
+    name: '打飞机有惊喜',
+    icon: '✈️',
+    description: '经典空战射击游戏，击毁足够敌机后将解锁神秘惊喜',
+    features: ['空中战斗', '海洋背景', '神秘惊喜', '挑战极限'],
     path: '/games/shooter/index.html',
     category: 'creative',
-    difficulty: 'medium',
+    difficulty: 'hard',
     color: '#4ecdc4',
     version: '1.0.0',
     createdAt: '2025-01-03',
-    updatedAt: '2025-01-17',
+    updatedAt: '2025-01-18',
     playCount: 756,
     averageRating: 4.3,
-    tags: ['创意', '展示', '个人']
+    tags: ['射击', '空战', '挑战', '惊喜']
   },
   {
     id: 'mahjong',

@@ -53,7 +53,7 @@ export default {
       const iconMap = {
         snake: 'fas fa-snake',
         tetris: 'fas fa-th-large',
-        shooter: 'fas fa-rocket',
+        shooter: 'fas fa-fighter-jet',
         mahjong: 'fas fa-dice',
         '2048': 'fas fa-th',
         match3: 'fas fa-gem'
