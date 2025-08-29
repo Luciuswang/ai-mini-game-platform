@@ -323,13 +323,7 @@
         }
 
         .shape::before {
-            content: '';
-            position: absolute;
-            width: 70%;
-            height: 70%;
-            border-radius: inherit;
-            background: inherit;
-            transform: translateZ(0);
+            display: none; /* 隐藏原来的几何装饰 */
         }
 
         .shape.shape-new {
@@ -350,39 +344,77 @@
             border-color: rgba(255, 255, 255, 0.8);
         }
 
-        /* 立体几何形状样式 */
+        /* 立体几何形状样式 - 保留颜色用于选中效果 */
         .shape-red { 
-            background: linear-gradient(145deg, var(--shape-red), #cc4444);
             color: var(--shape-red);
         }
         .shape-blue { 
-            background: linear-gradient(145deg, var(--shape-blue), #4488cc);
             color: var(--shape-blue);
         }
         .shape-green { 
-            background: linear-gradient(145deg, var(--shape-green), #44cc44);
             color: var(--shape-green);
         }
         .shape-yellow { 
-            background: linear-gradient(145deg, var(--shape-yellow), #ccaa44);
             color: var(--shape-yellow);
         }
         .shape-purple { 
-            background: linear-gradient(145deg, var(--shape-purple), #8844cc);
             color: var(--shape-purple);
         }
         .shape-orange { 
-            background: linear-gradient(145deg, var(--shape-orange), #cc7744);
             color: var(--shape-orange);
         }
 
-        /* 几何形状图标 */
-        .shape-red::after { content: '●'; font-size: 1.2em; font-weight: 900; }
-        .shape-blue::after { content: '▲'; font-size: 1.1em; font-weight: 900; }
-        .shape-green::after { content: '■'; font-size: 1em; font-weight: 900; }
-        .shape-yellow::after { content: '⬟'; font-size: 1.1em; font-weight: 900; }
-        .shape-purple::after { content: '♦'; font-size: 1.1em; font-weight: 900; }
-        .shape-orange::after { content: '⬢'; font-size: 1em; font-weight: 900; }
+        /* 图片元素样式 */
+        .shape-red, .shape-blue, .shape-green, .shape-yellow, .shape-purple, .shape-orange {
+            background-image: url('./assets/babo.png');
+            background-size: 300% 300%; /* 3x3网格 */
+            background-repeat: no-repeat;
+            background-origin: content-box;
+        }
+
+        /* 3x3网格中的不同位置 */
+        .shape-red { 
+            background-position: 0% 0%; /* 第1行第1列 */
+        }
+        .shape-blue { 
+            background-position: 50% 0%; /* 第1行第2列 */
+        }
+        .shape-green { 
+            background-position: 100% 0%; /* 第1行第3列 */
+        }
+        .shape-yellow { 
+            background-position: 0% 50%; /* 第2行第1列 */
+        }
+        .shape-purple { 
+            background-position: 50% 50%; /* 第2行第2列 */
+        }
+        .shape-orange { 
+            background-position: 100% 50%; /* 第2行第3列 */
+        }
+
+        /* 后备CSS图标样式（当图片加载失败时使用） */
+        .fallback-icons .shape-red::after { content: '●'; font-size: 1.2em; font-weight: 900; }
+        .fallback-icons .shape-blue::after { content: '▲'; font-size: 1.1em; font-weight: 900; }
+        .fallback-icons .shape-green::after { content: '■'; font-size: 1em; font-weight: 900; }
+        .fallback-icons .shape-yellow::after { content: '⬟'; font-size: 1.1em; font-weight: 900; }
+        .fallback-icons .shape-purple::after { content: '♦'; font-size: 1.1em; font-weight: 900; }
+        .fallback-icons .shape-orange::after { content: '⬢'; font-size: 1em; font-weight: 900; }
+        
+        .fallback-icons .shape-red, 
+        .fallback-icons .shape-blue, 
+        .fallback-icons .shape-green, 
+        .fallback-icons .shape-yellow, 
+        .fallback-icons .shape-purple, 
+        .fallback-icons .shape-orange {
+            background-image: none;
+            background: linear-gradient(145deg, var(--shape-red), #cc4444);
+        }
+        
+        .fallback-icons .shape-blue { background: linear-gradient(145deg, var(--shape-blue), #4488cc); }
+        .fallback-icons .shape-green { background: linear-gradient(145deg, var(--shape-green), #44cc44); }
+        .fallback-icons .shape-yellow { background: linear-gradient(145deg, var(--shape-yellow), #ccaa44); }
+        .fallback-icons .shape-purple { background: linear-gradient(145deg, var(--shape-purple), #8844cc); }
+        .fallback-icons .shape-orange { background: linear-gradient(145deg, var(--shape-orange), #cc7744); }
 
         .combo-display {
             position: absolute;
@@ -809,16 +841,9 @@
                 this.selectedShape = null;
                 this.hints = 3;
                 this.shuffles = 2;
+                this.imageLoaded = false;
                 
                 this.shapeTypes = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
-                this.shapeIcons = {
-                    'red': '●',
-                    'blue': '▲',
-                    'green': '■',
-                    'yellow': '⬟',
-                    'purple': '♦',
-                    'orange': '⬢'
-                };
                 
                 this.scoreElement = document.getElementById('score');
                 this.movesElement = document.getElementById('moves');
@@ -828,8 +853,29 @@
                 this.shapesContainer = document.getElementById('shapesContainer');
                 this.comboDisplay = document.getElementById('comboDisplay');
                 
-                this.init();
-                this.setupEventListeners();
+                this.preloadImages().then(() => {
+                    this.init();
+                    this.setupEventListeners();
+                });
+            }
+
+            async preloadImages() {
+                return new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        console.log('✅ 游戏元素图片加载完成');
+                        this.imageLoaded = true;
+                        resolve();
+                    };
+                    img.onerror = () => {
+                        console.log('❌ 图片加载失败，使用默认CSS图标');
+                        this.imageLoaded = false;
+                        // 添加后备样式类
+                        document.querySelector('.game-container').classList.add('fallback-icons');
+                        resolve(); // 继续游戏，使用后备图标
+                    };
+                    img.src = './assets/babo.png';
+                });
             }
 
             init() {
