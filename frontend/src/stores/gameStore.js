@@ -90,6 +90,17 @@ export const useGameStore = defineStore('game', () => {
         category: 'puzzle',
         difficulty: 'easy',
         color: '#ff69b4'
+      },
+      {
+        id: 'snake-multiplayer',
+        name: '多人贪吃蛇竞技',
+        icon: '🐍',
+        description: '实时多人竞技版贪吃蛇，最多4人同时在线对战，挑战你的反应极限',
+        features: ['实时对战', '多人竞技', '竞速模式', '在线匹配'],
+        path: '/games/snake-multiplayer/index.html',
+        category: 'multiplayer',
+        difficulty: 'hard',
+        color: '#00ff88'
       }
     ]
   }

@@ -104,6 +104,23 @@ const gamesData = [
     playCount: 0,
     averageRating: 5.0,
     tags: ['益智', '消除', '宝石', '三消']
+  },
+  {
+    id: 'snake-multiplayer',
+    name: '多人贪吃蛇竞技',
+    icon: '🐍',
+    description: '实时多人竞技版贪吃蛇，最多4人同时在线对战，挑战你的反应极限',
+    features: ['实时对战', '多人竞技', '竞速模式', '在线匹配'],
+    path: '/games/snake-multiplayer/index.html',
+    category: 'multiplayer',
+    difficulty: 'hard',
+    color: '#00ff88',
+    version: '1.0.0',
+    createdAt: '2025-01-18',
+    updatedAt: '2025-01-18',
+    playCount: 0,
+    averageRating: 5.0,
+    tags: ['多人', '竞技', '实时', '贪吃蛇', '对战']
   }
 ]
 

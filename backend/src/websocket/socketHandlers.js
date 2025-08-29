@@ -5,6 +5,10 @@ const onlineUsers = new Map()
 const activeMatches = new Map()
 const leaderboardSubscribers = new Set()
 
+// 贪吃蛇游戏房间管理
+const snakeRooms = new Map()
+const waitingPlayers = new Map()
+
 // 实时排行榜数据
 let realtimeLeaderboard = []
 
@@ -255,6 +259,117 @@ module.exports = (io) => {
       }
     })
 
+    // 贪吃蛇游戏事件
+    socket.on('join_snake_room', (data) => {
+      try {
+        const user = onlineUsers.get(socket.id)
+        if (!user) return
+
+        // 寻找可用房间或创建新房间
+        let room = findAvailableSnakeRoom(data.gameType)
+        if (!room) {
+          room = createSnakeRoom(data.gameType)
+        }
+
+        // 将玩家加入房间
+        const player = {
+          id: user.id,
+          username: user.username,
+          socketId: socket.id,
+          ready: false,
+          score: 0,
+          body: [{ x: 10, y: 10 }],
+          direction: { x: 1, y: 0 },
+          alive: true
+        }
+
+        room.players.set(user.id, player)
+        user.currentRoom = room.id
+        socket.join(`snake_room_${room.id}`)
+
+        // 发送房间信息
+        socket.emit('room_joined', {
+          room: formatRoomData(room),
+          player: player
+        })
+
+        // 通知房间其他玩家
+        socket.to(`snake_room_${room.id}`).emit('player_joined', {
+          player: player,
+          room: formatRoomData(room)
+        })
+
+        console.log(`🐍 玩家 ${user.username} 加入贪吃蛇房间 ${room.id}`)
+      } catch (error) {
+        console.error('加入贪吃蛇房间错误:', error)
+        socket.emit('error', { message: '加入房间失败' })
+      }
+    })
+
+    socket.on('toggle_ready', (data) => {
+      try {
+        const user = onlineUsers.get(socket.id)
+        if (!user || !user.currentRoom) return
+
+        const room = snakeRooms.get(user.currentRoom)
+        if (!room || room.status !== 'waiting') return
+
+        const player = room.players.get(user.id)
+        if (!player) return
+
+        player.ready = data.ready
+
+        // 通知房间所有玩家
+        io.to(`snake_room_${room.id}`).emit('room_updated', {
+          room: formatRoomData(room)
+        })
+
+        // 检查是否所有玩家都准备好了
+        const allReady = Array.from(room.players.values()).every(p => p.ready)
+        const minPlayers = 2
+        
+        if (allReady && room.players.size >= minPlayers) {
+          startSnakeGame(room, io)
+        }
+
+        console.log(`🐍 玩家 ${user.username} ${data.ready ? '准备' : '取消准备'}`)
+      } catch (error) {
+        console.error('切换准备状态错误:', error)
+      }
+    })
+
+    socket.on('player_move', (data) => {
+      try {
+        const user = onlineUsers.get(socket.id)
+        if (!user || !user.currentRoom) return
+
+        const room = snakeRooms.get(user.currentRoom)
+        if (!room || room.status !== 'playing') return
+
+        const player = room.players.get(user.id)
+        if (!player || !player.alive) return
+
+        // 验证移动有效性
+        if (isValidMove(player, data.direction)) {
+          player.direction = data.direction
+          player.lastMoveTime = Date.now()
+        }
+      } catch (error) {
+        console.error('玩家移动错误:', error)
+      }
+    })
+
+    socket.on('leave_room', () => {
+      try {
+        const user = onlineUsers.get(socket.id)
+        if (!user || !user.currentRoom) return
+
+        removePlayerFromSnakeRoom(user, socket, io)
+      } catch (error) {
+        console.error('离开房间错误:', error)
+      }
+    })
+
     // 心跳检测
     socket.on('ping', () => {
       socket.emit('pong', { timestamp: Date.now() })
@@ -265,6 +380,11 @@ module.exports = (io) => {
       try {
         const user = onlineUsers.get(socket.id)
         if (user) {
+          // 清理贪吃蛇房间数据
+          if (user.currentRoom) {
+            removePlayerFromSnakeRoom(user, socket, io)
+          }
+          
           // 清理用户数据
           cleanupUserData(user)
           onlineUsers.delete(socket.id)
@@ -374,6 +494,311 @@ module.exports = (io) => {
     return gameScores.findIndex(s => s.score <= score.score) + 1
   }
 
+  // 贪吃蛇游戏辅助函数
+  function findAvailableSnakeRoom(gameType) {
+    for (const room of snakeRooms.values()) {
+      if (room.gameType === gameType && 
+          room.status === 'waiting' && 
+          room.players.size < 4) {
+        return room
+      }
+    }
+    return null
+  }
+
+  function createSnakeRoom(gameType) {
+    const room = {
+      id: uuidv4(),
+      gameType: gameType,
+      status: 'waiting', // waiting, countdown, playing, finished
+      players: new Map(),
+      food: generateRandomFood(),
+      createdAt: Date.now(),
+      gameStartTime: null,
+      gameLoop: null,
+      targetScore: 100
+    }
+
+    snakeRooms.set(room.id, room)
+    console.log(`🐍 创建新的贪吃蛇房间: ${room.id} (类型: ${gameType})`)
+    return room
+  }
+
+  function formatRoomData(room) {
+    return {
+      id: room.id,
+      gameType: room.gameType,
+      status: room.status,
+      players: Array.from(room.players.values()).map(p => ({
+        id: p.id,
+        username: p.username,
+        ready: p.ready,
+        score: p.score,
+        alive: p.alive
+      })),
+      targetScore: room.targetScore
+    }
+  }
+
+  function removePlayerFromSnakeRoom(user, socket, io) {
+    const room = snakeRooms.get(user.currentRoom)
+    if (!room) return
+
+    const player = room.players.get(user.id)
+    if (!player) return
+
+    room.players.delete(user.id)
+    user.currentRoom = null
+    socket.leave(`snake_room_${room.id}`)
+
+    // 通知房间其他玩家
+    socket.to(`snake_room_${room.id}`).emit('player_left', {
+      player: player,
+      room: formatRoomData(room)
+    })
+
+    // 如果房间为空，删除房间
+    if (room.players.size === 0) {
+      if (room.gameLoop) {
+        clearInterval(room.gameLoop)
+      }
+      snakeRooms.delete(room.id)
+      console.log(`🐍 删除空的贪吃蛇房间: ${room.id}`)
+    } else if (room.status === 'playing' && getAlivePlayersCount(room) <= 1) {
+      // 如果游戏中只剩一个或没有玩家，结束游戏
+      endSnakeGame(room, io)
+    }
+
+    console.log(`🐍 玩家 ${user.username} 离开贪吃蛇房间 ${room.id}`)
+  }
+
+  function startSnakeGame(room, io) {
+    room.status = 'countdown'
+    
+    // 倒计时
+    let countdown = 3
+    const countdownInterval = setInterval(() => {
+      io.to(`snake_room_${room.id}`).emit('game_countdown', { count: countdown })
+      
+      if (countdown <= 0) {
+        clearInterval(countdownInterval)
+        
+        // 初始化游戏状态
+        initializeSnakeGame(room)
+        
+        room.status = 'playing'
+        room.gameStartTime = Date.now()
+        
+        // 发送游戏开始事件
+        io.to(`snake_room_${room.id}`).emit('game_started', {
+          players: Array.from(room.players.values()).map(formatPlayerGameData),
+          food: room.food,
+          targetScore: room.targetScore
+        })
+        
+        // 开始游戏循环
+        startSnakeGameLoop(room, io)
+        
+        console.log(`🐍 贪吃蛇游戏开始: 房间 ${room.id}, ${room.players.size} 玩家`)
+      }
+      
+      countdown--
+    }, 1000)
+  }
+
+  function initializeSnakeGame(room) {
+    const playerPositions = [
+      { x: 5, y: 15 },   // 玩家1
+      { x: 25, y: 15 },  // 玩家2
+      { x: 5, y: 5 },    // 玩家3
+      { x: 25, y: 5 }    // 玩家4
+    ]
+
+    let index = 0
+    for (const player of room.players.values()) {
+      const pos = playerPositions[index] || { x: 10, y: 10 }
+      player.body = [{ x: pos.x, y: pos.y }]
+      player.direction = { x: 1, y: 0 }
+      player.score = 0
+      player.alive = true
+      player.lastMoveTime = Date.now()
+      index++
+    }
+
+    room.food = generateRandomFood()
+  }
+
+  function startSnakeGameLoop(room, io) {
+    const GAME_SPEED = 150 // 游戏速度 (毫秒)
+    
+    room.gameLoop = setInterval(() => {
+      updateSnakeGame(room, io)
+    }, GAME_SPEED)
+  }
+
+  function updateSnakeGame(room, io) {
+    const alivePlayers = Array.from(room.players.values()).filter(p => p.alive)
+    
+    if (alivePlayers.length <= 1) {
+      endSnakeGame(room, io)
+      return
+    }
+
+    // 更新所有活着的蛇
+    for (const player of alivePlayers) {
+      updatePlayerSnake(player, room)
+    }
+
+    // 检查胜利条件
+    const winner = alivePlayers.find(p => p.score >= room.targetScore)
+    if (winner) {
+      endSnakeGame(room, io, winner)
+      return
+    }
+
+    // 发送游戏状态更新
+    broadcastGameState(room, io)
+  }
+
+  function updatePlayerSnake(player, room) {
+    if (!player.alive) return
+
+    const head = { ...player.body[0] }
+    head.x += player.direction.x
+    head.y += player.direction.y
+
+    // 边界碰撞检测
+    if (head.x < 0 || head.x >= 30 || head.y < 0 || head.y >= 30) {
+      player.alive = false
+      return
+    }
+
+    // 自身碰撞检测
+    if (player.body.some(segment => segment.x === head.x && segment.y === head.y)) {
+      player.alive = false
+      return
+    }
+
+    // 与其他蛇碰撞检测
+    for (const otherPlayer of room.players.values()) {
+      if (otherPlayer.id !== player.id && otherPlayer.alive) {
+        if (otherPlayer.body.some(segment => segment.x === head.x && segment.y === head.y)) {
+          player.alive = false
+          return
+        }
+      }
+    }
+
+    player.body.unshift(head)
+
+    // 检查是否吃到食物
+    if (head.x === room.food.x && head.y === room.food.y) {
+      player.score += 10
+      room.food = generateRandomFood()
+      
+      // 避免食物生成在蛇身上
+      while (isPositionOccupied(room.food, room)) {
+        room.food = generateRandomFood()
+      }
+    } else {
+      player.body.pop()
+    }
+  }
+
+  function generateRandomFood() {
+    return {
+      x: Math.floor(Math.random() * 30),
+      y: Math.floor(Math.random() * 30)
+    }
+  }
+
+  function isPositionOccupied(position, room) {
+    for (const player of room.players.values()) {
+      if (player.alive && player.body.some(segment => 
+        segment.x === position.x && segment.y === position.y)) {
+        return true
+      }
+    }
+    return false
+  }
+
+  function broadcastGameState(room, io) {
+    const gameState = {
+      players: Array.from(room.players.values()).map(formatPlayerGameData),
+      food: room.food,
+      alivePlayers: getAlivePlayersCount(room)
+    }
+
+    io.to(`snake_room_${room.id}`).emit('game_state_update', gameState)
+  }
+
+  function formatPlayerGameData(player) {
+    return {
+      id: player.id,
+      username: player.username,
+      score: player.score,
+      body: player.body,
+      alive: player.alive
+    }
+  }
+
+  function getAlivePlayersCount(room) {
+    return Array.from(room.players.values()).filter(p => p.alive).length
+  }
+
+  function endSnakeGame(room, io, winner = null) {
+    if (room.gameLoop) {
+      clearInterval(room.gameLoop)
+      room.gameLoop = null
+    }
+
+    room.status = 'finished'
+
+    // 生成最终排行榜
+    const finalRanking = Array.from(room.players.values())
+      .sort((a, b) => {
+        // 先按活着状态排序，再按分数排序
+        if (a.alive !== b.alive) {
+          return b.alive - a.alive
+        }
+        return b.score - a.score
+      })
+
+    // 发送游戏结束事件
+    io.to(`snake_room_${room.id}`).emit('game_finished', {
+      winner: winner,
+      finalRanking: finalRanking.map(p => ({
+        id: p.id,
+        username: p.username,
+        score: p.score,
+        alive: p.alive
+      })),
+      gameTime: room.gameStartTime ? Date.now() - room.gameStartTime : 0
+    })
+
+    // 更新排行榜
+    if (winner) {
+      updateRealtimeLeaderboard({
+        userId: winner.id,
+        username: winner.username,
+        gameId: 'snake-multiplayer',
+        score: winner.score,
+        timestamp: new Date().toISOString()
+      })
+    }
+
+    console.log(`🐍 贪吃蛇游戏结束: 房间 ${room.id}, 获胜者: ${winner ? winner.username : '无'}`)
+  }
+
+  function isValidMove(player, direction) {
+    // 不能反向移动
+    if (player.body.length > 1) {
+      const currentDirection = player.direction
+      return !(direction.x === -currentDirection.x && direction.y === -currentDirection.y)
+    }
+    return true
+  }
+
   // 定期清理过期数据
   setInterval(() => {
     const now = Date.now()
@@ -384,6 +809,17 @@ module.exports = (io) => {
       if (now - new Date(match.lastMoveAt).getTime() > timeout) {
         console.log(`🧹 清理过期对战: ${matchId}`)
         activeMatches.delete(matchId)
+      }
+    }
+
+    // 清理长时间未开始的贪吃蛇房间
+    for (const [roomId, room] of snakeRooms) {
+      if (room.status === 'waiting' && now - room.createdAt > timeout) {
+        console.log(`🧹 清理过期贪吃蛇房间: ${roomId}`)
+        if (room.gameLoop) {
+          clearInterval(room.gameLoop)
+        }
+        snakeRooms.delete(roomId)
       }
     }
   }, 5 * 60 * 1000) // 每5分钟检查一次

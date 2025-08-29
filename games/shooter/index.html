@@ -648,12 +648,18 @@
             const rightBtn = document.getElementById('rightBtn');
             const shootBtn = document.getElementById('shootBtn');
 
+            // 游戏资源
+            let gameAssets = {
+                planeImage: null,
+                imageLoaded: false
+            };
+
             // 游戏状态
             let gameState = {
                 bullets: [],
                 enemies: [],
                 particles: [],
-                plane: { x: 0, y: 0, width: 60, height: 40 },
+                plane: { x: 0, y: 0, width: 60, height: 72 }, // 调整高度比例
                 running: false,
                 score: 0,
                 health: 100,
@@ -672,6 +678,25 @@
             const bulletPool = [];
             const enemyPool = [];
             const particlePool = [];
+
+            // 加载游戏资源
+            function loadGameAssets() {
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = function() {
+                        gameAssets.planeImage = img;
+                        gameAssets.imageLoaded = true;
+                        console.log('飞机图像加载完成');
+                        resolve();
+                    };
+                    img.onerror = function() {
+                        console.log('飞机图像加载失败，使用默认绘制');
+                        gameAssets.imageLoaded = false;
+                        resolve();
+                    };
+                    img.src = 'assets/fighter-jet.svg';
+                });
+            }
 
             // 设置画布尺寸
             function resizeCanvas() {
@@ -705,8 +730,11 @@
             }
 
             // 初始化游戏
-            function initGame() {
+            async function initGame() {
                 console.log('游戏初始化开始');
+                
+                // 加载游戏资源
+                await loadGameAssets();
                 
                 gameState.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                 
@@ -797,30 +825,57 @@
             function drawPlane() {
                 ctx.save();
                 
-                ctx.fillStyle = '#d4af37';
-                ctx.beginPath();
-                ctx.moveTo(gameState.plane.x, gameState.plane.y + gameState.plane.height);
-                ctx.lineTo(gameState.plane.x + gameState.plane.width, gameState.plane.y + gameState.plane.height);
-                ctx.lineTo(gameState.plane.x + gameState.plane.width / 2, gameState.plane.y);
-                ctx.closePath();
-                ctx.fill();
-                
-                ctx.fillStyle = '#ffd700';
-                ctx.fillRect(gameState.plane.x + 15, gameState.plane.y + 10, 30, 15);
-                
-                ctx.strokeStyle = '#ffd700';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(gameState.plane.x + 5, gameState.plane.y + 30);
-                ctx.lineTo(gameState.plane.x + gameState.plane.width - 5, gameState.plane.y + 30);
-                ctx.stroke();
-                
-                ctx.fillStyle = '#ff6b6b';
-                ctx.beginPath();
-                ctx.ellipse(gameState.plane.x + gameState.plane.width / 2, 
-                            gameState.plane.y + gameState.plane.height + 5, 
-                            5, 15, 0, 0, Math.PI * 2);
-                ctx.fill();
+                if (gameAssets.imageLoaded && gameAssets.planeImage) {
+                    // 使用飞机图像
+                    ctx.drawImage(
+                        gameAssets.planeImage,
+                        gameState.plane.x,
+                        gameState.plane.y,
+                        gameState.plane.width,
+                        gameState.plane.height
+                    );
+                    
+                    // 添加发动机尾焰效果
+                    const flameX = gameState.plane.x + gameState.plane.width / 2;
+                    const flameY = gameState.plane.y + gameState.plane.height;
+                    const flameIntensity = 0.3 + Math.random() * 0.4;
+                    
+                    const gradient = ctx.createRadialGradient(flameX, flameY, 0, flameX, flameY + 20, 20);
+                    gradient.addColorStop(0, `rgba(255, 100, 0, ${flameIntensity})`);
+                    gradient.addColorStop(0.5, `rgba(255, 150, 0, ${flameIntensity * 0.6})`);
+                    gradient.addColorStop(1, 'rgba(255, 200, 0, 0)');
+                    
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.ellipse(flameX, flameY + 10, 8, 15, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // 使用原始几何绘制作为后备
+                    ctx.fillStyle = '#d4af37';
+                    ctx.beginPath();
+                    ctx.moveTo(gameState.plane.x, gameState.plane.y + gameState.plane.height);
+                    ctx.lineTo(gameState.plane.x + gameState.plane.width, gameState.plane.y + gameState.plane.height);
+                    ctx.lineTo(gameState.plane.x + gameState.plane.width / 2, gameState.plane.y);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    ctx.fillStyle = '#ffd700';
+                    ctx.fillRect(gameState.plane.x + 15, gameState.plane.y + 10, 30, 15);
+                    
+                    ctx.strokeStyle = '#ffd700';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(gameState.plane.x + 5, gameState.plane.y + 30);
+                    ctx.lineTo(gameState.plane.x + gameState.plane.width - 5, gameState.plane.y + 30);
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = '#ff6b6b';
+                    ctx.beginPath();
+                    ctx.ellipse(gameState.plane.x + gameState.plane.width / 2, 
+                                gameState.plane.y + gameState.plane.height + 5, 
+                                5, 15, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
                 
                 ctx.restore();
             }
@@ -1226,6 +1281,11 @@
             iosShooterGameFix();
             window.addEventListener('resize', resizeCanvas);
             resizeCanvas();
+            
+            // 预加载游戏资源
+            loadGameAssets().then(() => {
+                console.log('游戏资源预加载完成');
+            });
 
             // 移动设备控制循环
             function mobileControlLoop() {

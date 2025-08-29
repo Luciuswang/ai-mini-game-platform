@@ -56,7 +56,8 @@ export default {
         shooter: 'fas fa-fighter-jet',
         mahjong: 'fas fa-dice',
         '2048': 'fas fa-th',
-        match3: 'fas fa-gem'
+        match3: 'fas fa-gem',
+        'snake-multiplayer': 'fas fa-users-gear'
       }
       return `${iconMap[game.id] || 'fas fa-gamepad'} game-icon-${game.id}`
     }
@@ -76,7 +77,8 @@ export default {
         creative: '创意',
         strategy: '策略',
         action: '动作',
-        puzzle: '益智'
+        puzzle: '益智',
+        multiplayer: '多人'
       }
       return textMap[category] || category
     }
@@ -180,6 +182,10 @@ export default {
 
 .game-icon-match3 {
   color: #ff69b4;
+}
+
+.game-icon-snake-multiplayer {
+  color: #00ff88;
 }
 
 .game-title {
