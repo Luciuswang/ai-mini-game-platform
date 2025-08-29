@@ -7,7 +7,7 @@
   <ellipse cx="50" cy="20" rx="8" ry="12" fill="#4A4A4A" stroke="#333" stroke-width="1"/>
   
   <!-- 主机翼 -->
-  <path d="M25 40 L50 45 L75 40 L80 50 L75 60 L50 55 L25 60 L20 50 Z" 
+  <path d="M20 40 L50 45 L80 40 L85 50 L80 60 L50 55 L20 60 L15 50 Z" 
         fill="#7A7A7A" stroke="#555" stroke-width="1"/>
   
   <!-- 尾翼 -->
@@ -19,20 +19,36 @@
         fill="#6A6A6A" stroke="#444" stroke-width="1"/>
   
   <!-- 导弹/武器挂载点 -->
-  <circle cx="25" cy="45" r="3" fill="#5A5A5A"/>
-  <circle cx="75" cy="45" r="3" fill="#5A5A5A"/>
-  <circle cx="35" cy="55" r="2" fill="#5A5A5A"/>
-  <circle cx="65" cy="55" r="2" fill="#5A5A5A"/>
+  <circle cx="20" cy="45" r="3" fill="#5A5A5A"/>
+  <circle cx="80" cy="45" r="3" fill="#5A5A5A"/>
+  <circle cx="30" cy="55" r="2" fill="#5A5A5A"/>
+  <circle cx="70" cy="55" r="2" fill="#5A5A5A"/>
   
   <!-- 进气口 -->
   <ellipse cx="40" cy="30" rx="3" ry="8" fill="#3A3A3A"/>
   <ellipse cx="60" cy="30" rx="3" ry="8" fill="#3A3A3A"/>
   
   <!-- 发动机喷口 -->
-  <ellipse cx="50" cy="95" rx="6" ry="8" fill="#2A2A2A" stroke="#111" stroke-width="1"/>
+  <ellipse cx="45" cy="95" rx="4" ry="6" fill="#2A2A2A" stroke="#111" stroke-width="1"/>
+  <ellipse cx="55" cy="95" rx="4" ry="6" fill="#2A2A2A" stroke="#111" stroke-width="1"/>
   
   <!-- 机身细节线条 -->
   <line x1="45" y1="20" x2="45" y2="80" stroke="#666" stroke-width="0.5"/>
   <line x1="55" y1="20" x2="55" y2="80" stroke="#666" stroke-width="0.5"/>
   <line x1="50" y1="15" x2="50" y2="85" stroke="#666" stroke-width="0.5"/>
+  
+  <!-- BMW标识背景 -->
+  <rect x="35" y="47" width="30" height="8" fill="rgba(220, 20, 20, 0.9)" rx="2"/>
+  
+  <!-- BMW字母 -->
+  <text x="50" y="53.5" font-family="Arial, sans-serif" font-size="6" font-weight="bold" 
+        text-anchor="middle" fill="#FFFFFF" letter-spacing="0.5">BMW</text>
+  
+  <!-- 额外的机身装饰线条 -->
+  <line x1="25" y1="42" x2="75" y2="42" stroke="#999" stroke-width="0.5"/>
+  <line x1="25" y1="58" x2="75" y2="58" stroke="#999" stroke-width="0.5"/>
+  
+  <!-- 机翼边缘强化 -->
+  <path d="M20 40 L80 40 L85 50 L80 60 L20 60 L15 50 Z" 
+        fill="none" stroke="#AAA" stroke-width="1"/>
 </svg>
