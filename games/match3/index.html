@@ -332,6 +332,27 @@
             background: inherit;
             transform: translateZ(0);
         }
+        
+        /* 移动端优化样式 */
+        .mobile-optimized .shape {
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        
+        .ios-optimized .shape {
+            -webkit-transform-style: preserve-3d;
+            -webkit-backface-visibility: hidden;
+        }
+        
+        /* 后备图标样式增强 */
+        .fallback-icons .shape-red, 
+        .fallback-icons .shape-blue, 
+        .fallback-icons .shape-green, 
+        .fallback-icons .shape-yellow, 
+        .fallback-icons .shape-purple, 
+        .fallback-icons .shape-orange {
+            background-image: none !important;
+        }
 
         .shape.shape-new {
             animation: shapeAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -621,6 +642,23 @@
                 width: calc(25% - 3px);
                 font-size: 0.9rem;
             }
+            
+            /* 移动端性能优化 */
+            .shape-red, .shape-blue, .shape-green, .shape-yellow, .shape-purple, .shape-orange {
+                transform: scale(0.7) !important; /* 移动端简化缩放，提升性能 */
+                padding: 2px !important; /* 减少内边距 */
+                will-change: transform; /* 启用硬件加速 */
+                -webkit-backface-visibility: hidden; /* iOS优化 */
+            }
+            
+            .shape.selected {
+                transform: scale(0.8) !important; /* 简化选中效果 */
+            }
+            
+            /* 简化移动端动画 */
+            .shape {
+                transition: transform 0.15s ease !important;
+            }
 
             .overlay-title {
                 font-size: 2.5rem;
@@ -852,6 +890,11 @@
                     'orange': '⬢'
                 };
                 
+                // 移动端检测和优化
+                this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                this.isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                this.loadTimeout = null;
+                
                 this.scoreElement = document.getElementById('score');
                 this.movesElement = document.getElementById('moves');
                 this.targetElement = document.getElementById('target');
@@ -872,14 +915,36 @@
                 this.gameOver = false;
                 this.selectedShape = null;
                 
-                this.generateGrid();
-                this.renderGrid();
-                this.updateDisplay();
+                // 移动端加载超时处理
+                if (this.isMobile) {
+                    this.loadTimeout = setTimeout(() => {
+                        console.log('移动端加载超时，启用后备模式');
+                        document.getElementById('gameContainer').classList.add('fallback-icons');
+                    }, 3000);
+                }
                 
-                // 确保初始状态有可消除的组合
-                while (!this.hasValidMoves()) {
+                try {
                     this.generateGrid();
                     this.renderGrid();
+                    this.updateDisplay();
+                    
+                    // 确保初始状态有可消除的组合
+                    let attempts = 0;
+                    while (!this.hasValidMoves() && attempts < 10) {
+                        this.generateGrid();
+                        this.renderGrid();
+                        attempts++;
+                    }
+                    
+                    // 移动端成功加载，取消超时
+                    if (this.loadTimeout) {
+                        clearTimeout(this.loadTimeout);
+                        this.loadTimeout = null;
+                    }
+                } catch (error) {
+                    console.error('游戏初始化失败:', error);
+                    // 启用后备模式
+                    document.getElementById('gameContainer').classList.add('fallback-icons');
                 }
             }
 
@@ -1421,14 +1486,53 @@
         let game;
 
         document.addEventListener('DOMContentLoaded', () => {
-            game = new Match3Game();
+            // 移动端特殊处理
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
             
-            console.log('🎮 立体消消乐游戏加载完成！');
+            console.log('🎮 立体消消乐游戏开始加载...', { isMobile, isIOS });
+            
+            // 移动端加载提示
+            if (isMobile) {
+                console.log('📱 检测到移动设备，启用优化模式');
+                // 添加移动端优化类
+                document.body.classList.add('mobile-optimized');
+                
+                // iOS特殊处理
+                if (isIOS) {
+                    document.body.classList.add('ios-optimized');
+                    // iOS viewport修复
+                    const viewport = document.querySelector('meta[name=viewport]');
+                    if (viewport) {
+                        viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+                    }
+                }
+            }
+            
+            try {
+                game = new Match3Game();
+                console.log('🎮 立体消消乐游戏加载完成！');
+            } catch (error) {
+                console.error('🚫 游戏加载失败:', error);
+                // 显示错误提示
+                const container = document.getElementById('gameContainer');
+                if (container) {
+                    container.innerHTML = '<div style="text-align:center; color:white; padding:50px;"><h2>游戏加载失败</h2><p>请刷新页面重试</p><button onclick="location.reload()" style="padding:10px 20px; margin-top:20px;">刷新页面</button></div>';
+                }
+            }
             
             // 防止页面滚动
             document.body.addEventListener('touchmove', (e) => {
                 e.preventDefault();
             }, { passive: false });
+            
+            // 移动端性能监控
+            if (isMobile) {
+                setTimeout(() => {
+                    const shapes = document.querySelectorAll('.shape');
+                    console.log(`📊 移动端性能检查: 已渲染 ${shapes.length} 个游戏元素`);
+                }, 1000);
+            }
         });
 
         // 全局函数
