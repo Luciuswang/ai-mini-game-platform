@@ -320,6 +320,7 @@
             box-shadow: 
                 0 8px 25px rgba(0, 0, 0, 0.3),
                 inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            overflow: hidden; /* 确保图片不会溢出 */
         }
 
         .shape::before {
@@ -364,57 +365,89 @@
             color: var(--shape-orange);
         }
 
-        /* 图片元素样式 */
+        /* 图片元素样式 - 通过伪元素实现更精确的控制 */
         .shape-red, .shape-blue, .shape-green, .shape-yellow, .shape-purple, .shape-orange {
+            position: relative;
+        }
+
+        /* 使用::after伪元素显示图片，确保完全填充 */
+        .shape-red::after, .shape-blue::after, .shape-green::after, 
+        .shape-yellow::after, .shape-purple::after, .shape-orange::after {
+            content: '';
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            right: 4px;
+            bottom: 4px;
             background-image: url('./assets/babo.png');
             background-size: 300% 300%; /* 3x3网格 */
             background-repeat: no-repeat;
-            background-origin: content-box;
+            border-radius: 8px; /* 与父元素圆角匹配 */
+            z-index: 1;
         }
 
-        /* 3x3网格中的不同位置 */
-        .shape-red { 
+        /* 精确的3x3网格位置定位 */
+        .shape-red::after { 
             background-position: 0% 0%; /* 第1行第1列 */
         }
-        .shape-blue { 
+        .shape-blue::after { 
             background-position: 50% 0%; /* 第1行第2列 */
         }
-        .shape-green { 
+        .shape-green::after { 
             background-position: 100% 0%; /* 第1行第3列 */
         }
-        .shape-yellow { 
+        .shape-yellow::after { 
             background-position: 0% 50%; /* 第2行第1列 */
         }
-        .shape-purple { 
+        .shape-purple::after { 
             background-position: 50% 50%; /* 第2行第2列 */
         }
-        .shape-orange { 
+        .shape-orange::after { 
             background-position: 100% 50%; /* 第2行第3列 */
         }
 
         /* 后备CSS图标样式（当图片加载失败时使用） */
-        .fallback-icons .shape-red::after { content: '●'; font-size: 1.2em; font-weight: 900; }
-        .fallback-icons .shape-blue::after { content: '▲'; font-size: 1.1em; font-weight: 900; }
-        .fallback-icons .shape-green::after { content: '■'; font-size: 1em; font-weight: 900; }
-        .fallback-icons .shape-yellow::after { content: '⬟'; font-size: 1.1em; font-weight: 900; }
-        .fallback-icons .shape-purple::after { content: '♦'; font-size: 1.1em; font-weight: 900; }
-        .fallback-icons .shape-orange::after { content: '⬢'; font-size: 1em; font-weight: 900; }
+        .fallback-icons .shape-red::after, 
+        .fallback-icons .shape-blue::after, 
+        .fallback-icons .shape-green::after, 
+        .fallback-icons .shape-yellow::after, 
+        .fallback-icons .shape-purple::after, 
+        .fallback-icons .shape-orange::after {
+            background-image: none !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+            font-weight: 900;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .fallback-icons .shape-red::after { content: '●'; }
+        .fallback-icons .shape-blue::after { content: '▲'; }
+        .fallback-icons .shape-green::after { content: '■'; }
+        .fallback-icons .shape-yellow::after { content: '⬟'; }
+        .fallback-icons .shape-purple::after { content: '♦'; }
+        .fallback-icons .shape-orange::after { content: '⬢'; }
         
-        .fallback-icons .shape-red, 
-        .fallback-icons .shape-blue, 
-        .fallback-icons .shape-green, 
-        .fallback-icons .shape-yellow, 
-        .fallback-icons .shape-purple, 
-        .fallback-icons .shape-orange {
-            background-image: none;
+        .fallback-icons .shape-red { 
             background: linear-gradient(145deg, var(--shape-red), #cc4444);
         }
-        
-        .fallback-icons .shape-blue { background: linear-gradient(145deg, var(--shape-blue), #4488cc); }
-        .fallback-icons .shape-green { background: linear-gradient(145deg, var(--shape-green), #44cc44); }
-        .fallback-icons .shape-yellow { background: linear-gradient(145deg, var(--shape-yellow), #ccaa44); }
-        .fallback-icons .shape-purple { background: linear-gradient(145deg, var(--shape-purple), #8844cc); }
-        .fallback-icons .shape-orange { background: linear-gradient(145deg, var(--shape-orange), #cc7744); }
+        .fallback-icons .shape-blue { 
+            background: linear-gradient(145deg, var(--shape-blue), #4488cc); 
+        }
+        .fallback-icons .shape-green { 
+            background: linear-gradient(145deg, var(--shape-green), #44cc44); 
+        }
+        .fallback-icons .shape-yellow { 
+            background: linear-gradient(145deg, var(--shape-yellow), #ccaa44); 
+        }
+        .fallback-icons .shape-purple { 
+            background: linear-gradient(145deg, var(--shape-purple), #8844cc); 
+        }
+        .fallback-icons .shape-orange { 
+            background: linear-gradient(145deg, var(--shape-orange), #cc7744); 
+        }
 
         .combo-display {
             position: absolute;
