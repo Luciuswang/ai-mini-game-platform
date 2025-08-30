@@ -493,6 +493,220 @@
             opacity: 1;
             transform: translateY(0);
         }
+        
+        /* 留言板样式 */
+        .feedback-board {
+            margin-top: 25px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 12px;
+            border: 1px solid rgba(78, 205, 196, 0.2);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .feedback-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: rgba(78, 205, 196, 0.1);
+            border-bottom: 1px solid rgba(78, 205, 196, 0.2);
+        }
+        
+        .feedback-header h4 {
+            margin: 0;
+            font-size: 1rem;
+            color: #4ecdc4;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .toggle-feedback {
+            background: none;
+            border: none;
+            color: #4ecdc4;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: transform 0.3s ease;
+        }
+        
+        .toggle-feedback:hover {
+            transform: scale(1.1);
+        }
+        
+        .toggle-feedback.expanded i {
+            transform: rotate(180deg);
+        }
+        
+        .feedback-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .feedback-content.expanded {
+            max-height: 600px;
+        }
+        
+        .feedback-messages {
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 15px;
+        }
+        
+        .feedback-message {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 3px solid #4ecdc4;
+        }
+        
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .message-author {
+            font-weight: bold;
+            color: #4ecdc4;
+            font-size: 0.9rem;
+        }
+        
+        .message-time {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.8rem;
+        }
+        
+        .message-rating {
+            font-size: 0.8rem;
+            margin-bottom: 5px;
+        }
+        
+        .message-text {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        
+        .feedback-form {
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+        
+        .feedback-form input {
+            flex: 1;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 0.9rem;
+        }
+        
+        .feedback-form input:focus {
+            outline: none;
+            border-color: #4ecdc4;
+            box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.2);
+        }
+        
+        .rating-stars {
+            display: flex;
+            gap: 2px;
+        }
+        
+        .rating-stars .star {
+            cursor: pointer;
+            font-size: 1.2rem;
+            opacity: 0.3;
+            transition: all 0.2s ease;
+        }
+        
+        .rating-stars .star:hover,
+        .rating-stars .star.active {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+        
+        .feedback-form textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 0.9rem;
+            resize: vertical;
+            margin-bottom: 12px;
+            font-family: inherit;
+        }
+        
+        .feedback-form textarea:focus {
+            outline: none;
+            border-color: #4ecdc4;
+            box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.2);
+        }
+        
+        .submit-btn {
+            background: linear-gradient(45deg, #4ecdc4, #44a08d);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            margin: 0 auto;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
+        }
+        
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .no-messages {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            padding: 30px;
+            font-style: italic;
+        }
+        
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .form-row {
+                flex-direction: column;
+                gap: 10px;
+                align-items: stretch;
+            }
+            
+            .rating-stars {
+                justify-content: center;
+            }
+            
+            .feedback-form {
+                padding: 15px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -596,6 +810,35 @@
                 <a href="./games/shooter/index.html" class="play-button">
                     <i class="fas fa-play"></i> 开始游戏
                 </a>
+                
+                <!-- 留言板 -->
+                <div class="feedback-board" data-game="shooter">
+                    <div class="feedback-header">
+                        <h4><i class="fas fa-comments"></i> 玩家留言</h4>
+                        <button class="toggle-feedback" onclick="toggleFeedback('shooter')">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+                    <div class="feedback-content" id="feedback-shooter">
+                        <div class="feedback-messages" id="messages-shooter"></div>
+                        <div class="feedback-form">
+                            <div class="form-row">
+                                <input type="text" placeholder="您的昵称" id="name-shooter" maxlength="20">
+                                <div class="rating-stars" data-game="shooter">
+                                    <span class="star" data-rating="1">⭐</span>
+                                    <span class="star" data-rating="2">⭐</span>
+                                    <span class="star" data-rating="3">⭐</span>
+                                    <span class="star" data-rating="4">⭐</span>
+                                    <span class="star" data-rating="5">⭐</span>
+                                </div>
+                            </div>
+                            <textarea placeholder="分享您的游戏体验和建议..." id="message-shooter" maxlength="200"></textarea>
+                            <button onclick="submitFeedback('shooter')" class="submit-btn">
+                                <i class="fas fa-paper-plane"></i> 发表留言
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- 上海麻将游戏 -->
@@ -653,6 +896,35 @@
                 <a href="./games/match3/index.html" class="play-button">
                     <i class="fas fa-play"></i> 开始游戏
                 </a>
+                
+                <!-- 留言板 -->
+                <div class="feedback-board" data-game="match3">
+                    <div class="feedback-header">
+                        <h4><i class="fas fa-comments"></i> 玩家留言</h4>
+                        <button class="toggle-feedback" onclick="toggleFeedback('match3')">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+                    <div class="feedback-content" id="feedback-match3">
+                        <div class="feedback-messages" id="messages-match3"></div>
+                        <div class="feedback-form">
+                            <div class="form-row">
+                                <input type="text" placeholder="您的昵称" id="name-match3" maxlength="20">
+                                <div class="rating-stars" data-game="match3">
+                                    <span class="star" data-rating="1">⭐</span>
+                                    <span class="star" data-rating="2">⭐</span>
+                                    <span class="star" data-rating="3">⭐</span>
+                                    <span class="star" data-rating="4">⭐</span>
+                                    <span class="star" data-rating="5">⭐</span>
+                                </div>
+                            </div>
+                            <textarea placeholder="分享您的游戏体验和建议..." id="message-match3" maxlength="200"></textarea>
+                            <button onclick="submitFeedback('match3')" class="submit-btn">
+                                <i class="fas fa-paper-plane"></i> 发表留言
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- 多人贪吃蛇竞技游戏 -->
@@ -899,11 +1171,310 @@
         window.addEventListener('load', () => {
             console.log('🎯 页面加载完成');
             
-            // 检查网络状态
-            if ('onLine' in navigator) {
-                console.log(`📶 网络状态: ${navigator.onLine ? '在线' : '离线'}`);
-            }
+                    // 检查网络状态
+        if ('onLine' in navigator) {
+            console.log(`📶 网络状态: ${navigator.onLine ? '在线' : '离线'}`);
+        }
+        
+        // 留言板功能初始化
+        initFeedbackBoards();
+    });
+    
+    // 留言板功能
+    let currentRatings = { shooter: 0, match3: 0 }; // 当前选择的评分
+    
+    // 初始化留言板
+    function initFeedbackBoards() {
+        // 为每个游戏初始化留言板
+        ['shooter', 'match3'].forEach(game => {
+            loadFeedbacks(game);
+            initStarRating(game);
         });
+        
+        console.log('🎯 留言板系统初始化完成');
+    }
+    
+    // 切换留言板显示状态
+    function toggleFeedback(gameId) {
+        const content = document.getElementById(`feedback-${gameId}`);
+        const toggleBtn = document.querySelector(`[onclick="toggleFeedback('${gameId}')"]`);
+        
+        if (content.classList.contains('expanded')) {
+            content.classList.remove('expanded');
+            toggleBtn.classList.remove('expanded');
+        } else {
+            content.classList.add('expanded');
+            toggleBtn.classList.add('expanded');
+        }
+    }
+    
+    // 初始化星级评分
+    function initStarRating(gameId) {
+        const stars = document.querySelectorAll(`[data-game="${gameId}"] .star`);
+        
+        stars.forEach(star => {
+            star.addEventListener('click', function() {
+                const rating = parseInt(this.dataset.rating);
+                currentRatings[gameId] = rating;
+                
+                // 更新星星显示状态
+                stars.forEach((s, index) => {
+                    if (index < rating) {
+                        s.classList.add('active');
+                    } else {
+                        s.classList.remove('active');
+                    }
+                });
+            });
+            
+            star.addEventListener('mouseenter', function() {
+                const rating = parseInt(this.dataset.rating);
+                stars.forEach((s, index) => {
+                    if (index < rating) {
+                        s.style.opacity = '1';
+                    } else {
+                        s.style.opacity = '0.3';
+                    }
+                });
+            });
+        });
+        
+        // 鼠标离开时恢复原状态
+        const ratingContainer = document.querySelector(`[data-game="${gameId}"].rating-stars`);
+        ratingContainer.addEventListener('mouseleave', function() {
+            stars.forEach((s, index) => {
+                if (index < currentRatings[gameId]) {
+                    s.style.opacity = '1';
+                } else {
+                    s.style.opacity = '0.3';
+                }
+            });
+        });
+    }
+    
+    // 提交反馈
+    function submitFeedback(gameId) {
+        const nameInput = document.getElementById(`name-${gameId}`);
+        const messageInput = document.getElementById(`message-${gameId}`);
+        const submitBtn = document.querySelector(`[onclick="submitFeedback('${gameId}')"]`);
+        
+        const name = nameInput.value.trim() || '匿名玩家';
+        const message = messageInput.value.trim();
+        const rating = currentRatings[gameId];
+        
+        // 验证输入
+        if (!message) {
+            alert('请填写留言内容！');
+            return;
+        }
+        
+        if (rating === 0) {
+            alert('请选择评分！');
+            return;
+        }
+        
+        // 禁用按钮，防止重复提交
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 提交中...';
+        
+        // 模拟提交延迟
+        setTimeout(() => {
+            const feedback = {
+                id: Date.now(),
+                author: name,
+                message: message,
+                rating: rating,
+                timestamp: new Date().toISOString(),
+                game: gameId
+            };
+            
+            // 保存到本地存储
+            saveFeedback(gameId, feedback);
+            
+            // 重新加载留言列表
+            loadFeedbacks(gameId);
+            
+            // 清空表单
+            nameInput.value = '';
+            messageInput.value = '';
+            currentRatings[gameId] = 0;
+            
+            // 重置星星状态
+            const stars = document.querySelectorAll(`[data-game="${gameId}"] .star`);
+            stars.forEach(star => star.classList.remove('active'));
+            
+            // 恢复按钮状态
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 发表留言';
+            
+            // 成功提示
+            showToast('留言发表成功！感谢您的反馈 ✨');
+        }, 800);
+    }
+    
+    // 保存反馈到本地存储
+    function saveFeedback(gameId, feedback) {
+        const key = `feedback_${gameId}`;
+        let feedbacks = JSON.parse(localStorage.getItem(key) || '[]');
+        feedbacks.unshift(feedback); // 新留言放在前面
+        
+        // 最多保存50条留言
+        if (feedbacks.length > 50) {
+            feedbacks = feedbacks.slice(0, 50);
+        }
+        
+        localStorage.setItem(key, JSON.stringify(feedbacks));
+    }
+    
+    // 加载留言列表
+    function loadFeedbacks(gameId) {
+        const key = `feedback_${gameId}`;
+        const feedbacks = JSON.parse(localStorage.getItem(key) || '[]');
+        const container = document.getElementById(`messages-${gameId}`);
+        
+        if (feedbacks.length === 0) {
+            // 添加一些示例留言
+            const sampleFeedbacks = getSampleFeedbacks(gameId);
+            sampleFeedbacks.forEach(feedback => saveFeedback(gameId, feedback));
+            loadFeedbacks(gameId); // 递归调用重新加载
+            return;
+        }
+        
+        container.innerHTML = '';
+        
+        feedbacks.forEach(feedback => {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'feedback-message';
+            
+            const timeStr = formatTime(feedback.timestamp);
+            const stars = '⭐'.repeat(feedback.rating);
+            
+            messageDiv.innerHTML = `
+                <div class="message-header">
+                    <span class="message-author">${escapeHtml(feedback.author)}</span>
+                    <span class="message-time">${timeStr}</span>
+                </div>
+                <div class="message-rating">${stars} ${feedback.rating}/5</div>
+                <div class="message-text">${escapeHtml(feedback.message)}</div>
+            `;
+            
+            container.appendChild(messageDiv);
+        });
+    }
+    
+    // 获取示例留言
+    function getSampleFeedbacks(gameId) {
+        const samples = {
+            shooter: [
+                {
+                    id: 1,
+                    author: '空战王者',
+                    message: 'BMW定制战斗机太酷了！音效和背景都很棒，简历彩蛋更是惊喜满满！',
+                    rating: 5,
+                    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                },
+                {
+                    id: 2,
+                    author: '游戏爱好者',
+                    message: '画面很流畅，海洋背景滚动效果很赞！建议增加更多敌机类型。',
+                    rating: 4,
+                    timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                },
+                {
+                    id: 3,
+                    author: 'BMW粉丝',
+                    message: '作为BMW粉，看到定制战机真的很激动！操作简单易上手，推荐！',
+                    rating: 5,
+                    timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                }
+            ],
+            match3: [
+                {
+                    id: 4,
+                    author: '消消乐达人',
+                    message: 'babo图案太可爱了！游戏难度适中，特效很精美，停不下来！',
+                    rating: 5,
+                    timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 5,
+                    author: '益智游戏玩家',
+                    message: '三消游戏做得不错，连击系统很有趣，希望增加更多关卡。',
+                    rating: 4,
+                    timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 6,
+                    author: 'babo爱好者',
+                    message: '终于有用babo做元素的消消乐了！每个图案都很精致，爱不释手～',
+                    rating: 5,
+                    timestamp: new Date(Date.now() - 9 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                }
+            ]
+        };
+        
+        return samples[gameId] || [];
+    }
+    
+    // 格式化时间
+    function formatTime(timestamp) {
+        const now = new Date();
+        const time = new Date(timestamp);
+        const diff = now - time;
+        
+        if (diff < 60 * 1000) {
+            return '刚刚';
+        } else if (diff < 60 * 60 * 1000) {
+            return Math.floor(diff / (60 * 1000)) + '分钟前';
+        } else if (diff < 24 * 60 * 60 * 1000) {
+            return Math.floor(diff / (60 * 60 * 1000)) + '小时前';
+        } else {
+            return time.toLocaleDateString('zh-CN');
+        }
+    }
+    
+    // HTML转义
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // 简单的提示函数
+    function showToast(message) {
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(78, 205, 196, 0.95);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            z-index: 10000;
+            font-size: 1rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        `;
+        toast.textContent = message;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translate(-50%, -50%) scale(0.8)';
+            setTimeout(() => {
+                document.body.removeChild(toast);
+            }, 300);
+        }, 2000);
+    }
     </script>
 </body>
 </html> 

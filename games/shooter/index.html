@@ -232,11 +232,29 @@
         .header-art {
             width: 100%;
             height: 300px;
-            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://raw.githubusercontent.com/Luciuswang/Luciuswang.github.io/main/2d_art_100.jpg') center/cover;
+            /* 使用渐变背景替代外部图片，确保始终可见 */
+            background: linear-gradient(135deg, 
+                rgba(212, 175, 55, 0.2) 0%, 
+                rgba(75, 0, 130, 0.3) 25%, 
+                rgba(25, 25, 112, 0.4) 50%, 
+                rgba(139, 69, 19, 0.3) 75%, 
+                rgba(212, 175, 55, 0.2) 100%),
+                linear-gradient(45deg, 
+                rgba(0, 0, 0, 0.6) 0%, 
+                rgba(10, 15, 40, 0.8) 100%);
             border-radius: 10px;
             margin-bottom: 30px;
             position: relative;
             overflow: hidden;
+            /* 添加艺术纹理效果 */
+            background-size: 200% 200%, 100% 100%;
+            animation: artBackground 8s ease-in-out infinite;
+        }
+        
+        /* 艺术背景动画 */
+        @keyframes artBackground {
+            0%, 100% { background-position: 0% 50%, center; }
+            50% { background-position: 100% 50%, center; }
         }
 
         .header-art::after {
@@ -253,8 +271,26 @@
             font-size: 2.8rem;
             margin-bottom: 10px;
             color: #d4af37;
-            text-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+            text-shadow: 
+                0 0 10px rgba(212, 175, 55, 0.5),
+                0 2px 4px rgba(0, 0, 0, 0.8),
+                0 0 20px rgba(212, 175, 55, 0.3);
             font-family: 'Anton', sans-serif;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 20px;
+            border-radius: 8px;
+            display: inline-block;
+        }
+        
+        .resume-header p {
+            color: #e6e6e6;
+            font-size: 1.2rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 16px;
+            border-radius: 6px;
+            display: inline-block;
+            margin-top: 10px;
         }
 
         .resume-section {
@@ -451,6 +487,9 @@
             .resume-content {
                 padding: 20px;
             }
+            .header-art {
+                height: 200px; /* 移动端减小高度 */
+            }
             .resume-header h2 {
                 font-size: 2rem;
             }
@@ -497,6 +536,7 @@
             <h1 class="title">✈️ 打飞机有惊喜</h1>
             <p class="subtitle">经典空战射击游戏 - 移动鼠标控制战机，点击射击敌机，击毁100架敌机后将解锁神秘惊喜！</p>
             <button id="startBtn" class="btn">开始游戏</button>
+            <button id="audioToggle" class="btn" style="margin-top: 15px; font-size: 14px; padding: 8px 20px;">🔊 音效开启</button>
             <div style="position: absolute; bottom: 30px; color: #5d8aa8; font-size: 14px;">
                 空中战斗 | 挑战极限 | 神秘惊喜
             </div>
@@ -573,58 +613,87 @@
             const shaderCtx = shaderCanvas.getContext('2d');
             let animationTime = 0;
             
-            function drawOceanBackground() {
+            function drawScrollingBackground() {
                 const width = shaderCanvas.width;
                 const height = shaderCanvas.height;
                 
-                // Create gradient for ocean
-                const gradient = shaderCtx.createLinearGradient(0, 0, 0, height);
-                gradient.addColorStop(0, `rgba(${Math.floor(25 + 15 * Math.sin(animationTime * 0.01))}, ${Math.floor(50 + 25 * Math.sin(animationTime * 0.015))}, ${Math.floor(120 + 30 * Math.sin(animationTime * 0.008))}, 1)`);
-                gradient.addColorStop(0.5, `rgba(${Math.floor(40 + 20 * Math.sin(animationTime * 0.012))}, ${Math.floor(80 + 30 * Math.sin(animationTime * 0.018))}, ${Math.floor(150 + 40 * Math.sin(animationTime * 0.006))}, 1)`);
-                gradient.addColorStop(1, `rgba(${Math.floor(15 + 10 * Math.sin(animationTime * 0.009))}, ${Math.floor(35 + 15 * Math.sin(animationTime * 0.014))}, ${Math.floor(80 + 20 * Math.sin(animationTime * 0.011))}, 1)`);
+                // 清除画布
+                shaderCtx.clearRect(0, 0, width, height);
                 
-                shaderCtx.fillStyle = gradient;
-                shaderCtx.fillRect(0, 0, width, height);
-                
-                // Draw wave patterns
-                for (let i = 0; i < 5; i++) {
-                    const amplitude = 10 + i * 5;
-                    const frequency = 0.01 + i * 0.005;
-                    const phase = animationTime * (0.02 + i * 0.01);
-                    
-                    shaderCtx.beginPath();
-                    shaderCtx.strokeStyle = `rgba(255, 255, 255, ${0.1 - i * 0.015})`;
-                    shaderCtx.lineWidth = 2;
-                    
-                    for (let x = 0; x <= width; x += 5) {
-                        const y = height * 0.3 + amplitude * Math.sin(x * frequency + phase) + 
-                                  amplitude * 0.5 * Math.sin(x * frequency * 2 + phase * 1.5);
-                        if (x === 0) {
-                            shaderCtx.moveTo(x, y);
-                        } else {
-                            shaderCtx.lineTo(x, y);
-                        }
+                if (gameAssets.backgroundLoaded && gameAssets.backgroundImage) {
+                    // 使用更简单可靠的滚动算法
+                    if (!backgroundState.initialized) {
+                        backgroundState.offsetY = 0; // 全局滚动偏移量
+                        backgroundState.initialized = true;
+                        console.log('🌍 背景滚动初始化完成（新算法）');
                     }
-                    shaderCtx.stroke();
+                    
+                    // 更新滚动偏移量
+                    backgroundState.offsetY += backgroundState.scrollSpeed;
+                    
+                    // 当偏移量超过画布高度时重置，实现循环
+                    if (backgroundState.offsetY >= height) {
+                        backgroundState.offsetY = 0;
+                    }
+                    
+                    // 计算两张背景图的绝对位置（确保整数对齐）
+                    const y1 = Math.floor(backgroundState.offsetY);
+                    const y2 = Math.floor(backgroundState.offsetY - height);
+                    
+                    // 使用背景图片绘制滚动背景
+                    const bgWidth = width;
+                    const bgHeight = height;
+                    
+                    // 绘制第一张背景（当前可见的）
+                    shaderCtx.drawImage(
+                        gameAssets.backgroundImage,
+                        0, y1,
+                        bgWidth, bgHeight
+                    );
+                    
+                    // 绘制第二张背景（上方准备进入的）
+                    shaderCtx.drawImage(
+                        gameAssets.backgroundImage,
+                        0, y2,
+                        bgWidth, bgHeight
+                    );
+                    
+                    // 添加飞行高度感的渐变叠加
+                    const altitude_gradient = shaderCtx.createLinearGradient(0, 0, 0, height);
+                    altitude_gradient.addColorStop(0, 'rgba(135, 206, 250, 0.1)'); // 天空蓝色
+                    altitude_gradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.05)'); // 云层白色
+                    altitude_gradient.addColorStop(1, 'rgba(25, 25, 112, 0.15)'); // 深蓝色
+                    
+                    shaderCtx.fillStyle = altitude_gradient;
+                    shaderCtx.fillRect(0, 0, width, height);
+                    
+                } else {
+                    // 后备的海洋背景（原版简化）
+                    const gradient = shaderCtx.createLinearGradient(0, 0, 0, height);
+                    gradient.addColorStop(0, 'rgba(25, 50, 120, 1)');
+                    gradient.addColorStop(0.5, 'rgba(40, 80, 150, 1)');
+                    gradient.addColorStop(1, 'rgba(15, 35, 80, 1)');
+                    
+                    shaderCtx.fillStyle = gradient;
+                    shaderCtx.fillRect(0, 0, width, height);
                 }
                 
-                // Add sparkles/reflections
-                for (let i = 0; i < 20; i++) {
-                    const x = (animationTime * (2 + i * 0.1) + i * 100) % width;
-                    const y = height * 0.2 + 50 * Math.sin(animationTime * 0.02 + i);
-                    const size = Math.max(0.5, 2 + 3 * Math.sin(animationTime * 0.05 + i));
-                    const opacity = Math.max(0, 0.3 + 0.4 * Math.sin(animationTime * 0.03 + i));
+                // 添加云朵效果
+                for (let i = 0; i < 8; i++) {
+                    const x = (animationTime * 0.3 + i * 120) % (width + 200);
+                    const y = height * 0.1 + Math.sin(animationTime * 0.008 + i) * 50;
+                    const size = 30 + i * 10;
                     
-                    if (size > 0 && opacity > 0) {
+                    if (x < width + 100) {
                         shaderCtx.beginPath();
-                        shaderCtx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
                         shaderCtx.arc(x, y, size, 0, Math.PI * 2);
+                        shaderCtx.fillStyle = `rgba(255, 255, 255, ${0.15 + 0.1 * Math.sin(animationTime * 0.01 + i)})`;
                         shaderCtx.fill();
                     }
                 }
                 
                 animationTime++;
-                requestAnimationFrame(drawOceanBackground);
+                requestAnimationFrame(drawScrollingBackground);
             }
             
             function resizeShaderCanvas() {
@@ -632,10 +701,6 @@
                 shaderCanvas.height = window.innerHeight;
             }
             
-            window.addEventListener('resize', resizeShaderCanvas);
-            resizeShaderCanvas();
-            drawOceanBackground();
-
             // 游戏变量
             const gameCanvas = document.getElementById('gameCanvas');
             const ctx = gameCanvas.getContext('2d');
@@ -649,12 +714,35 @@
             const leftBtn = document.getElementById('leftBtn');
             const rightBtn = document.getElementById('rightBtn');
             const shootBtn = document.getElementById('shootBtn');
+            const audioToggle = document.getElementById('audioToggle');
 
-            // 游戏资源
+            // 游戏资源（必须在使用前定义）
             let gameAssets = {
                 planeImage: null,
-                imageLoaded: false
+                backgroundImage: null,
+                imageLoaded: false,
+                backgroundLoaded: false
             };
+
+            // 音效系统
+            let audioAssets = {
+                backgroundMusic: null,
+                shootSound: null,
+                explosionSound: null,
+                engineSound: null,
+                audioEnabled: true
+            };
+
+            // 背景滚动状态（必须在drawScrollingBackground调用前定义）
+            let backgroundState = {
+                offsetY: 0, // 全局滚动偏移量
+                scrollSpeed: 1, // 整数滚动速度，避免子像素对齐问题
+                initialized: false
+            };
+
+            window.addEventListener('resize', resizeShaderCanvas);
+            resizeShaderCanvas();
+            drawScrollingBackground();
 
             // 游戏状态
             let gameState = {
@@ -681,22 +769,167 @@
             const enemyPool = [];
             const particlePool = [];
 
+            // 初始化Web Audio Context（需要用户交互）
+            function initAudioContext() {
+                if (window.audioContext) return Promise.resolve();
+                
+                try {
+                    window.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    console.log('🔊 Web Audio Context 初始化成功');
+                    return Promise.resolve();
+                } catch (error) {
+                    console.log('❌ Web Audio Context 初始化失败:', error);
+                    return Promise.reject(error);
+                }
+            }
+
+            // 创建射击音效
+            function playShootSound(volume = 0.3) {
+                if (!audioAssets.audioEnabled || !window.audioContext) return;
+                
+                try {
+                    const ctx = window.audioContext;
+                    const oscillator = ctx.createOscillator();
+                    const gainNode = ctx.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(ctx.destination);
+                    
+                    oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.1);
+                    
+                    gainNode.gain.setValueAtTime(volume, ctx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+                    
+                    oscillator.start(ctx.currentTime);
+                    oscillator.stop(ctx.currentTime + 0.1);
+                } catch (error) {
+                    console.log('射击音效播放失败:', error);
+                }
+            }
+
+            // 创建爆炸音效
+            function playExplosionSound(volume = 0.4) {
+                if (!audioAssets.audioEnabled || !window.audioContext) return;
+                
+                try {
+                    const ctx = window.audioContext;
+                    const oscillator = ctx.createOscillator();
+                    const gainNode = ctx.createGain();
+                    const filter = ctx.createBiquadFilter();
+                    
+                    oscillator.connect(filter);
+                    filter.connect(gainNode);
+                    gainNode.connect(ctx.destination);
+                    
+                    oscillator.type = 'sawtooth';
+                    oscillator.frequency.setValueAtTime(200, ctx.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.3);
+                    
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(1000, ctx.currentTime);
+                    filter.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.3);
+                    
+                    gainNode.gain.setValueAtTime(volume, ctx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                    
+                    oscillator.start(ctx.currentTime);
+                    oscillator.stop(ctx.currentTime + 0.3);
+                } catch (error) {
+                    console.log('爆炸音效播放失败:', error);
+                }
+            }
+
+            // 音效播放函数（使用合成音效）
+            function playSound(soundName, volume = 0.5) {
+                if (!audioAssets.audioEnabled) return;
+                
+                switch (soundName) {
+                    case 'shoot':
+                        playShootSound(volume);
+                        break;
+                    case 'explosion':
+                        playExplosionSound(volume);
+                        break;
+                    default:
+                        console.log('未知音效:', soundName);
+                }
+            }
+
+            // 播放背景音乐（简化版，使用环境音）
+            function playBackgroundMusic() {
+                if (!audioAssets.audioEnabled || !window.audioContext) return;
+                
+                console.log('🎵 背景音乐系统准备就绪（简化模式）');
+                // 为了不打扰游戏体验，暂时不播放背景音乐
+            }
+
+            // 停止背景音乐
+            function stopBackgroundMusic() {
+                console.log('🔇 停止背景音乐');
+            }
+
             // 加载游戏资源
             function loadGameAssets() {
                 return new Promise((resolve) => {
-                    const img = new Image();
-                    img.onload = function() {
-                        gameAssets.planeImage = img;
+                    let loadedCount = 0;
+                    const totalAssets = 6; // 飞机图片 + 背景图片 + 4个音效
+                    
+                    function checkComplete() {
+                        loadedCount++;
+                        if (loadedCount >= totalAssets) {
+                            console.log('🎮 所有游戏资源加载完成');
+                            resolve();
+                        }
+                    }
+                    
+                    // 加载飞机图片
+                    const planeImg = new Image();
+                    planeImg.onload = function() {
+                        gameAssets.planeImage = planeImg;
                         gameAssets.imageLoaded = true;
-                        console.log('飞机图像加载完成');
-                        resolve();
+                        console.log('✈️ 飞机图像加载完成');
+                        checkComplete();
                     };
-                    img.onerror = function() {
-                        console.log('飞机图像加载失败，使用默认绘制');
+                    planeImg.onerror = function() {
+                        console.log('⚠️ 飞机图像加载失败，使用默认绘制');
                         gameAssets.imageLoaded = false;
-                        resolve();
+                        checkComplete();
                     };
-                    img.src = 'assets/fighter-jet.png';
+                    planeImg.src = 'assets/fighter-jet.png';
+                    
+                    // 加载背景图片
+                    const backgroundImg = new Image();
+                    backgroundImg.onload = function() {
+                        gameAssets.backgroundImage = backgroundImg;
+                        gameAssets.backgroundLoaded = true;
+                        console.log('🌍 背景图像加载完成');
+                        checkComplete();
+                    };
+                    backgroundImg.onerror = function() {
+                        console.log('⚠️ 背景图像加载失败，使用默认背景');
+                        gameAssets.backgroundLoaded = false;
+                        checkComplete();
+                    };
+                    backgroundImg.src = 'assets/background.png';
+                    
+                    // 使用Web Audio API创建合成音效
+                    console.log('🔊 开始创建合成音效');
+                    
+                    // 创建Web Audio Context（需要用户交互才能初始化）
+                    window.audioContext = null;
+                    
+                    // 音效标记为已"加载"（实际上是程序化生成）
+                    audioAssets.shootSound = 'synthetic';
+                    audioAssets.explosionSound = 'synthetic';
+                    audioAssets.backgroundMusic = 'synthetic';
+                    console.log('🔊 合成音效系统准备完成');
+                    
+                    // 立即标记所有音效加载完成
+                    checkComplete();
+                    checkComplete();
+                    checkComplete();
+                    checkComplete();
                 });
             }
 
@@ -733,10 +966,18 @@
 
             // 初始化游戏
             async function initGame() {
-                console.log('游戏初始化开始');
+                console.log('🎮 游戏初始化开始');
                 
-                // 加载游戏资源
-                await loadGameAssets();
+                try {
+                    // 加载游戏资源（有超时保护）
+                    await Promise.race([
+                        loadGameAssets(),
+                        new Promise(resolve => setTimeout(resolve, 3000)) // 3秒超时
+                    ]);
+                    console.log('✅ 资源加载完成或超时');
+                } catch (error) {
+                    console.log('⚠️ 资源加载失败，使用默认设置:', error);
+                }
                 
                 gameState.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                 
@@ -756,6 +997,12 @@
                 resumeScreen.style.display = 'none';
                 perfWarning.style.display = 'none';
                 gameState.running = true;
+                
+                // 🔊 初始化音频系统（需要用户交互）
+                initAudioContext().then(() => {
+                    console.log('🎵 音频系统已激活');
+                    playBackgroundMusic();
+                }).catch(e => console.log('音频初始化失败，继续游戏'));
                 
                 if (gameState.enemyInterval) {
                     clearInterval(gameState.enemyInterval);
@@ -820,7 +1067,76 @@
                 }
                 gameLoop();
                 
-                console.log('游戏初始化完成');
+                console.log('✅ 游戏初始化完成');
+            }
+
+            // 强制启动游戏（无需等待资源加载）
+            function forceStartGame() {
+                console.log('🚀 强制启动游戏模式');
+                
+                gameState.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                
+                gameState.bullets = [];
+                gameState.enemies = [];
+                gameState.particles = [];
+                gameState.plane.x = gameCanvas.width / 2 - gameState.plane.width / 2;
+                gameState.plane.y = gameCanvas.height - 150;
+                gameState.score = 0;
+                gameState.health = 100;
+                gameState.lowFpsCount = 0;
+                
+                scoreDisplay.textContent = gameState.score;
+                healthDisplay.textContent = gameState.health;
+                
+                startScreen.style.display = 'none';
+                resumeScreen.style.display = 'none';
+                perfWarning.style.display = 'none';
+                gameState.running = true;
+                
+                // 🔊 尝试初始化音频系统
+                initAudioContext().then(() => {
+                    console.log('🎵 强制模式音频系统已激活');
+                }).catch(e => console.log('强制模式音频初始化跳过'));
+                
+                if (gameState.enemyInterval) {
+                    clearInterval(gameState.enemyInterval);
+                }
+                
+                gameState.enemyInterval = setInterval(() => {
+                    const baseSpeed = 2 + Math.min(gameState.score / 10, 3);
+                    
+                    if (Math.random() < 0.7) {
+                        let enemy;
+                        if (enemyPool.length > 0) {
+                            enemy = enemyPool.pop();
+                            Object.assign(enemy, {
+                                x: Math.random() * (gameCanvas.width - 40),
+                                y: -40,
+                                width: 40,
+                                height: 40,
+                                speed: baseSpeed + Math.random() * 1,
+                                health: 1
+                            });
+                        } else {
+                            enemy = {
+                                x: Math.random() * (gameCanvas.width - 40),
+                                y: -40,
+                                width: 40,
+                                height: 40,
+                                speed: baseSpeed + Math.random() * 1,
+                                health: 1
+                            };
+                        }
+                        gameState.enemies.push(enemy);
+                    }
+                }, gameState.isMobile ? 1200 : 800);
+                
+                if (gameState.gameLoopId) {
+                    cancelAnimationFrame(gameState.gameLoopId);
+                }
+                gameLoop();
+                
+                console.log('🚀 强制游戏初始化完成');
             }
 
             // 绘制飞机
@@ -992,6 +1308,9 @@
 
             // 创建爆炸效果
             function createExplosion(x, y, color = '#ffd700') {
+                // 💥 播放爆炸音效
+                playSound('explosion', 0.4);
+                
                 const particleCount = gameState.fps > 45 ? (gameState.isMobile ? 15 : 20) : 10;
                 
                 for (let i = 0; i < particleCount; i++) {
@@ -1053,28 +1372,34 @@
                                 
                                 if (gameState.score >= 100) {
                                     gameState.running = false;
+                                    stopBackgroundMusic();
                                     clearInterval(gameState.enemyInterval);
                                     cancelAnimationFrame(gameState.gameLoopId);
                                     
+                                                                    setTimeout(() => {
+                                    // 强制重置滚动位置 - 多次尝试确保生效
+                                    resumeScreen.scrollTop = 0;
+                                    resumeScreen.style.display = 'flex';
+                                    
+                                    console.log('🎉 恭喜！简历页面已解锁！');
+                                    console.log('📋 简历头部元素检查:', resumeScreen.querySelector('.resume-header') ? '✅ 找到' : '❌ 未找到');
+                                    console.log('🎨 头部艺术背景检查:', resumeScreen.querySelector('.header-art') ? '✅ 找到' : '❌ 未找到');
+                                    
+                                    // 再次确保滚动到顶部（移动端可能需要延迟）
                                     setTimeout(() => {
-                                        // 强制重置滚动位置 - 多次尝试确保生效
                                         resumeScreen.scrollTop = 0;
-                                        resumeScreen.style.display = 'flex';
-                                        
-                                        // 再次确保滚动到顶部（移动端可能需要延迟）
-                                        setTimeout(() => {
-                                            resumeScreen.scrollTop = 0;
-                                            const resumeContent = resumeScreen.querySelector('.resume-content');
-                                            if (resumeContent) {
-                                                resumeContent.scrollTop = 0;
-                                            }
-                                            // 使用 scrollIntoView 确保顶部可见
-                                            const firstElement = resumeScreen.querySelector('.resume-header');
-                                            if (firstElement) {
-                                                firstElement.scrollIntoView({ behavior: 'instant', block: 'start' });
-                                            }
-                                        }, 100);
-                                    }, 1000);
+                                        const resumeContent = resumeScreen.querySelector('.resume-content');
+                                        if (resumeContent) {
+                                            resumeContent.scrollTop = 0;
+                                        }
+                                        // 使用 scrollIntoView 确保顶部可见
+                                        const firstElement = resumeScreen.querySelector('.resume-header');
+                                        if (firstElement) {
+                                            firstElement.scrollIntoView({ behavior: 'instant', block: 'start' });
+                                            console.log('📍 简历头部已滚动到可见区域');
+                                        }
+                                    }, 100);
+                                }, 1000);
                                 }
                             }
                             break;
@@ -1097,6 +1422,7 @@
                         
                         if (gameState.health <= 0) {
                             gameState.running = false;
+                            stopBackgroundMusic();
                             clearInterval(gameState.enemyInterval);
                             cancelAnimationFrame(gameState.gameLoopId);
                             
@@ -1157,6 +1483,9 @@
                     };
                 }
                 gameState.bullets.push(bullet);
+                
+                // 🔫 播放射击音效
+                playSound('shoot', 0.3);
             }
 
             console.log('绑定按钮事件...');
@@ -1164,8 +1493,36 @@
             console.log('initGame函数:', typeof initGame);
             
             startBtn.addEventListener('click', function() {
-                console.log('开始游戏按钮被点击！');
-                initGame();
+                console.log('🎮 开始游戏按钮被点击！');
+                console.log('🔍 startBtn可用:', !!startBtn);
+                console.log('🔍 initGame函数可用:', typeof initGame);
+                
+                try {
+                    initGame();
+                } catch (error) {
+                    console.error('❌ 游戏初始化错误:', error);
+                    // 强制启动游戏（忽略资源加载问题）
+                    forceStartGame();
+                }
+            });
+            
+            // 音效开关
+            audioToggle.addEventListener('click', () => {
+                audioAssets.audioEnabled = !audioAssets.audioEnabled;
+                audioToggle.textContent = audioAssets.audioEnabled ? '🔊 音效开启' : '🔇 音效关闭';
+                audioToggle.style.opacity = audioAssets.audioEnabled ? '1' : '0.7';
+                
+                if (audioAssets.audioEnabled) {
+                    // 用户开启音效时初始化音频上下文
+                    initAudioContext().then(() => {
+                        console.log('🔊 音效系统已激活');
+                        if (gameState.running) {
+                            playBackgroundMusic();
+                        }
+                    }).catch(e => console.log('音频初始化失败'));
+                } else {
+                    stopBackgroundMusic();
+                }
             });
             
             backBtn.addEventListener('click', () => {
@@ -1217,6 +1574,7 @@
                     gameState.plane.x += gameState.planeSpeed;
                 } else if (e.code === 'Escape') {
                     gameState.running = false;
+                    stopBackgroundMusic();
                     startScreen.style.display = 'flex';
                     clearInterval(gameState.enemyInterval);
                     cancelAnimationFrame(gameState.gameLoopId);
