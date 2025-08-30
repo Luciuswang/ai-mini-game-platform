@@ -895,6 +895,11 @@
                 this.isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
                 this.loadTimeout = null;
                 
+                // 音效系统初始化
+                this.audioContext = null;
+                this.audioEnabled = true;
+                this.initAudioSystem();
+                
                 this.scoreElement = document.getElementById('score');
                 this.movesElement = document.getElementById('moves');
                 this.targetElement = document.getElementById('target');
@@ -1036,6 +1041,9 @@
             selectShape(row, col) {
                 this.selectedShape = { row, col };
                 this.updateShapeDisplay();
+                
+                // 🔊 播放选择音效
+                this.playSound('select');
             }
 
             deselectShape() {
@@ -1099,6 +1107,13 @@
                     
                     this.combo++;
                     this.showCombo();
+                    
+                    // 🔊 播放消除音效
+                    if (matches.length >= 4) {
+                        this.playSound('bigmatch'); // 大消除
+                    } else {
+                        this.playSound('match'); // 普通消除
+                    }
                     
                     // 计算分数
                     const baseScore = matches.length * 10;
@@ -1346,6 +1361,13 @@
                     this.comboDisplay.textContent = `COMBO x${this.combo}!`;
                     this.comboDisplay.classList.add('show');
                     
+                    // 🔊 播放连击音效
+                    if (this.combo >= 3) {
+                        this.playSound('supercombo'); // 超级连击
+                    } else {
+                        this.playSound('combo'); // 普通连击
+                    }
+                    
                     setTimeout(() => {
                         this.comboDisplay.classList.remove('show');
                     }, 1200);
@@ -1368,14 +1390,22 @@
 
             checkGameStatus() {
                 if (this.score >= this.target) {
+                    // 🔊 播放胜利音效
+                    this.playSound('win');
                     this.gameWin();
                 } else if (this.moves <= 0) {
+                    // 🔊 播放失败音效
+                    this.playSound('lose');
                     this.gameOver = true;
                     this.showGameOver();
                 } else if (!this.hasValidMoves()) {
                     if (this.shuffles > 0) {
+                        // 🔊 播放洗牌音效
+                        this.playSound('shuffle');
                         this.shuffle();
                     } else {
+                        // 🔊 播放失败音效
+                        this.playSound('lose');
                         this.gameOver = true;
                         this.showGameOver();
                     }
@@ -1479,6 +1509,246 @@
 
             sleep(ms) {
                 return new Promise(resolve => setTimeout(resolve, ms));
+            }
+            
+            // 🔊 音效系统实现
+            initAudioSystem() {
+                console.log('🔊 消消乐音效系统初始化');
+                // 音效系统在用户第一次交互时才初始化
+            }
+            
+            // 初始化Web Audio Context
+            initAudioContext() {
+                if (this.audioContext) return Promise.resolve();
+                
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    console.log('🔊 消消乐音效系统已激活');
+                    return Promise.resolve();
+                } catch (error) {
+                    console.log('❌ 音效系统初始化失败:', error);
+                    this.audioEnabled = false;
+                    return Promise.reject(error);
+                }
+            }
+            
+            // 播放选择音效
+            playSelectSound() {
+                if (!this.audioEnabled || !this.audioContext) return;
+                
+                try {
+                    const ctx = this.audioContext;
+                    const oscillator = ctx.createOscillator();
+                    const gainNode = ctx.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(ctx.destination);
+                    
+                    oscillator.frequency.setValueAtTime(600, ctx.currentTime);
+                    oscillator.type = 'square';
+                    
+                    gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+                    
+                    oscillator.start(ctx.currentTime);
+                    oscillator.stop(ctx.currentTime + 0.1);
+                } catch (error) {
+                    console.log('选择音效播放失败:', error);
+                }
+            }
+            
+            // 播放匹配音效
+            playMatchSound(isBig = false) {
+                if (!this.audioEnabled || !this.audioContext) return;
+                
+                try {
+                    const ctx = this.audioContext;
+                    const oscillator = ctx.createOscillator();
+                    const gainNode = ctx.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(ctx.destination);
+                    
+                    if (isBig) {
+                        // 大消除：更低频，更长持续时间
+                        oscillator.frequency.setValueAtTime(400, ctx.currentTime);
+                        oscillator.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.3);
+                        gainNode.gain.setValueAtTime(0.15, ctx.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                        oscillator.start(ctx.currentTime);
+                        oscillator.stop(ctx.currentTime + 0.3);
+                    } else {
+                        // 普通消除
+                        oscillator.frequency.setValueAtTime(500, ctx.currentTime);
+                        oscillator.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.2);
+                        gainNode.gain.setValueAtTime(0.12, ctx.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+                        oscillator.start(ctx.currentTime);
+                        oscillator.stop(ctx.currentTime + 0.2);
+                    }
+                } catch (error) {
+                    console.log('匹配音效播放失败:', error);
+                }
+            }
+            
+            // 播放连击音效
+            playComboSound(isSuper = false) {
+                if (!this.audioEnabled || !this.audioContext) return;
+                
+                try {
+                    const ctx = this.audioContext;
+                    const oscillator = ctx.createOscillator();
+                    const gainNode = ctx.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(ctx.destination);
+                    
+                    if (isSuper) {
+                        // 超级连击：更高频，颤音效果
+                        oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+                        oscillator.frequency.setValueAtTime(900, ctx.currentTime + 0.1);
+                        oscillator.frequency.setValueAtTime(800, ctx.currentTime + 0.2);
+                        oscillator.frequency.setValueAtTime(1000, ctx.currentTime + 0.3);
+                        gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+                        oscillator.start(ctx.currentTime);
+                        oscillator.stop(ctx.currentTime + 0.4);
+                    } else {
+                        // 普通连击
+                        oscillator.frequency.setValueAtTime(700, ctx.currentTime);
+                        oscillator.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.25);
+                        gainNode.gain.setValueAtTime(0.15, ctx.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+                        oscillator.start(ctx.currentTime);
+                        oscillator.stop(ctx.currentTime + 0.25);
+                    }
+                } catch (error) {
+                    console.log('连击音效播放失败:', error);
+                }
+            }
+            
+            // 播放胜利音效
+            playWinSound() {
+                if (!this.audioEnabled || !this.audioContext) return;
+                
+                try {
+                    const ctx = this.audioContext;
+                    // 创建一个上升的音调序列
+                    const notes = [523, 659, 784, 1047]; // C5, E5, G5, C6
+                    
+                    notes.forEach((freq, index) => {
+                        const oscillator = ctx.createOscillator();
+                        const gainNode = ctx.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(ctx.destination);
+                        
+                        oscillator.frequency.setValueAtTime(freq, ctx.currentTime);
+                        oscillator.type = 'triangle';
+                        
+                        const startTime = ctx.currentTime + index * 0.2;
+                        gainNode.gain.setValueAtTime(0.15, startTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3);
+                        
+                        oscillator.start(startTime);
+                        oscillator.stop(startTime + 0.3);
+                    });
+                } catch (error) {
+                    console.log('胜利音效播放失败:', error);
+                }
+            }
+            
+            // 播放失败音效
+            playLoseSound() {
+                if (!this.audioEnabled || !this.audioContext) return;
+                
+                try {
+                    const ctx = this.audioContext;
+                    const oscillator = ctx.createOscillator();
+                    const gainNode = ctx.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(ctx.destination);
+                    
+                    // 下降音调表示失败
+                    oscillator.frequency.setValueAtTime(400, ctx.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.6);
+                    oscillator.type = 'sawtooth';
+                    
+                    gainNode.gain.setValueAtTime(0.12, ctx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
+                    
+                    oscillator.start(ctx.currentTime);
+                    oscillator.stop(ctx.currentTime + 0.6);
+                } catch (error) {
+                    console.log('失败音效播放失败:', error);
+                }
+            }
+            
+            // 播放洗牌音效
+            playShuffleSound() {
+                if (!this.audioEnabled || !this.audioContext) return;
+                
+                try {
+                    const ctx = this.audioContext;
+                    // 创建洗牌的嗖嗖声
+                    for (let i = 0; i < 8; i++) {
+                        const oscillator = ctx.createOscillator();
+                        const gainNode = ctx.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(ctx.destination);
+                        
+                        oscillator.frequency.setValueAtTime(300 + Math.random() * 400, ctx.currentTime);
+                        oscillator.type = 'white'; // 噪音效果，如果不支持则用默认
+                        
+                        const startTime = ctx.currentTime + i * 0.05;
+                        gainNode.gain.setValueAtTime(0.08, startTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.1);
+                        
+                        oscillator.start(startTime);
+                        oscillator.stop(startTime + 0.1);
+                    }
+                } catch (error) {
+                    console.log('洗牌音效播放失败:', error);
+                }
+            }
+            
+            // 统一的音效播放接口
+            playSound(soundType) {
+                // 首次播放时初始化音效上下文
+                if (!this.audioContext) {
+                    this.initAudioContext().catch(() => {});
+                }
+                
+                switch (soundType) {
+                    case 'select':
+                        this.playSelectSound();
+                        break;
+                    case 'match':
+                        this.playMatchSound(false);
+                        break;
+                    case 'bigmatch':
+                        this.playMatchSound(true);
+                        break;
+                    case 'combo':
+                        this.playComboSound(false);
+                        break;
+                    case 'supercombo':
+                        this.playComboSound(true);
+                        break;
+                    case 'win':
+                        this.playWinSound();
+                        break;
+                    case 'lose':
+                        this.playLoseSound();
+                        break;
+                    case 'shuffle':
+                        this.playShuffleSound();
+                        break;
+                    default:
+                        console.log('未知音效类型:', soundType);
+                }
             }
         }
 
