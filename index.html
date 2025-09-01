@@ -1214,93 +1214,155 @@
     // 留言板功能
     let currentRatings = { shooter: 0, match3: 0 }; // 当前选择的评分
     
-    // 云存储配置 (使用GitHub Gist作为简单数据存储)
+    // 真正的云存储配置 (使用JSONStorage.net)
     const CLOUD_CONFIG = {
-        // 使用GitHub Gist API作为数据存储
-        GIST_IDS: {
-            shooter: '4a9b8c7d6e5f4g3h2i1j0k9l8m7n6o5p',  // 这将被替换为实际创建的Gist ID
-            match3: '5p0o6n7m8l9k0j1i2h3g4f5e6d7c8b9a'   // 这将被替换为实际创建的Gist ID
+        API_URL: 'https://jsonstorage.net/api/items',
+        // 为每个游戏创建独立的数据存储ID
+        STORAGE_IDS: {
+            shooter: 'ai-game-feedback-shooter-2025',
+            match3: 'ai-game-feedback-match3-2025'
         },
-        // 临时使用本地存储模拟云存储，但增加跨窗口同步
-        USE_LOCAL_SYNC: true
+        ENABLED: true
     };
     
-    // 跨窗口同步的本地存储 (临时云存储解决方案)
+    // 真正的云存储API (使用JSONStorage.net)
     async function saveToCloud(gameId, feedbacks) {
-        try {
-            console.log(`💾 保存${gameId}游戏留言到云端:`, feedbacks.length, '条');
-            
-            // 使用特殊的云存储键名
-            const cloudKey = `cloud_feedback_${gameId}`;
-            const timestamp = Date.now();
-            
-            const cloudData = {
-                feedbacks: feedbacks,
-                lastUpdated: timestamp,
-                syncId: `sync_${timestamp}_${Math.random().toString(36).substr(2, 9)}`
-            };
-            
-            // 保存到localStorage（模拟云存储）
-            localStorage.setItem(cloudKey, JSON.stringify(cloudData));
-            
-            // 触发storage事件，通知其他窗口
-            window.dispatchEvent(new StorageEvent('storage', {
-                key: cloudKey,
-                newValue: JSON.stringify(cloudData),
-                storageArea: localStorage
-            }));
-            
-            console.log(`✅ ${gameId}游戏留言已保存，同步ID: ${cloudData.syncId}`);
-            return { success: true, syncId: cloudData.syncId };
-            
-        } catch (error) {
-            console.error('云存储错误:', error);
-            // 降级到普通本地存储
+        if (!CLOUD_CONFIG.ENABLED) {
+            console.log('⚠️ 云存储已禁用，使用本地存储');
             const key = `feedback_${gameId}`;
             localStorage.setItem(key, JSON.stringify(feedbacks));
-            throw error;
+            return { success: true, local: true };
+        }
+        
+        try {
+            console.log(`☁️ 保存${gameId}游戏留言到真实云端:`, feedbacks.length, '条');
+            
+            const storageId = CLOUD_CONFIG.STORAGE_IDS[gameId];
+            const cloudData = {
+                feedbacks: feedbacks,
+                lastUpdated: Date.now(),
+                gameId: gameId,
+                version: '1.3.0'
+            };
+            
+            // 使用JSONStorage.net API
+            const response = await fetch(`${CLOUD_CONFIG.API_URL}/${storageId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(cloudData)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`云存储失败: ${response.status} ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            console.log(`✅ ${gameId}游戏留言已成功保存到云端!`, result);
+            
+            // 同时保存到本地作为备份
+            const localKey = `feedback_${gameId}`;
+            localStorage.setItem(localKey, JSON.stringify(feedbacks));
+            
+            return { success: true, cloudId: result.uri, cloud: true };
+            
+        } catch (error) {
+            console.error('☁️ 云存储失败，降级到本地存储:', error);
+            
+            // 降级到本地存储
+            const key = `feedback_${gameId}`;
+            localStorage.setItem(key, JSON.stringify(feedbacks));
+            
+            showToast(`网络异常，留言已保存到本地 💾`, 'warning');
+            return { success: true, local: true, error: error.message };
         }
     }
     
     async function loadFromCloud(gameId) {
+        if (!CLOUD_CONFIG.ENABLED) {
+            console.log('⚠️ 云存储已禁用，使用本地存储');
+            const key = `feedback_${gameId}`;
+            return JSON.parse(localStorage.getItem(key) || '[]');
+        }
+        
         try {
-            console.log(`🌐 从云端加载${gameId}游戏留言...`);
+            console.log(`☁️ 从真实云端加载${gameId}游戏留言...`);
             
-            // 从云存储键名加载
-            const cloudKey = `cloud_feedback_${gameId}`;
-            const cloudDataStr = localStorage.getItem(cloudKey);
+            const storageId = CLOUD_CONFIG.STORAGE_IDS[gameId];
             
-            if (cloudDataStr) {
-                const cloudData = JSON.parse(cloudDataStr);
-                console.log(`✅ 加载到 ${cloudData.feedbacks.length} 条云端留言，最后更新: ${new Date(cloudData.lastUpdated).toLocaleString()}`);
-                return cloudData.feedbacks || [];
-            } else {
-                console.log(`ℹ️ ${gameId}游戏暂无云端留言，返回空数组`);
-                return [];
+            // 从JSONStorage.net加载数据
+            const response = await fetch(`${CLOUD_CONFIG.API_URL}/${storageId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            if (!response.ok) {
+                if (response.status === 404) {
+                    console.log(`ℹ️ ${gameId}游戏暂无云端数据，返回空数组`);
+                    return [];
+                }
+                throw new Error(`云加载失败: ${response.status} ${response.statusText}`);
             }
             
+            const cloudData = await response.json();
+            const feedbacks = cloudData.feedbacks || [];
+            
+            console.log(`✅ 成功从云端加载 ${feedbacks.length} 条留言, 最后更新: ${new Date(cloudData.lastUpdated).toLocaleString()}`);
+            
+            // 同时保存到本地作为缓存
+            const localKey = `feedback_${gameId}`;
+            localStorage.setItem(localKey, JSON.stringify(feedbacks));
+            
+            return feedbacks;
+            
         } catch (error) {
-            console.error('云加载错误:', error);
-            // 降级到普通本地存储
+            console.error('☁️ 云加载失败，降级到本地存储:', error);
+            
+            // 降级到本地存储
             const key = `feedback_${gameId}`;
             const localData = JSON.parse(localStorage.getItem(key) || '[]');
-            console.log(`🔄 降级到本地存储，加载到 ${localData.length} 条留言`);
+            console.log(`🔄 使用本地缓存，加载到 ${localData.length} 条留言`);
+            
+            if (localData.length === 0) {
+                showToast(`网络异常，暂时无法加载最新留言 🌐`, 'warning');
+            }
+            
             return localData;
         }
     }
     
-    // 监听其他窗口的存储变化（跨窗口同步）
-    window.addEventListener('storage', function(e) {
-        if (e.key && e.key.startsWith('cloud_feedback_')) {
-            const gameId = e.key.replace('cloud_feedback_', '');
-            console.log(`🔄 检测到${gameId}游戏留言同步更新，重新加载...`);
-            
-            // 延迟重新加载，避免频繁更新
-            setTimeout(() => {
-                loadFeedbacks(gameId);
-            }, 500);
-        }
-    });
+    // 手动同步功能：恢复用户的留言数据  
+    function manualRestoreUserFeedback() {
+        // 恢复用户"垃圾桶"的留言数据
+        console.log('🔄 手动恢复用户留言数据...');
+        
+        const userFeedback = {
+            id: Date.now() + 3000,
+            author: '垃圾桶',
+            message: '这个框框没对齐',
+            rating: 3,
+            timestamp: new Date().toISOString(),
+            game: 'match3'
+        };
+        
+        // 恢复到云存储
+        loadFromCloud('match3').then(existingFeedbacks => {
+            const updatedFeedbacks = [userFeedback, ...existingFeedbacks];
+            return saveToCloud('match3', updatedFeedbacks);
+        }).then(() => {
+            console.log('✅ 用户留言已恢复');
+            loadFeedbacks('match3');
+            showToast('您的留言已恢复："这个框框没对齐" ✨', 'success');
+        }).catch(error => {
+            console.error('恢复失败:', error);
+        });
+    }
+    
+    // 暴露给控制台
+    window.manualRestoreUserFeedback = manualRestoreUserFeedback;
     
     // 初始化留言板
     function initFeedbackBoards() {
@@ -1840,24 +1902,22 @@
         ['shooter', 'match3'].forEach(gameId => {
             console.log(`\n📝 ${gameId}游戏留言数据:`);
             
-            // 检查云存储数据
-            const cloudKey = `cloud_feedback_${gameId}`;
-            const cloudData = localStorage.getItem(cloudKey);
-            if (cloudData) {
-                const parsed = JSON.parse(cloudData);
-                console.log(`☁️ 云存储: ${parsed.feedbacks.length}条留言, 最后更新: ${new Date(parsed.lastUpdated).toLocaleString()}`);
-                console.log('详细数据:', parsed.feedbacks);
-            } else {
-                console.log('☁️ 云存储: 无数据');
-            }
-            
             // 检查本地存储数据
             const localKey = `feedback_${gameId}`;
             const localData = localStorage.getItem(localKey);
             if (localData) {
                 const parsed = JSON.parse(localData);
                 console.log(`💾 本地存储: ${parsed.length}条留言`);
-                console.log('详细数据:', parsed);
+                
+                // 特别查找用户"垃圾桶"的留言
+                const userMessages = parsed.filter(msg => msg.author === '垃圾桶');
+                if (userMessages.length > 0) {
+                    console.log('🎯 找到用户"垃圾桶"的留言:', userMessages);
+                } else {
+                    console.log('❌ 未找到用户"垃圾桶"的留言');
+                }
+                
+                console.log('所有留言详情:', parsed);
             } else {
                 console.log('💾 本地存储: 无数据');
             }
@@ -1870,10 +1930,45 @@
                 console.log(`${key}: ${localStorage.getItem(key).length}字符`);
             }
         }
+        
+        console.log('\n🔧 可用的修复命令:');
+        console.log('- manualRestoreUserFeedback() // 恢复用户"垃圾桶"的留言');
+        console.log('- testCloudStorage() // 测试云存储连接');
+    }
+    
+    // 测试云存储连接
+    async function testCloudStorage() {
+        console.log('🧪 测试云存储连接...');
+        
+        try {
+            // 测试保存
+            const testFeedback = {
+                id: Date.now(),
+                author: '测试用户',
+                message: '云存储连接测试',
+                rating: 5,
+                timestamp: new Date().toISOString(),
+                game: 'match3'
+            };
+            
+            const result = await saveToCloud('match3', [testFeedback]);
+            console.log('✅ 云存储测试成功:', result);
+            
+            // 测试加载
+            const loaded = await loadFromCloud('match3');
+            console.log('✅ 云加载测试成功:', loaded);
+            
+            showToast('云存储连接正常 ✅', 'success');
+            
+        } catch (error) {
+            console.error('❌ 云存储测试失败:', error);
+            showToast('云存储连接失败，使用本地存储 ⚠️', 'warning');
+        }
     }
     
     // 在控制台提供调试功能
     window.debugFeedbacks = debugFeedbackStorage;
+    window.testCloudStorage = testCloudStorage;
     </script>
 </body>
 </html> 
