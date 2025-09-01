@@ -446,6 +446,33 @@
             padding: 0 30px;
             z-index: 10;
         }
+        
+        /* 移动端射击按钮优化：右下角单独定位 */
+        .mobile-shoot-btn {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255, 215, 0, 0.4);
+            border: 3px solid #d4af37;
+            color: #d4af37;
+            font-size: 24px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1001;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+            transition: all 0.2s ease;
+        }
+        
+        .mobile-shoot-btn:active {
+            transform: scale(0.95);
+            background: rgba(255, 215, 0, 0.6);
+            box-shadow: 0 2px 8px rgba(212, 175, 55, 0.5);
+        }
 
         .control-btn {
             width: 70px;
@@ -481,9 +508,26 @@
             .subtitle {
                 font-size: 1.1rem;
             }
+            /* 移动端：隐藏左右控制，显示右下角射击按钮 */
             .mobile-controls {
+                display: none;
+            }
+            
+            .mobile-shoot-btn {
                 display: flex;
             }
+            
+            /* PC端检测：如果是大屏幕，隐藏移动射击按钮 */
+        }
+        
+        /* PC端和大屏设备：隐藏移动端射击按钮 */
+        @media (min-width: 769px) {
+            .mobile-shoot-btn {
+                display: none !important;
+            }
+        }
+        
+        @media (max-width: 768px) {
             .resume-content {
                 padding: 20px;
             }
@@ -520,6 +564,7 @@
             <i class="fas fa-exclamation-triangle"></i> 性能提示：已启用优化模式
         </div>
         
+        <!-- 原始移动控制（PC端备用） -->
         <div class="mobile-controls">
             <div class="control-btn" id="leftBtn">
                 <i class="fas fa-arrow-left"></i>
@@ -532,9 +577,14 @@
             </div>
         </div>
         
+        <!-- 新的移动端射击按钮（右下角） -->
+        <div class="mobile-shoot-btn" id="mobileShootBtn">
+            <i class="fas fa-rocket"></i>
+        </div>
+        
         <div id="startScreen" class="screen">
             <h1 class="title">✈️ 打飞机有惊喜</h1>
-            <p class="subtitle">经典空战射击游戏 - 移动鼠标控制战机，点击射击敌机，击毁100架敌机后将解锁神秘惊喜！</p>
+            <p class="subtitle">经典空战射击游戏 - PC端：鼠标控制战机；手机端：手指滑动控制位置，右下角射击按钮开火。击毁100架敌机解锁神秘惊喜！</p>
             <button id="startBtn" class="btn">开始游戏</button>
             <button id="audioToggle" class="btn" style="margin-top: 15px; font-size: 14px; padding: 8px 20px;">🔊 音效开启</button>
             <div style="position: absolute; bottom: 30px; color: #5d8aa8; font-size: 14px;">
@@ -714,6 +764,7 @@
             const leftBtn = document.getElementById('leftBtn');
             const rightBtn = document.getElementById('rightBtn');
             const shootBtn = document.getElementById('shootBtn');
+            const mobileShootBtn = document.getElementById('mobileShootBtn');
             const audioToggle = document.getElementById('audioToggle');
 
             // 游戏资源（必须在使用前定义）
@@ -1560,6 +1611,19 @@
             shootBtn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 shoot();
+            });
+            
+            // 新的移动端射击按钮事件
+            mobileShootBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                shoot();
+            });
+            
+            mobileShootBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (gameState.running) {
+                    shoot();
+                }
             });
 
             // 键盘控制
