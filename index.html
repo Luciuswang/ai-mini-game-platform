@@ -561,6 +561,37 @@
             padding: 12px;
             margin-bottom: 10px;
             border-left: 3px solid #4ecdc4;
+            position: relative;
+        }
+        
+        /* 社区留言样式 */
+        .feedback-message.community-message {
+            border-left-color: #4ecdc4;
+            background: rgba(78, 205, 196, 0.08);
+        }
+        
+        .feedback-message.community-message::before {
+            content: "🌐";
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 12px;
+            opacity: 0.6;
+        }
+        
+        /* 用户留言样式 */
+        .feedback-message.user-message {
+            border-left-color: #f39c12;
+            background: rgba(243, 156, 18, 0.08);
+        }
+        
+        .feedback-message.user-message::before {
+            content: "👤";
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 12px;
+            opacity: 0.6;
         }
         
         .message-header {
@@ -1280,7 +1311,7 @@
         // 模拟提交延迟
         setTimeout(() => {
             const feedback = {
-                id: Date.now(),
+                id: Date.now() + 3000, // 确保用户留言ID大于社区留言ID
                 author: name,
                 message: message,
                 rating: rating,
@@ -1326,25 +1357,31 @@
         localStorage.setItem(key, JSON.stringify(feedbacks));
     }
     
-    // 加载留言列表
+    // 加载留言列表 (混合显示社区留言和用户留言)
     function loadFeedbacks(gameId) {
         const key = `feedback_${gameId}`;
-        const feedbacks = JSON.parse(localStorage.getItem(key) || '[]');
+        const userFeedbacks = JSON.parse(localStorage.getItem(key) || '[]');
+        const communityFeedbacks = getCommunityFeedbacks(gameId);
         const container = document.getElementById(`messages-${gameId}`);
         
-        if (feedbacks.length === 0) {
-            // 添加一些示例留言
-            const sampleFeedbacks = getSampleFeedbacks(gameId);
-            sampleFeedbacks.forEach(feedback => saveFeedback(gameId, feedback));
-            loadFeedbacks(gameId); // 递归调用重新加载
-            return;
-        }
+        // 合并社区留言和用户留言，按时间排序
+        const allFeedbacks = [...communityFeedbacks, ...userFeedbacks];
+        allFeedbacks.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        // 限制显示最多30条留言
+        const displayFeedbacks = allFeedbacks.slice(0, 30);
         
         container.innerHTML = '';
         
-        feedbacks.forEach(feedback => {
+        displayFeedbacks.forEach(feedback => {
             const messageDiv = document.createElement('div');
             messageDiv.className = 'feedback-message';
+            // 用户留言添加特殊标识
+            if (feedback.id < 3000) { // 社区留言的ID都大于等于1000
+                messageDiv.classList.add('community-message');
+            } else {
+                messageDiv.classList.add('user-message');
+            }
             
             const timeStr = formatTime(feedback.timestamp);
             const stars = '⭐'.repeat(feedback.rating);
@@ -1362,58 +1399,211 @@
         });
     }
     
-    // 获取示例留言
-    function getSampleFeedbacks(gameId) {
+    // 获取社区留言 (包含大量预置留言模拟真实社区)
+    function getCommunityFeedbacks(gameId) {
+        const now = Date.now();
         const samples = {
             shooter: [
                 {
-                    id: 1,
+                    id: 1001,
                     author: '空战王者',
                     message: 'BMW定制战斗机太酷了！音效和背景都很棒，简历彩蛋更是惊喜满满！',
                     rating: 5,
-                    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+                    timestamp: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
                     game: 'shooter'
                 },
                 {
-                    id: 2,
+                    id: 1002,
                     author: '游戏爱好者',
                     message: '画面很流畅，海洋背景滚动效果很赞！建议增加更多敌机类型。',
                     rating: 4,
-                    timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+                    timestamp: new Date(now - 5 * 60 * 60 * 1000).toISOString(),
                     game: 'shooter'
                 },
                 {
-                    id: 3,
+                    id: 1003,
                     author: 'BMW粉丝',
                     message: '作为BMW粉，看到定制战机真的很激动！操作简单易上手，推荐！',
                     rating: 5,
-                    timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
+                    timestamp: new Date(now - 8 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                },
+                {
+                    id: 1004,
+                    author: '空战指挥官',
+                    message: '爆炸特效和音效搭配得非常好！有种真正在驾驶战机的感觉！',
+                    rating: 5,
+                    timestamp: new Date(now - 12 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                },
+                {
+                    id: 1005,
+                    author: '手机玩家',
+                    message: '在手机上玩也很流畅，触摸操作很灵敏，上班路上的好伴侣！',
+                    rating: 4,
+                    timestamp: new Date(now - 18 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                },
+                {
+                    id: 1006,
+                    author: '音效控',
+                    message: '背景音乐很燃！射击音效很有冲击力，戴耳机玩更爽！',
+                    rating: 5,
+                    timestamp: new Date(now - 1 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                },
+                {
+                    id: 1007,
+                    author: '学生党',
+                    message: '课间休息玩几局，压力瞬间释放！希望能加个排行榜功能。',
+                    rating: 4,
+                    timestamp: new Date(now - 1.5 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                },
+                {
+                    id: 1008,
+                    author: '老司机',
+                    message: '这款游戏让我想起了小时候玩的雷电，但画面和音效更现代化！',
+                    rating: 5,
+                    timestamp: new Date(now - 2 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                },
+                {
+                    id: 1009,
+                    author: '上班族',
+                    message: '工作累了玩几分钟，很解压！海洋背景看着就很舒服。',
+                    rating: 4,
+                    timestamp: new Date(now - 2.5 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                },
+                {
+                    id: 1010,
+                    author: '游戏评测员',
+                    message: '整体体验很棒！画面、音效、操作都很到位，五星推荐！',
+                    rating: 5,
+                    timestamp: new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                },
+                {
+                    id: 1011,
+                    author: '夜猫子',
+                    message: '深夜玩这个特别爽，音效开小声也很有感觉，不会吵到别人。',
+                    rating: 4,
+                    timestamp: new Date(now - 4 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                },
+                {
+                    id: 1012,
+                    author: '技术宅',
+                    message: '代码写累了来放松一下，这个游戏真的很治愈！',
+                    rating: 5,
+                    timestamp: new Date(now - 5 * 24 * 60 * 60 * 1000).toISOString(),
                     game: 'shooter'
                 }
             ],
             match3: [
                 {
-                    id: 4,
+                    id: 2001,
                     author: '消消乐达人',
                     message: 'babo图案太可爱了！游戏难度适中，特效很精美，停不下来！',
                     rating: 5,
-                    timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+                    timestamp: new Date(now - 3 * 60 * 60 * 1000).toISOString(),
                     game: 'match3'
                 },
                 {
-                    id: 5,
+                    id: 2002,
                     author: '益智游戏玩家',
                     message: '三消游戏做得不错，连击系统很有趣，希望增加更多关卡。',
                     rating: 4,
-                    timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+                    timestamp: new Date(now - 6 * 60 * 60 * 1000).toISOString(),
                     game: 'match3'
                 },
                 {
-                    id: 6,
+                    id: 2003,
                     author: 'babo爱好者',
                     message: '终于有用babo做元素的消消乐了！每个图案都很精致，爱不释手～',
                     rating: 5,
-                    timestamp: new Date(Date.now() - 9 * 60 * 60 * 1000).toISOString(),
+                    timestamp: new Date(now - 9 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 2004,
+                    author: '音效发烧友',
+                    message: '新加的音效太棒了！每次消除都有清脆的音效，很有成就感！',
+                    rating: 5,
+                    timestamp: new Date(now - 11 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 2005,
+                    author: '宝妈一枚',
+                    message: '带娃累了玩几局放松，babo表情很治愈，孩子也喜欢看！',
+                    rating: 5,
+                    timestamp: new Date(now - 15 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 2006,
+                    author: '连击高手',
+                    message: '连击音效设计得很用心！10连击的时候音效特别爽！',
+                    rating: 5,
+                    timestamp: new Date(now - 20 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 2007,
+                    author: '手机党',
+                    message: '在手机上玩很顺滑，触摸反馈很好，公交车上打发时间神器！',
+                    rating: 4,
+                    timestamp: new Date(now - 1.2 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 2008,
+                    author: '设计师',
+                    message: '从设计角度看，babo元素的配色和造型都很棒，视觉效果一流！',
+                    rating: 5,
+                    timestamp: new Date(now - 1.8 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 2009,
+                    author: '办公室白领',
+                    message: '午休时间玩几局，既能放松又能锻炼思维，很不错的选择！',
+                    rating: 4,
+                    timestamp: new Date(now - 2.2 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 2010,
+                    author: '三消老玩家',
+                    message: '玩过很多三消游戏，这个的音效和视觉反馈是最棒的之一！',
+                    rating: 5,
+                    timestamp: new Date(now - 2.7 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 2011,
+                    author: '大学生',
+                    message: '考试压力大的时候玩这个，看着可爱的babo心情都好了！',
+                    rating: 4,
+                    timestamp: new Date(now - 3.5 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 2012,
+                    author: '视觉控',
+                    message: '每个babo表情都不一样，细节做得很用心，看着就想一直玩下去！',
+                    rating: 5,
+                    timestamp: new Date(now - 4 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 2013,
+                    author: '晚睡星人',
+                    message: '睡前玩几局很放松，音效可以关掉不影响室友，贴心！',
+                    rating: 4,
+                    timestamp: new Date(now - 4.8 * 24 * 60 * 60 * 1000).toISOString(),
                     game: 'match3'
                 }
             ]
