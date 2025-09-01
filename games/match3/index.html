@@ -341,7 +341,9 @@
         
         .ios-optimized .shape {
             -webkit-transform-style: preserve-3d;
+            transform-style: preserve-3d;
             -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
         }
         
         /* 后备图标样式增强 */
@@ -643,16 +645,17 @@
                 font-size: 0.9rem;
             }
             
-            /* 移动端性能优化 */
+            /* 移动端性能优化 - 修复对齐问题 */
             .shape-red, .shape-blue, .shape-green, .shape-yellow, .shape-purple, .shape-orange {
-                transform: scale(0.7) !important; /* 移动端简化缩放，提升性能 */
+                transform: scale(0.65) translate(-85%, -78%) !important; /* 移动端增加更大的左上偏移修复对齐 */
                 padding: 2px !important; /* 减少内边距 */
                 will-change: transform; /* 启用硬件加速 */
                 -webkit-backface-visibility: hidden; /* iOS优化 */
+                backface-visibility: hidden;
             }
             
             .shape.selected {
-                transform: scale(0.8) !important; /* 简化选中效果 */
+                transform: scale(0.75) translate(-85%, -78%) !important; /* 选中时保持相同偏移 */
             }
             
             /* 简化移动端动画 */
