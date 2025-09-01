@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>立体消消乐 - AI游戏平台</title>
     <meta name="description" content="精美立体三消游戏，消除相同几何形状获得高分">
     
@@ -645,9 +645,9 @@
                 font-size: 0.9rem;
             }
             
-            /* 移动端性能优化 - 最终完美调整 */
+            /* 移动端性能优化 - 完美对齐最终版 */
             .shape-red, .shape-blue, .shape-green, .shape-yellow, .shape-purple, .shape-orange {
-                transform: scale(0.52) translate(-45%, -58%) !important; /* 最终调整：缩小0.8倍，右移0.15 */
+                transform: scale(0.52) translate(-57%, -72%) !important; /* 完美对齐：左移0.12，上移0.14 */
                 padding: 2px !important; /* 减少内边距 */
                 will-change: transform; /* 启用硬件加速 */
                 -webkit-backface-visibility: hidden; /* iOS优化 */
@@ -655,7 +655,7 @@
             }
             
             .shape.selected {
-                transform: scale(0.6) translate(-45%, -58%) !important; /* 选中时稍大但保持相同偏移 */
+                transform: scale(0.6) translate(-57%, -72%) !important; /* 选中时保持相同完美偏移 */
             }
             
             /* 简化移动端动画 */
@@ -672,25 +672,167 @@
             }
         }
 
+        /* 小屏幕手机优化 (iPhone SE, 小型安卓) */
         @media (max-width: 480px) {
             body {
-                padding: 10px;
+                padding: 5px;
+                min-height: 100vh;
+                overflow-x: hidden;
             }
 
             .game-container {
-                padding: 20px;
+                padding: 15px 10px;
+                margin: 5px;
+                max-width: 100%;
+                min-height: 100vh;
+                box-sizing: border-box;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
             }
 
             .title {
-                font-size: 2rem;
+                font-size: 1.8rem;
+                margin-bottom: 10px;
+            }
+
+            .game-stats {
+                gap: 8px;
+                margin-bottom: 15px;
+                flex-wrap: wrap;
+            }
+
+            .stat-box {
+                padding: 10px 8px;
+                flex: 1;
+                min-width: 70px;
+            }
+
+            .stat-value {
+                font-size: 1.2rem;
+            }
+
+            .stat-label {
+                font-size: 0.7rem;
+            }
+
+            .game-board {
+                padding: 10px;
+                margin: 10px auto;
+                flex-shrink: 0;
+            }
+
+            .grid-container {
+                width: 280px;
+                height: 280px;
+                margin: 0 auto;
             }
 
             .shape {
                 font-size: 0.8rem;
+                min-height: 28px;
+            }
+
+            .controls {
+                gap: 6px;
+                flex-wrap: wrap;
+                margin-top: 10px;
+            }
+
+            .control-btn {
+                padding: 8px 12px;
+                font-size: 0.8rem;
+                flex: 1;
+                min-width: 80px;
+            }
+        }
+
+        /* 超小屏幕优化 (iPhone SE 第一代等) */
+        @media (max-width: 375px) and (max-height: 667px) {
+            .game-container {
+                padding: 10px 5px;
+            }
+
+            .title {
+                font-size: 1.6rem;
+                margin-bottom: 8px;
+            }
+
+            .grid-container {
+                width: 260px;
+                height: 260px;
+            }
+
+            .game-stats {
+                margin-bottom: 10px;
+            }
+
+            .stat-box {
+                padding: 8px 6px;
+            }
+
+            .controls {
+                margin-top: 8px;
+            }
+        }
+
+        /* 横屏模式优化 */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .game-container {
+                padding: 10px 15px;
+                flex-direction: row;
+                align-items: center;
+                gap: 20px;
+            }
+
+            .title {
+                position: absolute;
+                top: 10px;
+                left: 50%;
+                transform: translateX(-50%);
+                margin: 0;
+                font-size: 1.5rem;
+            }
+
+            .game-stats {
+                flex-direction: column;
+                gap: 8px;
+                margin: 0;
+                width: 150px;
             }
 
             .game-board {
-                padding: 12px;
+                margin: 0;
+                flex-shrink: 0;
+            }
+
+            .grid-container {
+                width: 240px;
+                height: 240px;
+            }
+
+            .controls {
+                flex-direction: column;
+                width: 120px;
+                gap: 8px;
+            }
+
+            .control-btn {
+                width: 100%;
+                padding: 8px;
+                font-size: 0.8rem;
+            }
+        }
+
+        /* 高分辨率手机适配 */
+        @media (min-width: 390px) and (max-width: 768px) {
+            .grid-container {
+                width: 340px;
+                height: 340px;
+            }
+
+            .shape {
+                min-height: 35px;
             }
         }
 
