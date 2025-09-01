@@ -645,9 +645,9 @@
                 font-size: 0.9rem;
             }
             
-            /* 移动端性能优化 - 修复对齐问题 */
+            /* 移动端性能优化 - 精确对齐调整 */
             .shape-red, .shape-blue, .shape-green, .shape-yellow, .shape-purple, .shape-orange {
-                transform: scale(0.65) translate(-85%, -78%) !important; /* 移动端增加更大的左上偏移修复对齐 */
+                transform: scale(0.65) translate(-60%, -58%) !important; /* 精确调整：左偏移减0.25，上偏移减0.2 */
                 padding: 2px !important; /* 减少内边距 */
                 will-change: transform; /* 启用硬件加速 */
                 -webkit-backface-visibility: hidden; /* iOS优化 */
@@ -655,7 +655,7 @@
             }
             
             .shape.selected {
-                transform: scale(0.75) translate(-85%, -78%) !important; /* 选中时保持相同偏移 */
+                transform: scale(0.75) translate(-60%, -58%) !important; /* 选中时保持相同精确偏移 */
             }
             
             /* 简化移动端动画 */
