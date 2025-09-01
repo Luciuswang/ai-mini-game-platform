@@ -1,6 +1,6 @@
 {
   "name": "ai-mini-game-platform",
-  "version": "1.0.9",
+  "version": "1.3.0",
   "description": "AI驱动的小游戏平台 - 支持实时对战和智能助手",
   "main": "server.js",
   "scripts": {

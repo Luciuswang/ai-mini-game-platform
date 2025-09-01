@@ -1214,6 +1214,67 @@
     // 留言板功能
     let currentRatings = { shooter: 0, match3: 0 }; // 当前选择的评分
     
+    // 云存储配置 (JSONBin.io)
+    const CLOUD_CONFIG = {
+        API_URL: 'https://api.jsonbin.io/v3/b',
+        // 为每个游戏使用不同的Bin ID
+        BIN_IDS: {
+            shooter: '67762018ad19ca34f8d7f6c6', 
+            match3: '67762025ad19ca34f8d7f6c9'
+        },
+        HEADERS: {
+            'Content-Type': 'application/json',
+            'X-Master-Key': '$2a$10$vN.tS8y0YdEzKq5mF9vB6.8xR7wP3nU2cM4hG1fK0sL6jT9aQ5eX8'  // 测试密钥
+        }
+    };
+    
+    // 云存储工具函数
+    async function saveToCloud(gameId, feedbacks) {
+        try {
+            const binId = CLOUD_CONFIG.BIN_IDS[gameId];
+            const response = await fetch(`${CLOUD_CONFIG.API_URL}/${binId}`, {
+                method: 'PUT',
+                headers: CLOUD_CONFIG.HEADERS,
+                body: JSON.stringify({ feedbacks })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`云存储失败: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('云存储错误:', error);
+            // 降级到本地存储
+            const key = `feedback_${gameId}`;
+            localStorage.setItem(key, JSON.stringify(feedbacks));
+            throw error;
+        }
+    }
+    
+    async function loadFromCloud(gameId) {
+        try {
+            const binId = CLOUD_CONFIG.BIN_IDS[gameId];
+            const response = await fetch(`${CLOUD_CONFIG.API_URL}/${binId}`, {
+                headers: {
+                    'X-Master-Key': CLOUD_CONFIG.HEADERS['X-Master-Key']
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`云加载失败: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            return data.record?.feedbacks || [];
+        } catch (error) {
+            console.error('云加载错误:', error);
+            // 降级到本地存储
+            const key = `feedback_${gameId}`;
+            return JSON.parse(localStorage.getItem(key) || '[]');
+        }
+    }
+    
     // 初始化留言板
     function initFeedbackBoards() {
         // 为每个游戏初始化留言板
@@ -1283,8 +1344,8 @@
         });
     }
     
-    // 提交反馈
-    function submitFeedback(gameId) {
+    // 提交反馈 (使用云存储)
+    async function submitFeedback(gameId) {
         const nameInput = document.getElementById(`name-${gameId}`);
         const messageInput = document.getElementById(`message-${gameId}`);
         const submitBtn = document.querySelector(`[onclick="submitFeedback('${gameId}')"]`);
@@ -1306,10 +1367,9 @@
         
         // 禁用按钮，防止重复提交
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 提交中...';
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 提交到云端...';
         
-        // 模拟提交延迟
-        setTimeout(() => {
+        try {
             const feedback = {
                 id: Date.now() + 3000, // 确保用户留言ID大于社区留言ID
                 author: name,
@@ -1319,11 +1379,22 @@
                 game: gameId
             };
             
-            // 保存到本地存储
-            saveFeedback(gameId, feedback);
+            // 从云端加载现有留言
+            const existingFeedbacks = await loadFromCloud(gameId);
+            
+            // 添加新留言到开头
+            const updatedFeedbacks = [feedback, ...existingFeedbacks];
+            
+            // 限制留言数量 (最多50条)
+            if (updatedFeedbacks.length > 50) {
+                updatedFeedbacks.splice(50);
+            }
+            
+            // 保存到云端
+            await saveToCloud(gameId, updatedFeedbacks);
             
             // 重新加载留言列表
-            loadFeedbacks(gameId);
+            await loadFeedbacks(gameId);
             
             // 清空表单
             nameInput.value = '';
@@ -1339,8 +1410,18 @@
             submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 发表留言';
             
             // 成功提示
-            showToast('留言发表成功！感谢您的反馈 ✨');
-        }, 800);
+            showToast('留言发表成功！已同步到所有设备 🌐✨');
+            
+        } catch (error) {
+            console.error('提交留言失败:', error);
+            
+            // 恢复按钮状态
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 发表留言';
+            
+            // 错误提示
+            showToast('网络错误，留言已保存到本地 💾', 'error');
+        }
     }
     
     // 保存反馈到本地存储
@@ -1357,33 +1438,43 @@
         localStorage.setItem(key, JSON.stringify(feedbacks));
     }
     
-    // 加载留言列表 (混合显示社区留言和用户留言)
-    function loadFeedbacks(gameId) {
-        const key = `feedback_${gameId}`;
-        const userFeedbacks = JSON.parse(localStorage.getItem(key) || '[]');
-        const communityFeedbacks = getCommunityFeedbacks(gameId);
+    // 加载留言列表 (从云端加载用户留言，混合社区留言)
+    async function loadFeedbacks(gameId) {
         const container = document.getElementById(`messages-${gameId}`);
         
-        // 合并社区留言和用户留言，按时间排序
-        const allFeedbacks = [...communityFeedbacks, ...userFeedbacks];
-        allFeedbacks.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        // 显示加载状态
+        container.innerHTML = '<div style="text-align: center; padding: 20px; color: #4ecdc4;"><i class="fas fa-spinner fa-spin"></i> 加载留言中...</div>';
         
-        // 限制显示最多30条留言
-        const displayFeedbacks = allFeedbacks.slice(0, 30);
-        
-        container.innerHTML = '';
-        
-        displayFeedbacks.forEach(feedback => {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'feedback-message';
-            // 用户留言添加特殊标识
-            if (feedback.id < 3000) { // 社区留言的ID都大于等于1000
-                messageDiv.classList.add('community-message');
-            } else {
-                messageDiv.classList.add('user-message');
+        try {
+            // 从云端加载用户留言
+            const cloudFeedbacks = await loadFromCloud(gameId);
+            const communityFeedbacks = getCommunityFeedbacks(gameId);
+            
+            // 合并社区留言和云端用户留言，按时间排序
+            const allFeedbacks = [...communityFeedbacks, ...cloudFeedbacks];
+            allFeedbacks.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            // 限制显示最多30条留言
+            const displayFeedbacks = allFeedbacks.slice(0, 30);
+            
+            container.innerHTML = '';
+            
+            if (displayFeedbacks.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 20px; color: #999;">暂无留言，快来发表第一条吧！</div>';
+                return;
             }
             
-            const timeStr = formatTime(feedback.timestamp);
+            displayFeedbacks.forEach(feedback => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'feedback-message';
+                // 用户留言添加特殊标识
+                if (feedback.id < 3000) { // 社区留言的ID都小于3000
+                    messageDiv.classList.add('community-message');
+                } else {
+                    messageDiv.classList.add('user-message');
+                }
+                
+                const timeStr = formatTime(feedback.timestamp);
             const stars = '⭐'.repeat(feedback.rating);
             
             messageDiv.innerHTML = `
@@ -1397,6 +1488,44 @@
             
             container.appendChild(messageDiv);
         });
+        
+        } catch (error) {
+            console.error('加载留言失败:', error);
+            
+            // 显示错误状态，但仍尝试显示社区留言
+            const communityFeedbacks = getCommunityFeedbacks(gameId);
+            container.innerHTML = '';
+            
+            if (communityFeedbacks.length > 0) {
+                // 显示警告信息
+                const warningDiv = document.createElement('div');
+                warningDiv.style.cssText = 'text-align: center; padding: 10px; color: #f39c12; background: rgba(243, 156, 18, 0.1); border-radius: 5px; margin-bottom: 15px; font-size: 0.9rem;';
+                warningDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> 网络连接异常，仅显示社区留言';
+                container.appendChild(warningDiv);
+                
+                // 显示社区留言
+                communityFeedbacks.forEach(feedback => {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'feedback-message community-message';
+                    
+                    const timeStr = formatTime(feedback.timestamp);
+                    const stars = '⭐'.repeat(feedback.rating);
+                    
+                    messageDiv.innerHTML = `
+                        <div class="message-header">
+                            <span class="message-author">${escapeHtml(feedback.author)}</span>
+                            <span class="message-time">${timeStr}</span>
+                        </div>
+                        <div class="message-rating">${stars} ${feedback.rating}/5</div>
+                        <div class="message-text">${escapeHtml(feedback.message)}</div>
+                    `;
+                    
+                    container.appendChild(messageDiv);
+                });
+            } else {
+                container.innerHTML = '<div style="text-align: center; padding: 20px; color: #e74c3c;">网络错误，无法加载留言 😞</div>';
+            }
+        }
     }
     
     // 获取社区留言 (包含大量预置留言模拟真实社区)
@@ -1636,15 +1765,23 @@
         return div.innerHTML;
     }
     
-    // 简单的提示函数
-    function showToast(message) {
+    // 简单的提示函数 (支持不同类型)
+    function showToast(message, type = 'success') {
         const toast = document.createElement('div');
+        
+        const colors = {
+            success: 'rgba(78, 205, 196, 0.95)',
+            error: 'rgba(231, 76, 60, 0.95)',
+            warning: 'rgba(243, 156, 18, 0.95)',
+            info: 'rgba(52, 152, 219, 0.95)'
+        };
+        
         toast.style.cssText = `
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(78, 205, 196, 0.95);
+            background: ${colors[type] || colors.success};
             color: white;
             padding: 15px 25px;
             border-radius: 8px;
@@ -1652,6 +1789,7 @@
             font-size: 1rem;
             backdrop-filter: blur(10px);
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
         `;
         toast.textContent = message;
         
@@ -1661,9 +1799,11 @@
             toast.style.opacity = '0';
             toast.style.transform = 'translate(-50%, -50%) scale(0.8)';
             setTimeout(() => {
-                document.body.removeChild(toast);
+                if (document.body.contains(toast)) {
+                    document.body.removeChild(toast);
+                }
             }, 300);
-        }, 2000);
+        }, type === 'error' ? 3000 : 2000); // 错误提示显示更久
     }
     </script>
 </body>
