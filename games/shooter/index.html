@@ -473,6 +473,69 @@
             background: rgba(255, 215, 0, 0.6);
             box-shadow: 0 2px 8px rgba(212, 175, 55, 0.5);
         }
+        
+        /* 全屏模式按钮 */
+        .fullscreen-btn {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            font-size: 18px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1002;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s ease;
+        }
+        
+        .fullscreen-btn:hover {
+            background: rgba(0, 0, 0, 0.8);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: scale(1.05);
+        }
+        
+        .fullscreen-btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* 退出全屏按钮 */
+        .exit-fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(220, 53, 69, 0.8);
+            border: 3px solid rgba(255, 255, 255, 0.8);
+            color: white;
+            font-size: 20px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(220, 53, 69, 0.4);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        
+        .exit-fullscreen-btn:hover {
+            background: rgba(220, 53, 69, 1);
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(220, 53, 69, 0.6);
+        }
+        
+        .exit-fullscreen-btn:active {
+            transform: scale(0.9);
+        }
 
         .control-btn {
             width: 70px;
@@ -517,12 +580,20 @@
                 display: flex;
             }
             
+            .fullscreen-btn {
+                display: flex;
+            }
+            
             /* PC端检测：如果是大屏幕，隐藏移动射击按钮 */
         }
         
-        /* PC端和大屏设备：隐藏移动端射击按钮 */
+        /* PC端和大屏设备：隐藏移动端按钮 */
         @media (min-width: 769px) {
             .mobile-shoot-btn {
+                display: none !important;
+            }
+            
+            .fullscreen-btn {
                 display: none !important;
             }
         }
@@ -580,6 +651,16 @@
         <!-- 新的移动端射击按钮（右下角） -->
         <div class="mobile-shoot-btn" id="mobileShootBtn">
             <i class="fas fa-rocket"></i>
+        </div>
+        
+        <!-- 全屏模式按钮（移动端右上角） -->
+        <div class="fullscreen-btn" id="fullscreenBtn">
+            <i class="fas fa-expand"></i>
+        </div>
+        
+        <!-- 退出全屏按钮（全屏时显示） -->
+        <div class="exit-fullscreen-btn" id="exitFullscreenBtn">
+            <i class="fas fa-times"></i>
         </div>
         
         <div id="startScreen" class="screen">
@@ -765,6 +846,8 @@
             const rightBtn = document.getElementById('rightBtn');
             const shootBtn = document.getElementById('shootBtn');
             const mobileShootBtn = document.getElementById('mobileShootBtn');
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+            const exitFullscreenBtn = document.getElementById('exitFullscreenBtn');
             const audioToggle = document.getElementById('audioToggle');
 
             // 游戏资源（必须在使用前定义）
@@ -799,6 +882,7 @@
             let gameState = {
                 bullets: [],
                 enemies: [],
+                enemyBullets: [],
                 particles: [],
                 plane: { x: 0, y: 0, width: 60, height: 72 }, // 调整高度比例
                 running: false,
@@ -818,6 +902,7 @@
             // 对象池
             const bulletPool = [];
             const enemyPool = [];
+            const enemyBulletPool = [];
             const particlePool = [];
 
             // 初始化Web Audio Context（需要用户交互）
@@ -1034,6 +1119,7 @@
                 
                 gameState.bullets = [];
                 gameState.enemies = [];
+                gameState.enemyBullets = [];
                 gameState.particles = [];
                 gameState.plane.x = gameCanvas.width / 2 - gameState.plane.width / 2;
                 gameState.plane.y = gameCanvas.height - 150;
@@ -1129,6 +1215,7 @@
                 
                 gameState.bullets = [];
                 gameState.enemies = [];
+                gameState.enemyBullets = [];
                 gameState.particles = [];
                 gameState.plane.x = gameCanvas.width / 2 - gameState.plane.width / 2;
                 gameState.plane.y = gameCanvas.height - 150;
@@ -1306,6 +1393,15 @@
                         ctx.beginPath();
                         ctx.arc(e.x + e.width/2, e.y + e.height/2, 15, 0, Math.PI * 2);
                         ctx.stroke();
+                        
+                        // 大敌机射击逻辑 (基于分数调整射击频率)
+                        if (e.y > 50 && e.y < gameCanvas.height - 200) { // 只在合理位置射击
+                            const difficultyLevel = Math.min(Math.floor(gameState.score / 20), 10); // 每20分增加一级难度
+                            const shootProbability = Math.min(0.015 + difficultyLevel * 0.01, 0.1); // 基础1.5%，最高10%
+                            if (Math.random() < shootProbability) {
+                                createEnemyBullet(e.x + e.width/2, e.y + e.height);
+                            }
+                        }
                     }
                     
                     ctx.restore();
@@ -1313,6 +1409,56 @@
                     if (e.y > gameCanvas.height) {
                         gameState.enemies.splice(i, 1);
                         enemyPool.push(e);
+                    }
+                }
+            }
+
+            // 创建敌机子弹
+            function createEnemyBullet(x, y) {
+                let bullet;
+                if (enemyBulletPool.length > 0) {
+                    bullet = enemyBulletPool.pop();
+                    Object.assign(bullet, {
+                        x: x - 3,
+                        y: y,
+                        width: 6,
+                        height: 12,
+                        speed: 4 + Math.min(gameState.score / 30, 3), // 速度随分数增加
+                        active: true
+                    });
+                } else {
+                    bullet = {
+                        x: x - 3,
+                        y: y,
+                        width: 6,
+                        height: 12,
+                        speed: 4 + Math.min(gameState.score / 30, 3),
+                        active: true
+                    };
+                }
+                gameState.enemyBullets.push(bullet);
+            }
+
+            // 绘制敌机子弹
+            function drawEnemyBullets() {
+                for (let i = gameState.enemyBullets.length - 1; i >= 0; i--) {
+                    const bullet = gameState.enemyBullets[i];
+                    bullet.y += bullet.speed;
+                    
+                    // 绘制红色子弹
+                    ctx.save();
+                    ctx.fillStyle = '#ff4444';
+                    ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                    
+                    // 子弹发光效果
+                    ctx.fillStyle = '#ff8888';
+                    ctx.fillRect(bullet.x + 1, bullet.y + 1, bullet.width - 2, bullet.height - 2);
+                    ctx.restore();
+                    
+                    // 移除超出屏幕的子弹
+                    if (bullet.y > gameCanvas.height) {
+                        gameState.enemyBullets.splice(i, 1);
+                        enemyBulletPool.push(bullet);
                     }
                 }
             }
@@ -1484,6 +1630,47 @@
                         }
                     }
                 }
+                
+                // 敌机子弹与玩家飞机碰撞检测
+                for (let i = gameState.enemyBullets.length - 1; i >= 0; i--) {
+                    const bullet = gameState.enemyBullets[i];
+                    
+                    if (gameState.plane.x < bullet.x + bullet.width &&
+                        gameState.plane.x + gameState.plane.width > bullet.x &&
+                        gameState.plane.y < bullet.y + bullet.height &&
+                        gameState.plane.y + gameState.plane.height > bullet.y) {
+                        
+                        // 创建爆炸效果
+                        createExplosion(bullet.x + bullet.width/2, bullet.y + bullet.height/2, '#ff4444');
+                        
+                        // 移除子弹
+                        gameState.enemyBullets.splice(i, 1);
+                        enemyBulletPool.push(bullet);
+                        
+                        // 玩家受伤
+                        const damage = 15 + Math.floor(gameState.score / 25); // 基础伤害15，每25分增加1点
+                        gameState.health -= damage;
+                        healthDisplay.textContent = gameState.health;
+                        
+                        // 播放受伤音效
+                        playSound('explosion', 0.2);
+                        
+                        // 显示伤害数字
+                        showFloatingText(`-${damage}`, gameState.plane.x + gameState.plane.width/2, gameState.plane.y);
+                        
+                        if (gameState.health <= 0) {
+                            gameState.running = false;
+                            stopBackgroundMusic();
+                            clearInterval(gameState.enemyInterval);
+                            cancelAnimationFrame(gameState.gameLoopId);
+                            
+                            setTimeout(() => {
+                                alert('游戏结束！敌机反击成功！点击确定重新开始。');
+                                startScreen.style.display = 'flex';
+                            }, 500);
+                        }
+                    }
+                }
             }
 
             // 游戏主循环
@@ -1497,6 +1684,7 @@
                 drawPlane();
                 drawBullets();
                 drawEnemies();
+                drawEnemyBullets();
                 drawParticles();
                 checkCollisions();
                 
@@ -1625,6 +1813,58 @@
                     shoot();
                 }
             });
+            
+            // 全屏功能
+            function enterFullscreen() {
+                const element = document.documentElement;
+                if (element.requestFullscreen) {
+                    element.requestFullscreen();
+                } else if (element.webkitRequestFullscreen) {
+                    element.webkitRequestFullscreen();
+                } else if (element.msRequestFullscreen) {
+                    element.msRequestFullscreen();
+                }
+            }
+            
+            function exitFullscreen() {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+            
+            function updateFullscreenUI() {
+                const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+                
+                if (isFullscreen) {
+                    fullscreenBtn.style.display = 'none';
+                    exitFullscreenBtn.style.display = 'flex';
+                    console.log('🎮 进入全屏沉浸模式');
+                } else {
+                    fullscreenBtn.style.display = 'flex';
+                    exitFullscreenBtn.style.display = 'none';
+                    console.log('🔄 退出全屏模式');
+                }
+            }
+            
+            // 全屏按钮事件
+            fullscreenBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                enterFullscreen();
+            });
+            
+            exitFullscreenBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                exitFullscreen();
+            });
+            
+            // 监听全屏状态变化
+            document.addEventListener('fullscreenchange', updateFullscreenUI);
+            document.addEventListener('webkitfullscreenchange', updateFullscreenUI);
+            document.addEventListener('msfullscreenchange', updateFullscreenUI);
 
             // 键盘控制
             document.addEventListener('keydown', (e) => {

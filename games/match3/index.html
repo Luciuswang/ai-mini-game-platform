@@ -261,6 +261,69 @@
         .control-btn:active {
             transform: translateY(0);
         }
+        
+        /* 全屏模式按钮 */
+        .fullscreen-btn {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            font-size: 18px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1002;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s ease;
+        }
+        
+        .fullscreen-btn:hover {
+            background: rgba(0, 0, 0, 0.8);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: scale(1.05);
+        }
+        
+        .fullscreen-btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* 退出全屏按钮 */
+        .exit-fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(220, 53, 69, 0.8);
+            border: 3px solid rgba(255, 255, 255, 0.8);
+            color: white;
+            font-size: 20px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(220, 53, 69, 0.4);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        
+        .exit-fullscreen-btn:hover {
+            background: rgba(220, 53, 69, 1);
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(220, 53, 69, 0.6);
+        }
+        
+        .exit-fullscreen-btn:active {
+            transform: scale(0.9);
+        }
 
         .game-board {
             background: linear-gradient(145deg, var(--bg-primary), var(--bg-secondary));
@@ -662,6 +725,18 @@
             .shape {
                 transition: transform 0.15s ease !important;
             }
+            
+            /* 移动端显示全屏按钮 */
+            .fullscreen-btn {
+                display: flex !important;
+            }
+        }
+        
+        /* PC端和大屏设备：隐藏全屏按钮 */
+        @media (min-width: 769px) {
+            .fullscreen-btn {
+                display: none !important;
+            }
 
             .overlay-title {
                 font-size: 2.5rem;
@@ -864,6 +939,16 @@
         <a href="../../index.html" class="back-btn" title="返回主页">
             <i class="fas fa-arrow-left"></i>
         </a>
+        
+        <!-- 全屏模式按钮（移动端右上角） -->
+        <div class="fullscreen-btn" id="fullscreenBtn">
+            <i class="fas fa-expand"></i>
+        </div>
+        
+        <!-- 退出全屏按钮（全屏时显示） -->
+        <div class="exit-fullscreen-btn" id="exitFullscreenBtn">
+            <i class="fas fa-times"></i>
+        </div>
 
         <div class="header">
             <h1 class="title">立体消消乐</h1>
@@ -1900,6 +1985,44 @@
         // 初始化游戏
         let game;
 
+        // 全屏功能
+        function enterFullscreen() {
+            const element = document.documentElement;
+            if (element.requestFullscreen) {
+                element.requestFullscreen();
+            } else if (element.webkitRequestFullscreen) {
+                element.webkitRequestFullscreen();
+            } else if (element.msRequestFullscreen) {
+                element.msRequestFullscreen();
+            }
+        }
+        
+        function exitFullscreen() {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+        }
+        
+        function updateFullscreenUI() {
+            const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+            const exitFullscreenBtn = document.getElementById('exitFullscreenBtn');
+            
+            if (isFullscreen) {
+                fullscreenBtn.style.display = 'none';
+                exitFullscreenBtn.style.display = 'flex';
+                console.log('🎮 消消乐进入全屏沉浸模式');
+            } else {
+                fullscreenBtn.style.display = 'flex';
+                exitFullscreenBtn.style.display = 'none';
+                console.log('🔄 消消乐退出全屏模式');
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             // 移动端特殊处理
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -1948,6 +2071,29 @@
                     console.log(`📊 移动端性能检查: 已渲染 ${shapes.length} 个游戏元素`);
                 }, 1000);
             }
+            
+            // 全屏按钮事件
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+            const exitFullscreenBtn = document.getElementById('exitFullscreenBtn');
+            
+            if (fullscreenBtn) {
+                fullscreenBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    enterFullscreen();
+                });
+            }
+            
+            if (exitFullscreenBtn) {
+                exitFullscreenBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    exitFullscreen();
+                });
+            }
+            
+            // 监听全屏状态变化
+            document.addEventListener('fullscreenchange', updateFullscreenUI);
+            document.addEventListener('webkitfullscreenchange', updateFullscreenUI);
+            document.addEventListener('msfullscreenchange', updateFullscreenUI);
         });
 
         // 全局函数
