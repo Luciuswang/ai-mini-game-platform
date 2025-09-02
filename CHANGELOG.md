@@ -5,6 +5,19 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 规范。
 
+## [1.6.2] - 2025-01-18
+
+### 🔧 紧急修复 - GLTFLoader加载问题
+- **GLTFLoader路径修复**：改用threejs.org官方CDN，解决模块加载失败
+- **CDN优先级调整**：threejs.org作为主要GLTFLoader源
+- **备用源优化**：更新GLTFLoader备用CDN列表
+- **GitHub Pages兼容**：确保部署后3D功能正常工作
+
+### 🌐 网络兼容性增强
+- **官方源优先**：使用Three.js官方提供的GLTFLoader
+- **路径标准化**：统一使用稳定的CDN路径
+- **加载可靠性**：提升3D模型加载成功率
+
 ## [1.6.0] - 2025-01-18
 
 ### 🚀 3D飞机革命 - 混元AI模型集成 (里程碑式升级)
