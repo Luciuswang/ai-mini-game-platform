@@ -14,11 +14,145 @@
     <!-- 访客计数器 -->
     <script src="../../visitor-counter.js"></script>
     
-    <!-- Three.js 3D渲染库 - 用于3D飞机模型 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r157/three.min.js" 
-            onerror="console.warn('⚠️ Three.js CDN加载失败，将使用2D模式')"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/loaders/GLTFLoader.js"
-            onerror="console.warn('⚠️ GLTFLoader CDN加载失败，将使用2D模式')"></script>
+    <!-- Three.js 3D渲染库 - 多CDN备用方案 -->
+    <script id="threejs-main" src="https://unpkg.com/three@0.157.0/build/three.min.js" 
+            onerror="loadBackupThreeJS()"></script>
+    <script id="gltfloader-main" src="https://unpkg.com/three@0.157.0/examples/js/loaders/GLTFLoader.js"
+            onerror="loadBackupGLTFLoader()"></script>
+    
+    <!-- 多CDN备用系统 -->
+    <script>
+        // Three.js备用CDN列表
+        const threeJSCDNs = [
+            'https://cdnjs.cloudflare.com/ajax/libs/three.js/r157/three.min.js',
+            'https://unpkg.com/three@0.157.0/build/three.min.js',
+            'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js',
+            'https://threejs.org/build/three.min.js'
+        ];
+        
+        // GLTFLoader备用CDN列表
+        const gltfLoaderCDNs = [
+            'https://unpkg.com/three@0.157.0/examples/js/loaders/GLTFLoader.js',
+            'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/loaders/GLTFLoader.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/three.js/r157/examples/js/loaders/GLTFLoader.js'
+        ];
+        
+        let threeJSCDNIndex = 0;
+        let gltfLoaderCDNIndex = 0;
+        
+        function loadBackupThreeJS() {
+            console.log('🔄 Three.js主CDN失败，尝试备用源...');
+            threeJSCDNIndex++;
+            
+            if (threeJSCDNIndex < threeJSCDNs.length) {
+                const script = document.createElement('script');
+                script.src = threeJSCDNs[threeJSCDNIndex];
+                script.onload = () => {
+                    console.log('✅ Three.js备用CDN加载成功:', threeJSCDNs[threeJSCDNIndex]);
+                };
+                script.onerror = () => {
+                    console.warn('❌ Three.js备用CDN失败:', threeJSCDNs[threeJSCDNIndex]);
+                    loadBackupThreeJS();
+                };
+                document.head.appendChild(script);
+            } else {
+                console.error('❌ 所有Three.js CDN都失败，启用离线模式');
+                window.threeJSLoadFailed = true;
+            }
+        }
+        
+        function loadBackupGLTFLoader() {
+            console.log('🔄 GLTFLoader主CDN失败，尝试备用源...');
+            gltfLoaderCDNIndex++;
+            
+            if (gltfLoaderCDNIndex < gltfLoaderCDNs.length) {
+                const script = document.createElement('script');
+                script.src = gltfLoaderCDNs[gltfLoaderCDNIndex];
+                script.onload = () => {
+                    console.log('✅ GLTFLoader备用CDN加载成功:', gltfLoaderCDNs[gltfLoaderCDNIndex]);
+                };
+                script.onerror = () => {
+                    console.warn('❌ GLTFLoader备用CDN失败:', gltfLoaderCDNs[gltfLoaderCDNIndex]);
+                    loadBackupGLTFLoader();
+                };
+                document.head.appendChild(script);
+            } else {
+                console.error('❌ 所有GLTFLoader CDN都失败，将使用2D模式');
+                window.gltfLoaderLoadFailed = true;
+            }
+        }
+        
+        // 检查加载状态的函数
+        function checkThreeJSStatus() {
+            return new Promise((resolve) => {
+                const checkInterval = setInterval(() => {
+                    if (typeof THREE !== 'undefined') {
+                        clearInterval(checkInterval);
+                        console.log('✅ Three.js最终加载成功');
+                        resolve(true);
+                    } else if (window.threeJSLoadFailed) {
+                        clearInterval(checkInterval);
+                        console.log('❌ Three.js加载失败，使用2D模式');
+                        resolve(false);
+                    }
+                }, 100);
+                
+                // 超时处理
+                setTimeout(() => {
+                    clearInterval(checkInterval);
+                    if (typeof THREE === 'undefined') {
+                        console.log('⏰ Three.js加载超时，使用2D模式');
+                        resolve(false);
+                    }
+                }, 10000);
+            });
+        }
+    </script>
+    
+    <!-- 3D模型调试工具 -->
+    <script>
+        // 检查Three.js和模型文件状态
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                console.log('🔍 Three.js检查:', typeof THREE !== 'undefined' ? '✅ 已加载' : '❌ 未加载');
+                
+                // 检查GLTFLoader的多种可能性
+                let gltfLoaderStatus = '❌ 未找到';
+                if (typeof THREE !== 'undefined') {
+                    if (typeof THREE.GLTFLoader !== 'undefined') {
+                        gltfLoaderStatus = '✅ THREE.GLTFLoader可用';
+                    } else if (typeof window.GLTFLoader !== 'undefined') {
+                        gltfLoaderStatus = '✅ window.GLTFLoader可用';
+                    } else if (typeof GLTFLoader !== 'undefined') {
+                        gltfLoaderStatus = '✅ 全局GLTFLoader可用';
+                    }
+                }
+                console.log('🔍 GLTFLoader检查:', gltfLoaderStatus);
+                
+                // 检查模型文件是否可访问
+                testModelFileAccess();
+            }, 1500);
+        });
+        
+        // 测试模型文件可访问性
+        function testModelFileAccess() {
+            const modelPath = 'assets/hunyuan-fighter/fighter.glb';
+            console.log('🔍 测试模型文件访问...');
+            
+            fetch(modelPath, { method: 'HEAD' })
+                .then(response => {
+                    if (response.ok) {
+                        console.log('✅ 模型文件可访问:', response.status);
+                    } else {
+                        console.warn('⚠️ 模型文件响应异常:', response.status);
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ 模型文件无法访问:', error);
+                    console.log('💡 建议检查文件路径和服务器配置');
+                });
+        }
+    </script>
     
     <style>
         * {
@@ -687,6 +821,8 @@
             <p class="subtitle">经典空战射击游戏 - PC端：鼠标控制战机；手机端：手指滑动控制位置，右下角射击按钮开火。击毁100架敌机解锁神秘惊喜！</p>
             <button id="startBtn" class="btn">开始游戏</button>
             <button id="emergencyBtn" class="btn" style="margin-top: 10px; background: #ff6b6b; display: none;">🚨 应急启动</button>
+            <button id="test3DBtn" class="btn" style="margin-top: 10px; background: #4CAF50; font-size: 12px; padding: 6px 16px;">🛩️ 测试3D</button>
+            <div id="3d-status" style="margin-top: 8px; font-size: 11px; color: #888; text-align: center;">🔄 3D系统初始化中...</div>
             <button id="audioToggle" class="btn" style="margin-top: 15px; font-size: 14px; padding: 8px 20px;">🔊 音效开启</button>
             <div style="position: absolute; bottom: 30px; color: #5d8aa8; font-size: 14px;">
                 空中战斗 | 挑战极限 | 神秘惊喜
@@ -823,17 +959,46 @@
             
             function load3DAircraft() {
                 console.log('🤖 开始加载混元AI飞机模型...');
+                update3DStatus('🤖 准备加载混元AI飞机模型...', '#2196F3');
                 
-                // 检查GLTFLoader是否可用
-                if (typeof THREE.GLTFLoader === 'undefined') {
-                    console.warn('⚠️ GLTFLoader未加载，跳过3D模型加载');
+                // 检查GLTFLoader是否可用（兼容多种加载方式）
+                let GLTFLoader = null;
+                
+                if (typeof THREE !== 'undefined') {
+                    // 尝试多种GLTFLoader访问方式
+                    GLTFLoader = THREE.GLTFLoader || 
+                                window.GLTFLoader || 
+                                (window.THREE && window.THREE.GLTFLoader);
+                }
+                
+                // 如果还是没找到，尝试全局GLTFLoader
+                if (!GLTFLoader && typeof window.GLTFLoader !== 'undefined') {
+                    GLTFLoader = window.GLTFLoader;
+                }
+                
+                if (!GLTFLoader) {
+                    console.warn('⚠️ GLTFLoader未找到，跳过3D模型加载');
+                    console.log('🔄 将显示2D飞机图片');
+                    console.log('💡 可能的原因: CDN加载失败或版本不兼容');
                     return;
                 }
                 
+                console.log('✅ GLTFLoader已准备就绪');
+                
                 try {
-                    const loader = new THREE.GLTFLoader();
+                    const loader = new GLTFLoader();
+                    
+                    // 调试：检查模型路径
+                    const modelPath = 'assets/hunyuan-fighter/fighter.glb';
+                    const fullPath = window.location.href.split('/').slice(0, -1).join('/') + '/' + modelPath;
+                    console.log('🔍 尝试加载模型:', {
+                        相对路径: modelPath,
+                        完整路径: fullPath,
+                        当前位置: window.location.href
+                    });
+                    
                 loader.load(
-                    'assets/hunyuan-fighter/fighter.glb',
+                    modelPath,
                     function(gltf) {
                         planeModel3D = gltf.scene;
                         
@@ -855,6 +1020,7 @@
                         
                         scene3D.add(planeModel3D);
                         console.log('🎊 混元AI飞机模型加载成功！');
+                        update3DStatus('🎊 混元AI 3D飞机加载完成！', '#4CAF50');
                         
                         // 打印模型信息
                         console.log('📊 模型信息:', {
@@ -876,11 +1042,30 @@
                         console.log('📊 实际模型信息:', { geometryCount, materialCount, faceCount });
                     },
                     function(progress) {
-                        console.log('⏳ 模型加载进度:', Math.round((progress.loaded / progress.total) * 100) + '%');
+                        const percent = Math.round((progress.loaded / progress.total) * 100);
+                        console.log('⏳ 模型加载进度:', percent + '%');
+                        update3DStatus(`⏳ 混元AI模型加载中... ${percent}%`, '#2196F3');
                     },
                     function(error) {
                         console.error('❌ 混元AI模型加载失败:', error);
+                        console.log('📋 错误详情:', {
+                            错误类型: error.constructor.name,
+                            错误消息: error.message,
+                            文件路径: modelPath,
+                            建议: '检查文件是否存在且可访问'
+                        });
                         console.log('🔄 切换到2D后备模式');
+                        
+                        // 更新状态显示
+                        if (error.message.includes('404')) {
+                            update3DStatus('❌ 3D模型文件未找到，使用2D模式', '#f44336');
+                            console.log('💡 提示: 模型文件未找到，请检查路径');
+                        } else if (error.message.includes('CORS')) {
+                            update3DStatus('❌ 模型访问被阻止，使用2D模式', '#f44336');
+                            console.log('💡 提示: 跨域访问被阻止，请检查服务器配置');
+                        } else {
+                            update3DStatus('❌ 3D模型加载失败，使用2D模式', '#f44336');
+                        }
                     }
                 );
                 } catch (error) {
@@ -916,10 +1101,45 @@
                 }
             }
             
-            // 异步初始化3D系统（不阻塞游戏启动）
-            setTimeout(() => {
-                init3DSystem();
-            }, 100);
+            // 更新3D状态显示
+            function update3DStatus(message, color = '#888') {
+                const statusElement = document.getElementById('3d-status');
+                if (statusElement) {
+                    statusElement.textContent = message;
+                    statusElement.style.color = color;
+                }
+            }
+            
+            // 智能3D系统初始化（等待Three.js加载完成）
+            async function smart3DInit() {
+                console.log('🛩️ 智能3D初始化开始...');
+                update3DStatus('🔄 检查Three.js加载状态...', '#ff9800');
+                
+                // 等待Three.js加载完成
+                const threeJSLoaded = await checkThreeJSStatus();
+                
+                if (threeJSLoaded) {
+                    console.log('✅ Three.js确认加载完成，开始3D系统初始化');
+                    update3DStatus('✅ Three.js已加载，初始化3D系统...', '#4CAF50');
+                    init3DSystem();
+                    
+                    // 检查3D系统是否成功初始化
+                    setTimeout(() => {
+                        if (scene3D && renderer3D) {
+                            update3DStatus('🎊 3D系统就绪！点击测试3D查看效果', '#4CAF50');
+                        } else {
+                            update3DStatus('⚠️ 3D系统部分功能异常', '#ff9800');
+                        }
+                    }, 2000);
+                } else {
+                    console.log('❌ Three.js加载失败，跳过3D初始化');
+                    console.log('🔄 游戏将以2D模式运行');
+                    update3DStatus('❌ CDN被阻塞，使用2D模式', '#f44336');
+                }
+            }
+            
+            // 延迟启动，给CDN时间加载
+            setTimeout(smart3DInit, 500);
             
             // Create ocean background using Canvas 2D API
             const shaderCanvas = document.getElementById('shaderCanvas');
@@ -1031,6 +1251,7 @@
             const fullscreenBtn = document.getElementById('fullscreenBtn');
             const exitFullscreenBtn = document.getElementById('exitFullscreenBtn');
             const emergencyBtn = document.getElementById('emergencyBtn');
+            const test3DBtn = document.getElementById('test3DBtn');
             const audioToggle = document.getElementById('audioToggle');
 
             // 游戏资源（必须在使用前定义）
@@ -1994,6 +2215,79 @@
                 }, 1000);
                 
                 console.log('🚨 应急模式游戏已启动');
+            });
+            
+            // 测试3D按钮 - 异步版本
+            test3DBtn.addEventListener('click', async function() {
+                console.log('🛩️ 手动测试3D系统...');
+                console.log('=== 3D系统诊断开始 ===');
+                
+                // 显示加载提示
+                test3DBtn.textContent = '⏳ 检测中...';
+                test3DBtn.disabled = true;
+                
+                try {
+                    // 1. 检查Three.js状态
+                    console.log('🔍 检查Three.js加载状态...');
+                    const threeJSLoaded = await checkThreeJSStatus();
+                    
+                    if (!threeJSLoaded) {
+                        console.error('❌ Three.js加载失败');
+                        alert('Three.js加载失败，可能是网络问题或CDN被阻塞。游戏将以2D模式运行。');
+                        return;
+                    }
+                    
+                    console.log('✅ Three.js已加载');
+                    
+                    // 2. 检查GLTFLoader
+                    let loaderAvailable = false;
+                    if (THREE.GLTFLoader) {
+                        console.log('✅ THREE.GLTFLoader可用');
+                        loaderAvailable = true;
+                    } else if (window.GLTFLoader) {
+                        console.log('✅ window.GLTFLoader可用');
+                        loaderAvailable = true;
+                    } else {
+                        console.error('❌ GLTFLoader不可用');
+                    }
+                    
+                    // 3. 检查Canvas
+                    const canvas3D = document.getElementById('planeCanvas3D');
+                    if (!canvas3D) {
+                        console.error('❌ 3D Canvas未找到');
+                        alert('3D Canvas元素缺失');
+                        return;
+                    }
+                    console.log('✅ 3D Canvas存在');
+                    
+                    // 4. 手动初始化3D系统
+                    if (loaderAvailable) {
+                        console.log('🔄 手动初始化3D系统...');
+                        init3DSystem();
+                        
+                        // 延迟检查是否成功
+                        setTimeout(() => {
+                            if (planeModel3D) {
+                                console.log('🎊 3D飞机模型加载成功！');
+                                alert('✅ 3D系统测试成功！\n\n现在可以看到3D飞机了！\n请启动游戏体验混元AI生成的3D战斗机。');
+                            } else {
+                                console.warn('⚠️ 3D系统初始化完成，但模型加载中...');
+                                alert('⏳ 3D系统初始化完成\n\n模型正在加载中，请稍等或启动游戏。');
+                            }
+                        }, 3000);
+                    } else {
+                        alert('❌ GLTFLoader不可用\n\n可能是网络问题，无法加载3D模型。');
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ 3D测试过程出错:', error);
+                    alert('3D测试过程中出现错误，请查看控制台了解详情。');
+                } finally {
+                    // 恢复按钮状态
+                    test3DBtn.textContent = '🛩️ 测试3D';
+                    test3DBtn.disabled = false;
+                    console.log('=== 3D系统诊断结束 ===');
+                }
             });
             
             // 音效开关
