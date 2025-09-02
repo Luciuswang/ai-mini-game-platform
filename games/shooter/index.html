@@ -93,20 +93,96 @@
                         resolve(true);
                     } else if (window.threeJSLoadFailed) {
                         clearInterval(checkInterval);
-                        console.log('❌ Three.js加载失败，使用2D模式');
+                        console.log('❌ Three.js加载失败，启用伪3D模式');
                         resolve(false);
                     }
                 }, 100);
                 
-                // 超时处理
+                // 超时处理  
                 setTimeout(() => {
                     clearInterval(checkInterval);
                     if (typeof THREE === 'undefined') {
-                        console.log('⏰ Three.js加载超时，使用2D模式');
+                        console.log('⏰ Three.js加载超时，启用伪3D模式');
                         resolve(false);
                     }
-                }, 10000);
+                }, 5000); // 缩短超时时间
             });
+        }
+        
+        // 伪3D飞机系统 - 当Three.js不可用时的替代方案
+        function initPseudo3DPlane() {
+            console.log('🎨 启用伪3D飞机系统');
+            window.pseudo3DEnabled = true;
+            
+            // 创建伪3D样式
+            const style = document.createElement('style');
+            style.textContent = `
+                .pseudo-3d-plane {
+                    position: absolute;
+                    width: 60px;
+                    height: 60px;
+                    background: linear-gradient(45deg, #0066cc, #004080, #002040);
+                    clip-path: polygon(50% 0%, 100% 50%, 85% 100%, 15% 100%, 0% 50%);
+                    transform-style: preserve-3d;
+                    filter: drop-shadow(0 0 10px rgba(0, 102, 204, 0.8));
+                    transition: transform 0.1s ease-out;
+                }
+                
+                .pseudo-3d-plane::before {
+                    content: '';
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    width: 30px;
+                    height: 30px;
+                    background: radial-gradient(circle, #00ccff, #0080ff);
+                    border-radius: 50%;
+                    transform: translate(-50%, -50%);
+                    animation: pulse 1s infinite;
+                }
+                
+                @keyframes pulse {
+                    0%, 100% { opacity: 0.6; }
+                    50% { opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        // 创建伪3D飞机DOM元素
+        function createPseudo3DPlaneElement() {
+            const planeElement = document.createElement('div');
+            planeElement.id = 'pseudo-3d-plane';
+            planeElement.className = 'pseudo-3d-plane';
+            planeElement.style.display = 'none'; // 游戏开始前隐藏
+            document.body.appendChild(planeElement);
+            
+            window.pseudo3DPlaneElement = planeElement;
+            console.log('🎨 伪3D飞机元素已创建');
+        }
+        
+        // 更新伪3D飞机位置
+        function updatePseudo3DPlane(x, y) {
+            if (window.pseudo3DPlaneElement) {
+                const element = window.pseudo3DPlaneElement;
+                
+                // 位置更新
+                element.style.left = (x - 30) + 'px';
+                element.style.top = (y - 30) + 'px';
+                element.style.display = 'block';
+                
+                // 添加微妙的3D效果
+                const time = Date.now() * 0.003;
+                const tiltX = Math.sin(time) * 2;
+                const tiltY = Math.cos(time * 0.7) * 1;
+                
+                element.style.transform = `
+                    perspective(1000px) 
+                    rotateX(${tiltX}deg) 
+                    rotateY(${tiltY}deg) 
+                    scale(${1 + Math.sin(time * 2) * 0.02})
+                `;
+            }
         }
     </script>
     
@@ -1133,9 +1209,16 @@
                         }
                     }, 2000);
                 } else {
-                    console.log('❌ Three.js加载失败，跳过3D初始化');
-                    console.log('🔄 游戏将以2D模式运行');
-                    update3DStatus('❌ CDN被阻塞，使用2D模式', '#f44336');
+                    console.log('❌ Three.js加载失败，启用伪3D模式');
+                    update3DStatus('🎨 启用伪3D模式', '#2196F3');
+                    initPseudo3DPlane();
+                    
+                    // 创建伪3D飞机元素
+                    createPseudo3DPlaneElement();
+                    
+                    setTimeout(() => {
+                        update3DStatus('🎨 伪3D飞机就绪！享受游戏', '#2196F3');
+                    }, 1000);
                 }
             }
             
@@ -1540,6 +1623,12 @@
                 perfWarning.style.display = 'none';
                 gameState.running = true;
                 
+                // 显示伪3D飞机（如果启用）
+                if (window.pseudo3DEnabled && window.pseudo3DPlaneElement) {
+                    window.pseudo3DPlaneElement.style.display = 'block';
+                    console.log('🎨 伪3D飞机已显示');
+                }
+                
                 // 🔊 初始化音频系统（需要用户交互）
                 initAudioContext().then(() => {
                     console.log('🎵 音频系统已激活');
@@ -1684,23 +1773,33 @@
 
             // 绘制飞机 - 3D/2D混合渲染
             function drawPlane() {
-                // 更新3D飞机位置
-                update3DPlane(gameState.plane.x + gameState.plane.width / 2, gameState.plane.y + gameState.plane.height / 2);
+                // 飞机渲染优先级：真3D > 伪3D > 2D图片 > 几何形状
                 
-                // 保留2D尾焰效果在游戏Canvas上
-                ctx.save();
-                
-                // 如果3D模型未加载，显示2D后备飞机
-                if (!planeModel3D && gameAssets.imageLoaded && gameAssets.planeImage) {
-                    console.log('🔄 3D模型未就绪，使用2D后备模式');
-                    ctx.drawImage(
-                        gameAssets.planeImage,
-                        gameState.plane.x,
-                        gameState.plane.y,
-                        gameState.plane.width,
-                        gameState.plane.height
-                    );
+                // 1. 优先使用真3D飞机
+                if (planeModel3D) {
+                    update3DPlane(gameState.plane.x + gameState.plane.width / 2, gameState.plane.y + gameState.plane.height / 2);
                 }
+                // 2. 其次使用伪3D飞机
+                else if (window.pseudo3DEnabled) {
+                    updatePseudo3DPlane(gameState.plane.x + gameState.plane.width / 2, gameState.plane.y + gameState.plane.height / 2);
+                }
+                // 3. 最后使用2D图片
+                else {
+                    ctx.save();
+                    if (gameAssets.imageLoaded && gameAssets.planeImage) {
+                        ctx.drawImage(
+                            gameAssets.planeImage,
+                            gameState.plane.x,
+                            gameState.plane.y,
+                            gameState.plane.width,
+                            gameState.plane.height
+                        );
+                    }
+                    ctx.restore();
+                }
+                
+                // 保留2D尾焰效果在游戏Canvas上（所有模式都保留）
+                ctx.save();
                 
                 // 绘制发动机尾焰效果（保留在2D层）
                 const flameX = gameState.plane.x + gameState.plane.width / 2;
@@ -1717,8 +1816,8 @@
                 ctx.ellipse(flameX, flameY + 10, 8, 15, 0, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // 如果3D模型和2D图像都未加载，使用几何绘制
-                if (!planeModel3D && (!gameAssets.imageLoaded || !gameAssets.planeImage)) {
+                // 如果没有任何3D和伪3D，且2D图像也未加载，使用几何绘制
+                if (!planeModel3D && !window.pseudo3DEnabled && (!gameAssets.imageLoaded || !gameAssets.planeImage)) {
                     // 使用原始几何绘制作为后备
                     ctx.fillStyle = '#d4af37';
                     ctx.beginPath();
@@ -2037,6 +2136,11 @@
                             cancelAnimationFrame(gameState.gameLoopId);
                             
                             setTimeout(() => {
+                                // 隐藏伪3D飞机（如果启用）
+                                if (window.pseudo3DEnabled && window.pseudo3DPlaneElement) {
+                                    window.pseudo3DPlaneElement.style.display = 'none';
+                                    console.log('🎨 伪3D飞机已隐藏');
+                                }
                                 alert('游戏结束！点击确定重新开始。');
                                 startScreen.style.display = 'flex';
                             }, 500);
@@ -2078,6 +2182,11 @@
                             cancelAnimationFrame(gameState.gameLoopId);
                             
                             setTimeout(() => {
+                                // 隐藏伪3D飞机（如果启用）
+                                if (window.pseudo3DEnabled && window.pseudo3DPlaneElement) {
+                                    window.pseudo3DPlaneElement.style.display = 'none';
+                                    console.log('🎨 伪3D飞机已隐藏');
+                                }
                                 alert('游戏结束！敌机反击成功！点击确定重新开始。');
                                 startScreen.style.display = 'flex';
                             }, 500);
