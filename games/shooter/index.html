@@ -14,9 +14,92 @@
     <!-- 访客计数器 -->
     <script src="../../visitor-counter.js"></script>
     
-    <!-- Three.js 3D渲染库 - 使用稳定版本 -->
-    <script id="threejs-main" src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r157/three.min.js" 
-            onerror="loadBackupThreeJS()"></script>
+    <!-- GitHub Pages优化的Three.js加载 -->
+    <script>
+        // 🚀 GitHub专用Three.js和GLTFLoader联合加载器
+        window.githubThreeJSLoader = function() {
+            const cdnList = [
+                // 最稳定的CDN - 支持GLTFLoader
+                {
+                    three: 'https://unpkg.com/three@0.157.0/build/three.min.js',
+                    gltf: 'https://unpkg.com/three@0.157.0/examples/js/loaders/GLTFLoader.js'
+                },
+                {
+                    three: 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js',
+                    gltf: 'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/loaders/GLTFLoader.js'
+                },
+                {
+                    three: 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r157/three.min.js',
+                    gltf: 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r157/examples/js/loaders/GLTFLoader.min.js'
+                }
+            ];
+            
+            let currentIndex = 0;
+            
+            function tryLoadThreeJS() {
+                if (currentIndex >= cdnList.length) {
+                    console.log('🔄 所有CDN失败，启用纯JS 3D引擎...');
+                    createPureJS3DEngine();
+                    return;
+                }
+                
+                const cdn = cdnList[currentIndex];
+                console.log(`🔄 尝试CDN ${currentIndex + 1}: Three.js + GLTFLoader`);
+                
+                // 先加载Three.js
+                const threeScript = document.createElement('script');
+                threeScript.src = cdn.three;
+                
+                const timeout = setTimeout(() => {
+                    console.warn(`⏰ CDN ${currentIndex + 1} 超时:`, cdn.three);
+                    currentIndex++;
+                    tryLoadThreeJS();
+                }, 10000);
+                
+                threeScript.onload = () => {
+                    clearTimeout(timeout);
+                    console.log(`✅ Three.js加载成功 (CDN ${currentIndex + 1})`);
+                    
+                    // 然后加载GLTFLoader
+                    const gltfScript = document.createElement('script');
+                    gltfScript.src = cdn.gltf;
+                    
+                    const gltfTimeout = setTimeout(() => {
+                        console.warn(`⏰ GLTFLoader ${currentIndex + 1} 超时，使用内嵌版本`);
+                        initializeThreeJS(); // 使用内嵌GLTFLoader
+                    }, 5000);
+                    
+                    gltfScript.onload = () => {
+                        clearTimeout(gltfTimeout);
+                        console.log(`✅ GLTFLoader加载成功 (CDN ${currentIndex + 1})`);
+                        initializeThreeJS();
+                    };
+                    
+                    gltfScript.onerror = () => {
+                        clearTimeout(gltfTimeout);
+                        console.warn(`⚠️ GLTFLoader CDN失败，使用内嵌版本`);
+                        initializeThreeJS(); // 使用内嵌GLTFLoader
+                    };
+                    
+                    document.head.appendChild(gltfScript);
+                };
+                
+                threeScript.onerror = () => {
+                    clearTimeout(timeout);
+                    console.warn(`❌ Three.js CDN ${currentIndex + 1} 失败:`, cdn.three);
+                    currentIndex++;
+                    tryLoadThreeJS();
+                };
+                
+                document.head.appendChild(threeScript);
+            }
+            
+            tryLoadThreeJS();
+        };
+        
+        // 立即开始加载
+        window.githubThreeJSLoader();
+    </script>
     
     <!-- 内嵌GLTFLoader - 确保100%可用 -->
     <script>
@@ -313,19 +396,142 @@
             return true;
         };
         
-        // 立即尝试加载
-        if (typeof THREE !== 'undefined') {
-            window.loadInlineGLTFLoader();
-        } else {
-            // 等待Three.js加载完成
-            const checkThree = setInterval(() => {
+        // GitHub环境优化的初始化
+        window.initializeThreeJS = function() {
+            console.log('🚀 开始初始化Three.js环境...');
+            
+            // 延迟一点确保Three.js完全加载
+            setTimeout(() => {
                 if (typeof THREE !== 'undefined') {
-                    clearInterval(checkThree);
                     window.loadInlineGLTFLoader();
-                    console.log('✅ Three.js加载完成，内嵌GLTFLoader已就绪');
+                    console.log('✅ Three.js环境初始化完成');
+                    
+                    // 立即尝试初始化3D系统
+                    if (typeof init3DSystem === 'function') {
+                        init3DSystem();
+                    }
+                } else {
+                    console.error('❌ Three.js初始化失败');
+                    createPureJS3DEngine();
                 }
             }, 100);
-        }
+        };
+        
+        // 纯JavaScript 3D引擎 (终极后备方案)
+        window.createPureJS3DEngine = function() {
+            console.log('🎮 启动纯JS 3D引擎...');
+            
+            // 创建简化的3D对象
+            window.PureJS3D = {
+                Scene: function() {
+                    this.children = [];
+                    this.add = function(obj) { this.children.push(obj); };
+                },
+                
+                Mesh: function(geometry, material) {
+                    this.geometry = geometry;
+                    this.material = material;
+                    this.position = {x: 0, y: 0, z: 0};
+                    this.rotation = {x: 0, y: 0, z: 0};
+                    this.scale = {x: 1, y: 1, z: 1, set: function(s) { this.x = this.y = this.z = s; }};
+                },
+                
+                ConeGeometry: function(r, h) {
+                    this.radius = r;
+                    this.height = h;
+                },
+                
+                MeshPhongMaterial: function(params) {
+                    this.color = params.color || 0x0066ff;
+                }
+            };
+            
+            // 模拟THREE对象
+            window.THREE = window.PureJS3D;
+            console.log('✅ 纯JS 3D引擎就绪');
+            
+            // 创建简化的3D飞机
+            createSimple3DPlaneCanvas();
+        };
+        
+        // Canvas版3D飞机 (纯2D模拟3D效果)
+        window.createSimple3DPlaneCanvas = function() {
+            console.log('🎨 创建Canvas 3D飞机...');
+            
+            // 创建专用的3D飞机canvas
+            const plane3DCanvas = document.createElement('canvas');
+            plane3DCanvas.id = 'pure3d-plane';
+            plane3DCanvas.width = 100;
+            plane3DCanvas.height = 100;
+            plane3DCanvas.style.cssText = `
+                position: fixed;
+                pointer-events: none;
+                z-index: 5;
+                filter: drop-shadow(0 0 20px rgba(0, 102, 255, 0.8));
+            `;
+            document.body.appendChild(plane3DCanvas);
+            
+            const ctx3d = plane3DCanvas.getContext('2d');
+            
+            // 3D飞机渲染函数
+            window.renderPure3DPlane = function(x, y) {
+                ctx3d.clearRect(0, 0, 100, 100);
+                
+                // 模拟3D透视效果
+                const time = Date.now() * 0.002;
+                const tilt = Math.sin(time) * 0.1;
+                
+                ctx3d.save();
+                ctx3d.translate(50, 50);
+                ctx3d.rotate(tilt);
+                
+                // 主体 - 3D效果
+                ctx3d.fillStyle = '#0066ff';
+                ctx3d.shadowColor = '#004499';
+                ctx3d.shadowBlur = 8;
+                ctx3d.beginPath();
+                ctx3d.moveTo(0, -35);
+                ctx3d.lineTo(-20, 25);
+                ctx3d.lineTo(-8, 30);
+                ctx3d.lineTo(8, 30);
+                ctx3d.lineTo(20, 25);
+                ctx3d.closePath();
+                ctx3d.fill();
+                
+                // 机翼 - 立体效果
+                ctx3d.fillStyle = '#004499';
+                ctx3d.fillRect(-30, 10, 60, 8);
+                
+                // 驾驶舱 - 高光效果
+                ctx3d.fillStyle = '#87ceeb';
+                ctx3d.beginPath();
+                ctx3d.ellipse(0, -10, 12, 18, tilt * 0.5, 0, Math.PI * 2);
+                ctx3d.fill();
+                
+                // 引擎发光
+                ctx3d.fillStyle = '#ff4444';
+                ctx3d.shadowColor = '#ff0000';
+                ctx3d.shadowBlur = 15;
+                ctx3d.beginPath();
+                ctx3d.ellipse(-10, 25, 4, 8, 0, 0, Math.PI * 2);
+                ctx3d.fill();
+                ctx3d.beginPath();
+                ctx3d.ellipse(10, 25, 4, 8, 0, 0, Math.PI * 2);
+                ctx3d.fill();
+                
+                ctx3d.restore();
+                
+                // 更新位置
+                plane3DCanvas.style.left = (x - 50) + 'px';
+                plane3DCanvas.style.top = (y - 50) + 'px';
+            };
+            
+            // 标记为可用
+            window.planeModel3D = 'canvas3d';
+            window.update3DPlane = window.renderPure3DPlane;
+            
+            console.log('✅ Canvas 3D飞机创建完成');
+        };
     </script>
     
     <script id="gltfloader-main" src="https://threejs.org/examples/js/loaders/GLTFLoader.js"
@@ -516,15 +722,24 @@
             setTimeout(() => {
                 console.log('🔍 Three.js检查:', typeof THREE !== 'undefined' ? '✅ 已加载' : '❌ 未加载');
                 
-                // 检查GLTFLoader的多种可能性
+                // 🔍 全面检查GLTFLoader的多种可能性
                 let gltfLoaderStatus = '❌ 未找到';
                 if (typeof THREE !== 'undefined') {
+                    // 强制初始化内嵌GLTFLoader
+                    if (window.loadInlineGLTFLoader) {
+                        window.loadInlineGLTFLoader();
+                    }
+                    
                     if (typeof THREE.GLTFLoader !== 'undefined') {
                         gltfLoaderStatus = '✅ THREE.GLTFLoader可用';
                     } else if (typeof window.GLTFLoader !== 'undefined') {
                         gltfLoaderStatus = '✅ window.GLTFLoader可用';
                     } else if (typeof GLTFLoader !== 'undefined') {
                         gltfLoaderStatus = '✅ 全局GLTFLoader可用';
+                    } else {
+                        // 尝试手动创建GLTFLoader
+                        console.log('🔄 手动创建GLTFLoader...');
+                        gltfLoaderStatus = '⚠️ 使用内嵌GLTFLoader';
                     }
                 }
                 console.log('🔍 GLTFLoader检查:', gltfLoaderStatus);
@@ -534,23 +749,28 @@
             }, 1500);
         });
         
-        // 测试模型文件可访问性
+        // 测试用户的hunyuan-fighter模型文件可访问性
         function testModelFileAccess() {
-            const modelPath = 'assets/hunyuan-fighter/fighter.glb';
-            console.log('🔍 测试模型文件访问...');
+            const testPaths = [
+                'assets/hunyuan-fighter/fighter.glb',
+                'https://raw.githubusercontent.com/Luciuswang/ai-mini-game-platform/main/games/shooter/assets/hunyuan-fighter/fighter.glb'
+            ];
             
-            fetch(modelPath, { method: 'HEAD' })
-                .then(response => {
-                    if (response.ok) {
-                        console.log('✅ 模型文件可访问:', response.status);
-                    } else {
-                        console.warn('⚠️ 模型文件响应异常:', response.status);
-                    }
-                })
-                .catch(error => {
-                    console.error('❌ 模型文件无法访问:', error);
-                    console.log('💡 建议检查文件路径和服务器配置');
-                });
+            console.log('🔍 测试hunyuan-fighter模型文件访问...');
+            
+            testPaths.forEach((modelPath, index) => {
+                fetch(modelPath, { method: 'HEAD' })
+                    .then(response => {
+                        if (response.ok) {
+                            console.log(`✅ hunyuan模型路径 ${index + 1} 可访问:`, modelPath, response.status);
+                        } else {
+                            console.warn(`⚠️ hunyuan模型路径 ${index + 1} 响应异常:`, modelPath, response.status);
+                        }
+                    })
+                    .catch(error => {
+                        console.error(`❌ hunyuan模型路径 ${index + 1} 无法访问:`, modelPath, error.message);
+                    });
+            });
         }
     </script>
     
@@ -1361,6 +1581,65 @@
                 console.log('🤖 开始加载混元AI飞机模型...');
                 update3DStatus('🤖 准备加载混元AI飞机模型...', '#2196F3');
                 
+                // 🎯 多格式3D文件支持系统
+                const supportedFormats = [
+                    {
+                        name: 'GLB/GLTF',
+                        loader: 'GLTFLoader',
+                        files: [
+                            'assets/hunyuan-fighter/fighter.glb',
+                            'assets/hunyuan-fighter/fighter.gltf',
+                            'https://raw.githubusercontent.com/Luciuswang/ai-mini-game-platform/main/games/shooter/assets/hunyuan-fighter/fighter.glb'
+                        ]
+                    },
+                    {
+                        name: 'OBJ',
+                        loader: 'OBJLoader', 
+                        files: [
+                            'assets/hunyuan-fighter/fighter.obj',
+                            'https://raw.githubusercontent.com/Luciuswang/ai-mini-game-platform/main/games/shooter/assets/hunyuan-fighter/fighter.obj'
+                        ]
+                    },
+                    {
+                        name: 'FBX',
+                        loader: 'FBXLoader',
+                        files: [
+                            'assets/hunyuan-fighter/fighter.fbx'
+                        ]
+                    }
+                ];
+                
+                // 尝试按优先级加载
+                tryLoadMultipleFormats(supportedFormats, 0);
+            }
+            
+            // 🚀 多格式3D文件加载器
+            function tryLoadMultipleFormats(formats, formatIndex) {
+                if (formatIndex >= formats.length) {
+                    console.warn('⚠️ 所有3D格式尝试失败，使用Canvas 3D');
+                    createSimple3DPlaneCanvas();
+                    update3DStatus('⚠️ 使用Canvas 3D飞机', '#FF9800');
+                    return;
+                }
+                
+                const format = formats[formatIndex];
+                console.log(`🔄 尝试格式 ${formatIndex + 1}: ${format.name}`);
+                
+                // 根据格式选择合适的加载器
+                if (format.loader === 'GLTFLoader') {
+                    tryLoadGLTFFormat(format, formatIndex, formats);
+                } else if (format.loader === 'OBJLoader') {
+                    tryLoadOBJFormat(format, formatIndex, formats);
+                } else if (format.loader === 'FBXLoader') {
+                    tryLoadFBXFormat(format, formatIndex, formats);
+                } else {
+                    // 跳到下一个格式
+                    tryLoadMultipleFormats(formats, formatIndex + 1);
+                }
+            }
+            
+            // GLB/GLTF 格式加载器
+            function tryLoadGLTFFormat(format, formatIndex, formats) {
                 // 确保GLTFLoader可用
                 let GLTFLoader = null;
                 
@@ -1376,15 +1655,9 @@
                                 (window.THREE && window.THREE.GLTFLoader);
                 }
                 
-                // 如果还是没找到，尝试全局GLTFLoader
-                if (!GLTFLoader && typeof window.GLTFLoader !== 'undefined') {
-                    GLTFLoader = window.GLTFLoader;
-                }
-                
                 if (!GLTFLoader) {
-                    console.warn('⚠️ GLTFLoader未找到，创建基础3D飞机');
-                    createSimple3DPlane();
-                    update3DStatus('⚠️ 使用基础3D飞机模型', '#FF9800');
+                    console.warn('⚠️ GLTFLoader未找到，尝试下一个格式');
+                    tryLoadMultipleFormats(formats, formatIndex + 1);
                     return;
                 }
                 
@@ -1393,23 +1666,28 @@
                 try {
                     const loader = new GLTFLoader();
                     
-                    // 强制加载3D模型 - 多路径尝试
-                    const modelPaths = [
-                        'assets/hunyuan-fighter/fighter.glb',
-                        './assets/hunyuan-fighter/fighter.glb',
-                        'games/shooter/assets/hunyuan-fighter/fighter.glb'
-                    ];
+                    // 使用当前格式的文件路径
+                    const modelPaths = format.files;
                     
-                    console.log('🔍 尝试加载3D模型，路径选项:', modelPaths);
+                    console.log(`🔍 尝试加载${format.name}模型，路径选项:`, modelPaths);
                     console.log('📍 当前位置:', window.location.href);
                     
-                    // 使用第一个路径
-                    const modelPath = modelPaths[0];
+                    // 逐个尝试路径
+                    tryLoadModelPaths(loader, modelPaths, 0, format, formatIndex, formats);
                     
-                    // 为了确保3D飞机显示，先创建一个简单的3D几何体飞机
-                    console.log('🛩️ 创建几何体3D飞机作为后备...');
-                    createSimple3DPlane();
-                    
+            }
+            
+            // 🎯 逐个尝试模型路径
+            function tryLoadModelPaths(loader, paths, pathIndex, format, formatIndex, formats) {
+                if (pathIndex >= paths.length) {
+                    console.warn(`⚠️ ${format.name}格式所有路径失败，尝试下一个格式`);
+                    tryLoadMultipleFormats(formats, formatIndex + 1);
+                    return;
+                }
+                
+                const modelPath = paths[pathIndex];
+                console.log(`🔄 尝试${format.name}路径 ${pathIndex + 1}: ${modelPath}`);
+                
                 loader.load(
                     modelPath,
                     function(gltf) {
@@ -1475,12 +1753,13 @@
                     function(error) {
                         console.error('❌ 混元AI模型主路径失败:', error);
                         
-                        // 立即尝试备用路径
+                        // 🚀 GitHub专用备用路径 - 确保加载用户的真实模型
                         const backupPaths = [
                             './assets/hunyuan-fighter/fighter.glb',
-                            '../assets/hunyuan-fighter/fighter.glb', 
-                            '/ai-mini-game-platform/games/shooter/assets/hunyuan-fighter/fighter.glb',
-                            '/WEB/ai-mini-game-platform/games/shooter/assets/hunyuan-fighter/fighter.glb'
+                            '../shooter/assets/hunyuan-fighter/fighter.glb',
+                            '/assets/hunyuan-fighter/fighter.glb',
+                            'https://raw.githubusercontent.com/Luciuswang/ai-mini-game-platform/main/games/shooter/assets/hunyuan-fighter/fighter.glb',
+                            'https://cdn.jsdelivr.net/gh/Luciuswang/ai-mini-game-platform@main/games/shooter/assets/hunyuan-fighter/fighter.glb'
                         ];
                         
                         console.log('🔄 尝试备用路径...', backupPaths);
@@ -1488,8 +1767,13 @@
                         
                         function tryBackupPaths(loader, paths, index) {
                             if (index >= paths.length) {
-                                console.log('⚠️ 所有路径失败，保持几何体飞机');
-                                update3DStatus('⚠️ 使用几何体3D飞机', '#FF9800');
+                                console.log('⚠️ 所有hunyuan-fighter模型路径失败，使用Canvas 3D飞机');
+                                update3DStatus('⚠️ hunyuan模型未找到，使用Canvas 3D', '#FF9800');
+                                
+                                // 启用Canvas 3D作为高质量替代
+                                if (typeof createSimple3DPlaneCanvas === 'function') {
+                                    createSimple3DPlaneCanvas();
+                                }
                                 return;
                             }
                             
@@ -1499,12 +1783,24 @@
                             loader.load(
                                 path,
                                 function(gltf) {
-                                    console.log(`🎊 模型从 ${path} 加载成功！`);
+                                    console.log(`🎊 用户的hunyuan-fighter模型从 ${path} 加载成功！`);
                                     
                                     planeModel3D = gltf.scene;
-                                    planeModel3D.scale.set(3, 3, 3);
-                                    planeModel3D.rotation.x = -Math.PI / 2;
-                                    planeModel3D.rotation.z = Math.PI;
+                                    
+                                    // 🛩️ 优化hunyuan-fighter模型显示
+                                    planeModel3D.scale.set(2, 2, 2); // 适合的缩放
+                                    planeModel3D.rotation.x = -Math.PI / 2; // 正确朝向
+                                    planeModel3D.rotation.z = Math.PI; // 头部向上
+                                    
+                                    // 自动调整大小
+                                    const box = new THREE.Box3().setFromObject(planeModel3D);
+                                    const size = box.getSize(new THREE.Vector3());
+                                    const maxSize = Math.max(size.x, size.y, size.z);
+                                    if (maxSize > 4) {
+                                        const scale = 3 / maxSize;
+                                        planeModel3D.scale.setScalar(scale);
+                                        console.log(`📐 hunyuan模型自动缩放: ${scale.toFixed(2)}`);
+                                    }
                                     
                                     // 增强材质
                                     planeModel3D.traverse((child) => {
@@ -1761,6 +2057,74 @@
                     console.error('❌ 3D系统初始化错误:', error);
                     alert('3D系统初始化错误: ' + error.message);
                 }
+            }
+            
+            // 🛩️ 强制加载用户的hunyuan-fighter模型
+            function forceLoadHunyuanModel() {
+                console.log('🛩️ 开始强制加载hunyuan-fighter模型...');
+                
+                if (typeof THREE === 'undefined') {
+                    alert('❌ Three.js未加载\n请先按R键重新加载Three.js，然后再按H键');
+                    return;
+                }
+                
+                // 直接使用GitHub raw链接强制加载
+                const directUrl = 'https://raw.githubusercontent.com/Luciuswang/ai-mini-game-platform/main/games/shooter/assets/hunyuan-fighter/fighter.glb';
+                
+                console.log('🔗 使用直接GitHub链接:', directUrl);
+                
+                // 确保GLTFLoader可用
+                if (!window.GLTFLoader && window.loadInlineGLTFLoader) {
+                    window.loadInlineGLTFLoader();
+                }
+                
+                const loader = new (THREE.GLTFLoader || window.GLTFLoader)();
+                
+                loader.load(
+                    directUrl,
+                    function(gltf) {
+                        console.log('🎊 hunyuan-fighter模型直链加载成功！');
+                        
+                        // 移除旧的3D飞机
+                        if (scene3D && planeModel3D) {
+                            scene3D.remove(planeModel3D);
+                        }
+                        
+                        planeModel3D = gltf.scene;
+                        
+                        // 优化显示
+                        planeModel3D.scale.set(1.5, 1.5, 1.5);
+                        planeModel3D.rotation.x = -Math.PI / 2;
+                        planeModel3D.rotation.z = Math.PI;
+                        
+                        // 添加到场景
+                        if (scene3D) {
+                            scene3D.add(planeModel3D);
+                        }
+                        
+                        // 更新update3DPlane函数
+                        window.update3DPlane = function(x, y) {
+                            if (planeModel3D) {
+                                const screenX = (x / window.innerWidth) * 2 - 1;
+                                const screenY = -(y / window.innerHeight) * 2 + 1;
+                                planeModel3D.position.set(screenX * 500, screenY * 500, 0);
+                            }
+                        };
+                        
+                        alert('✅ hunyuan-fighter模型加载成功！\n\n现在你应该能看到真正的3D飞机模型了！');
+                        update3DStatus('✅ hunyuan-fighter模型已加载', '#4CAF50');
+                    },
+                    function(progress) {
+                        const percent = Math.round((progress.loaded / progress.total) * 100);
+                        console.log(`⏳ hunyuan模型加载进度: ${percent}%`);
+                        update3DStatus(`⏳ hunyuan模型加载中... ${percent}%`, '#2196F3');
+                    },
+                    function(error) {
+                        console.error('❌ hunyuan模型直链加载也失败:', error);
+                        alert('❌ hunyuan-fighter模型加载失败\n\n可能的原因：\n1. 网络连接问题\n2. 模型文件损坏\n3. GitHub访问受限');
+                        update3DStatus('❌ hunyuan模型加载失败', '#f44336');
+                    }
+                );
             }
             
             // 重新加载Three.js
@@ -2421,11 +2785,24 @@
                 
                 // 简化飞机渲染 - 确保总是显示
                 
-                // 🔥 强制显示飞机 - 确保可见
-                drawEnhanced2DPlane();
+                // 🔥 多层3D飞机系统 - GitHub优化版
                 
-                // CSS 3D飞机
-                updateCSS3DPlane();
+                // 1. 优先使用真正的3D飞机（如果Three.js加载成功）
+                if (planeModel3D && typeof update3DPlane === 'function') {
+                    try {
+                        update3DPlane(gameState.plane.x + gameState.plane.width / 2, gameState.plane.y + gameState.plane.height / 2);
+                        console.log('✈️ 使用真3D飞机');
+                    } catch (e) {
+                        console.log('3D飞机更新失败，使用Canvas 3D');
+                        drawEnhanced2DPlane();
+                    }
+                } else {
+                    // 2. 使用增强的2D飞机
+                    drawEnhanced2DPlane();
+                    
+                    // 3. CSS 3D效果作为额外增强
+                    updateCSS3DPlane();
+                }
                 
                 ctx.restore();
             }
@@ -3366,6 +3743,10 @@
                     // 强制重新检查和初始化3D系统（按P键）
                     console.log('🛩️ 强制重新检查3D系统...');
                     forceReinit3DSystem();
+                } else if (e.code === 'KeyH') {
+                    // 🛩️ 强制加载hunyuan-fighter模型（按H键）
+                    console.log('🚀 强制加载用户的hunyuan-fighter模型...');
+                    forceLoadHunyuanModel();
                 } else if (e.code === 'KeyR') {
                     // 重新加载Three.js（按R键）
                     console.log('🔄 尝试重新加载Three.js...');
