@@ -579,6 +579,8 @@
             }
         }
         
+        // GLTFLoader CDN备选列表（删除重复声明）
+        
         function loadBackupGLTFLoader() {
             console.log('🔄 GLTFLoader主CDN失败，尝试备用源...');
             gltfLoaderCDNIndex++;
@@ -591,23 +593,29 @@
                 };
                 script.onerror = () => {
                     console.warn('❌ GLTFLoader备用CDN失败:', gltfLoaderCDNs[gltfLoaderCDNIndex]);
-                    loadBackupGLTFLoader();
+                    if (gltfLoaderCDNIndex < gltfLoaderCDNs.length - 1) {
+                        loadBackupGLTFLoader();
+                    } else {
+                        console.log('🔄 所有GLTFLoader CDN都失败，启用内嵌GLTFLoader...');
+                        if (window.loadInlineGLTFLoader) {
+                            window.loadInlineGLTFLoader();
+                        }
+                    }
                 };
                 document.head.appendChild(script);
             } else {
                 console.log('🔄 所有GLTFLoader CDN都失败，启用内嵌GLTFLoader...');
+                if (window.loadInlineGLTFLoader) {
+                    window.loadInlineGLTFLoader();
+                }
                 // 启用内嵌的GLTFLoader
                 if (typeof THREE !== 'undefined' && window.loadInlineGLTFLoader) {
                     const success = window.loadInlineGLTFLoader();
                     if (success) {
                         console.log('✅ 内嵌GLTFLoader启用成功！');
                     } else {
-                        console.error('❌ 内嵌GLTFLoader也失败，将使用2D模式');
-                        window.gltfLoaderLoadFailed = true;
+                        console.warn('⚠️ 内嵌GLTFLoader启用失败');
                     }
-                } else {
-                    console.error('❌ Three.js未加载，无法使用内嵌GLTFLoader');
-                    window.gltfLoaderLoadFailed = true;
                 }
             }
         }
@@ -1675,6 +1683,10 @@
                     // 逐个尝试路径
                     tryLoadModelPaths(loader, modelPaths, 0, format, formatIndex, formats);
                     
+                } catch (error) {
+                    console.error(`❌ ${format.name}加载器创建失败:`, error);
+                    tryLoadMultipleFormats(formats, formatIndex + 1);
+                }
             }
             
             // 🎯 逐个尝试模型路径
@@ -1825,9 +1837,6 @@
                         }
                     }
                 );
-                } catch (error) {
-                    console.error('❌ 3D模型加载器初始化失败:', error);
-                }
             }
             
             function render3D() {
@@ -2552,9 +2561,110 @@
                 gameState.lastFrameTime = now;
             }
 
+            // 检测运行环境
+            function isLocalFileEnvironment() {
+                return window.location.protocol === 'file:';
+            }
+            
+            // 🛩️ 增强版3D飞机渲染（Canvas 2D模拟3D效果）
+            function draw3DPlaneOnCanvas() {
+                const plane = gameState.plane;
+                ctx.save();
+                ctx.translate(plane.x + plane.width/2, plane.y + plane.height/2);
+                
+                // 华人战机风格渲染
+                const size = Math.min(plane.width, plane.height);
+                
+                // 机身主体 - 金属质感
+                const bodyGradient = ctx.createLinearGradient(-size/3, -size/2, size/3, size/2);
+                bodyGradient.addColorStop(0, '#2E8B57');
+                bodyGradient.addColorStop(0.3, '#4CAF50');
+                bodyGradient.addColorStop(0.7, '#66BB6A');
+                bodyGradient.addColorStop(1, '#388E3C');
+                
+                ctx.fillStyle = bodyGradient;
+                ctx.strokeStyle = '#1B5E20';
+                ctx.lineWidth = 2;
+                
+                // 绘制机身
+                ctx.beginPath();
+                ctx.ellipse(0, 0, size/3, size/2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                
+                // 机翼 - 动态光效
+                const wingGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size/2);
+                wingGradient.addColorStop(0, '#81C784');
+                wingGradient.addColorStop(0.6, '#4CAF50');
+                wingGradient.addColorStop(1, '#2E7D32');
+                
+                ctx.fillStyle = wingGradient;
+                ctx.strokeStyle = '#1B5E20';
+                
+                // 左翼
+                ctx.beginPath();
+                ctx.ellipse(-size/2.5, size/8, size/4, size/6, -Math.PI/6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                
+                // 右翼
+                ctx.beginPath();
+                ctx.ellipse(size/2.5, size/8, size/4, size/6, Math.PI/6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                
+                // 机头 - 高亮效果
+                const noseGradient = ctx.createRadialGradient(0, -size/2.5, 0, 0, -size/2.5, size/4);
+                noseGradient.addColorStop(0, '#FFEB3B');
+                noseGradient.addColorStop(0.4, '#FFC107');
+                noseGradient.addColorStop(1, '#FF8F00');
+                
+                ctx.fillStyle = noseGradient;
+                ctx.strokeStyle = '#E65100';
+                
+                ctx.beginPath();
+                ctx.arc(0, -size/2.5, size/8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                
+                // 引擎尾焰效果 - 动态颜色
+                const flameIntensity = 0.5 + 0.5 * Math.sin(Date.now() * 0.01);
+                const flameGradient = ctx.createLinearGradient(0, size/3, 0, size/1.5);
+                flameGradient.addColorStop(0, `rgba(255, ${Math.floor(100 + 50 * flameIntensity)}, 0, 0.9)`);
+                flameGradient.addColorStop(0.5, `rgba(255, ${Math.floor(69 + 30 * flameIntensity)}, 0, 0.7)`);
+                flameGradient.addColorStop(1, `rgba(255, 0, 0, 0.3)`);
+                
+                ctx.fillStyle = flameGradient;
+                
+                // 左引擎
+                ctx.beginPath();
+                ctx.ellipse(-size/6, size/2.2, size/12, size/4 * flameIntensity, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 右引擎
+                ctx.beginPath();
+                ctx.ellipse(size/6, size/2.2, size/12, size/4 * flameIntensity, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 驾驶舱反光
+                ctx.fillStyle = 'rgba(135, 206, 250, 0.6)';
+                ctx.beginPath();
+                ctx.ellipse(0, -size/6, size/8, size/10, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            }
+            
             // 初始化游戏
             async function initGame() {
                 console.log('🎮 游戏初始化开始');
+                
+                // 🔧 本地文件环境优化
+                if (isLocalFileEnvironment()) {
+                    console.log('📁 检测到本地文件环境，启用离线模式');
+                    initGameDirect(); // 直接启动，跳过网络资源加载
+                    return;
+                }
                 
                 try {
                     // 加载游戏资源（有超时保护）
@@ -2569,6 +2679,14 @@
                 } catch (error) {
                     console.log('⚠️ 资源加载失败，使用默认设置:', error);
                 }
+                
+                initGameDirect();
+            }
+            
+            // 直接初始化游戏（本地环境专用）
+            function initGameDirect() {
+                
+                console.log('🎮 直接初始化游戏（跳过网络资源）');
                 
                 gameState.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                 
@@ -2589,6 +2707,10 @@
                 resumeScreen.style.display = 'none';
                 perfWarning.style.display = 'none';
                 gameState.running = true;
+                
+                // 启动游戏循环
+                console.log('🔄 启动游戏循环...');
+                gameLoop();
                 
                 // 显示伪3D飞机（如果启用）
                 if (window.pseudo3DEnabled && window.pseudo3DPlaneElement) {
@@ -2692,6 +2814,10 @@
                 perfWarning.style.display = 'none';
                 gameState.running = true;
                 
+                // 启动游戏循环
+                console.log('🔄 强制模式启动游戏循环...');
+                gameLoop();
+                
                 // 🔊 尝试初始化音频系统
                 initAudioContext().then(() => {
                     console.log('🎵 强制模式音频系统已激活');
@@ -2793,12 +2919,12 @@
                         update3DPlane(gameState.plane.x + gameState.plane.width / 2, gameState.plane.y + gameState.plane.height / 2);
                         console.log('✈️ 使用真3D飞机');
                     } catch (e) {
-                        console.log('3D飞机更新失败，使用Canvas 3D');
-                        drawEnhanced2DPlane();
+                        console.log('3D飞机更新失败，使用增强Canvas 3D');
+                        draw3DPlaneOnCanvas();
                     }
                 } else {
-                    // 2. 使用增强的2D飞机
-                    drawEnhanced2DPlane();
+                    // 2. 使用增强版3D飞机渲染
+                    draw3DPlaneOnCanvas();
                     
                     // 3. CSS 3D效果作为额外增强
                     updateCSS3DPlane();
@@ -3414,25 +3540,127 @@
             
             startBtn.addEventListener('click', function() {
                 console.log('🎮 开始游戏按钮被点击！');
+                
+                // 🔧 本地环境直接启动
+                if (window.location.protocol === 'file:') {
+                    console.log('📁 本地文件环境，直接启动离线游戏');
+                    startLocalGame();
+                    return;
+                }
+                
                 diagnoseSystem();
+                
+                // 防止重复点击
+                if (gameState.running) {
+                    console.log('⚠️ 游戏已在运行，忽略点击');
+                    return;
+                }
+                
+                // 立即隐藏开始屏幕，显示游戏正在启动
+                startBtn.disabled = true;
+                startBtn.textContent = '启动中...';
                 
                 try {
                     initGame();
+                    console.log('✅ 游戏初始化成功');
                 } catch (error) {
                     console.error('❌ 游戏初始化错误:', error);
                     console.log('🚨 错误堆栈:', error.stack);
                     console.log('🔄 尝试强制启动游戏...');
+                    
                     // 强制启动游戏（忽略资源加载问题）
                     try {
                         forceStartGame();
+                        console.log('✅ 强制启动游戏成功');
                     } catch (forceError) {
                         console.error('❌ 强制启动也失败:', forceError);
                         console.log('🚨 显示应急启动按钮');
+                        
+                        // 恢复按钮状态
+                        startBtn.disabled = false;
+                        startBtn.textContent = '开始游戏';
+                        
                         emergencyBtn.style.display = 'block';
                         alert('正常启动失败，请使用应急启动按钮');
                     }
                 }
             });
+            
+            // 🔧 本地环境专用启动函数
+            function startLocalGame() {
+                console.log('🎮 启动本地离线游戏模式');
+                
+                // 防止重复启动
+                if (gameState.running) {
+                    console.log('⚠️ 游戏已在运行');
+                    return;
+                }
+                
+                try {
+                    // 重置游戏状态
+                    gameState.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                    gameState.bullets = [];
+                    gameState.enemies = [];
+                    gameState.enemyBullets = [];
+                    gameState.particles = [];
+                    gameState.plane.x = gameCanvas.width / 2 - gameState.plane.width / 2;
+                    gameState.plane.y = gameCanvas.height - 150;
+                    gameState.score = 0;
+                    gameState.health = 100;
+                    gameState.lowFpsCount = 0;
+                    
+                    // 更新显示
+                    scoreDisplay.textContent = gameState.score;
+                    healthDisplay.textContent = gameState.health;
+                    
+                    // 隐藏菜单，启动游戏
+                    startScreen.style.display = 'none';
+                    resumeScreen.style.display = 'none';
+                    perfWarning.style.display = 'none';
+                    gameState.running = true;
+                    
+                    // 启动游戏循环
+                    console.log('🔄 启动本地游戏循环...');
+                    gameLoop();
+                    
+                    // 启动敌机生成
+                    if (gameState.enemyInterval) {
+                        clearInterval(gameState.enemyInterval);
+                    }
+                    
+                    gameState.enemyInterval = setInterval(() => {
+                        const baseSpeed = 2 + Math.min(gameState.score / 10, 3);
+                        
+                        if (Math.random() < 0.3) {
+                            // 大敌机
+                            gameState.enemies.push({
+                                x: Math.random() * (gameCanvas.width - 100),
+                                y: -80,
+                                width: 80,
+                                height: 80,
+                                speed: baseSpeed * 0.6,
+                                health: 3
+                            });
+                        } else {
+                            // 小敌机
+                            gameState.enemies.push({
+                                x: Math.random() * (gameCanvas.width - 60),
+                                y: -60,
+                                width: 60,
+                                height: 60,
+                                speed: baseSpeed,
+                                health: 1
+                            });
+                        }
+                    }, Math.max(1000 - gameState.score * 20, 300));
+                    
+                    console.log('✅ 本地游戏启动成功！');
+                    
+                } catch (error) {
+                    console.error('❌ 本地游戏启动失败:', error);
+                    alert('游戏启动失败: ' + error.message);
+                }
+            }
             
             // 应急启动按钮
             emergencyBtn.addEventListener('click', function() {
