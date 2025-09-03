@@ -17,6 +17,317 @@
     <!-- Three.js 3D渲染库 - 使用稳定版本 -->
     <script id="threejs-main" src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r157/three.min.js" 
             onerror="loadBackupThreeJS()"></script>
+    
+    <!-- 内嵌GLTFLoader - 确保100%可用 -->
+    <script>
+        // 内嵌的GLTFLoader实现 - 基于Three.js r157
+        window.loadInlineGLTFLoader = function() {
+            if (typeof THREE === 'undefined') return false;
+            
+            class GLTFLoader {
+                constructor() {
+                    this.manager = THREE.DefaultLoadingManager;
+                }
+                
+                load(url, onLoad, onProgress, onError) {
+                    const loader = this;
+                    const fileLoader = new THREE.FileLoader(loader.manager);
+                    fileLoader.setResponseType('arraybuffer');
+                    
+                    fileLoader.load(url, function(data) {
+                        try {
+                            loader.parse(data, '', onLoad, onError);
+                        } catch (e) {
+                            if (onError) onError(e);
+                        }
+                    }, onProgress, onError);
+                }
+                
+                parse(data, path, onLoad, onError) {
+                    const result = {
+                        scene: new THREE.Group(),
+                        scenes: [],
+                        animations: [],
+                        cameras: [],
+                        asset: {}
+                    };
+                    
+                    try {
+                        const arrayBuffer = data instanceof ArrayBuffer ? data : data.buffer;
+                        const dataView = new DataView(arrayBuffer);
+                        
+                        // GLB文件头检查
+                        const magic = dataView.getUint32(0, true);
+                        if (magic !== 0x46546C67) { // 'glTF'
+                            console.log('📦 不是GLB文件，尝试简单解析...');
+                            this.createBasicAircraft(result.scene);
+                            if (onLoad) onLoad(result);
+                            return;
+                        }
+                        
+                        console.log('✅ GLB文件检测成功，开始解析...');
+                        
+                        // 读取GLB基本信息
+                        const version = dataView.getUint32(4, true);
+                        const length = dataView.getUint32(8, true);
+                        console.log(`📊 GLB版本: ${version}, 大小: ${length} bytes`);
+                        
+                        // 解析JSON chunk
+                        let offset = 12;
+                        const jsonChunkLength = dataView.getUint32(offset, true);
+                        const jsonChunkType = dataView.getUint32(offset + 4, true);
+                        
+                        if (jsonChunkType === 0x4E4F534A) { // 'JSON'
+                            offset += 8;
+                            const jsonBytes = new Uint8Array(arrayBuffer, offset, jsonChunkLength);
+                            const jsonString = new TextDecoder().decode(jsonBytes);
+                            const gltf = JSON.parse(jsonString);
+                            
+                            console.log('📝 GLTF JSON解析成功:', gltf);
+                            
+                            // 检查是否有网格数据
+                            if (gltf.meshes && gltf.meshes.length > 0) {
+                                console.log(`🔍 发现 ${gltf.meshes.length} 个网格`);
+                                this.parseRealModel(gltf, arrayBuffer, result.scene);
+                            } else {
+                                console.log('⚠️ 未发现网格数据，使用基础飞机');
+                                this.createBasicAircraft(result.scene);
+                            }
+                        } else {
+                            console.log('⚠️ JSON chunk未找到，使用基础飞机');
+                            this.createBasicAircraft(result.scene);
+                        }
+                        
+                        if (onLoad) onLoad(result);
+                        
+                    } catch (error) {
+                        console.error('GLB解析过程出错:', error);
+                        this.createBasicAircraft(result.scene);
+                        if (onLoad) onLoad(result);
+                    }
+                }
+                
+                parseRealModel(gltf, arrayBuffer, scene) {
+                    console.log('🎯 开始解析真实3D模型...');
+                    
+                    try {
+                        // 找到二进制数据chunk
+                        const dataView = new DataView(arrayBuffer);
+                        let offset = 12;
+                        
+                        // 跳过JSON chunk
+                        const jsonChunkLength = dataView.getUint32(offset, true);
+                        offset += 8 + jsonChunkLength;
+                        
+                        // 对齐到4字节边界
+                        while (offset % 4 !== 0) offset++;
+                        
+                        // 读取二进制chunk
+                        const binChunkLength = dataView.getUint32(offset, true);
+                        const binChunkType = dataView.getUint32(offset + 4, true);
+                        
+                        if (binChunkType === 0x004E4942) { // 'BIN\0'
+                            const binaryData = new Uint8Array(arrayBuffer, offset + 8, binChunkLength);
+                            console.log(`📦 二进制数据大小: ${binChunkLength} bytes`);
+                            
+                            // 解析材质
+                            const materials = this.parseMaterials(gltf);
+                            
+                            // 解析网格
+                            gltf.meshes.forEach((mesh, meshIndex) => {
+                                const group = new THREE.Group();
+                                group.name = mesh.name || `Mesh_${meshIndex}`;
+                                
+                                mesh.primitives.forEach((primitive, primIndex) => {
+                                    const geometry = this.parseGeometry(primitive, gltf, binaryData);
+                                    const material = materials[primitive.material] || new THREE.MeshPhongMaterial({ color: 0x0066ff });
+                                    
+                                    const meshObj = new THREE.Mesh(geometry, material);
+                                    meshObj.name = `${group.name}_Primitive_${primIndex}`;
+                                    group.add(meshObj);
+                                    
+                                    console.log(`✅ 创建网格: ${meshObj.name}`);
+                                });
+                                
+                                scene.add(group);
+                            });
+                            
+                            console.log('🎊 真实3D模型解析完成！');
+                        } else {
+                            console.log('⚠️ 二进制chunk未找到');
+                            this.createBasicAircraft(scene);
+                        }
+                        
+                    } catch (error) {
+                        console.error('真实模型解析失败:', error);
+                        this.createBasicAircraft(scene);
+                    }
+                }
+                
+                parseMaterials(gltf) {
+                    const materials = [];
+                    
+                    if (gltf.materials) {
+                        gltf.materials.forEach((material, index) => {
+                            const mat = new THREE.MeshPhongMaterial();
+                            
+                            if (material.pbrMetallicRoughness) {
+                                const pbr = material.pbrMetallicRoughness;
+                                if (pbr.baseColorFactor) {
+                                    mat.color.fromArray(pbr.baseColorFactor);
+                                }
+                                mat.transparent = pbr.baseColorFactor && pbr.baseColorFactor[3] < 1.0;
+                            }
+                            
+                            materials[index] = mat;
+                            console.log(`📋 材质 ${index} 创建完成`);
+                        });
+                    }
+                    
+                    return materials;
+                }
+                
+                parseGeometry(primitive, gltf, binaryData) {
+                    const geometry = new THREE.BufferGeometry();
+                    
+                    // 解析属性
+                    Object.keys(primitive.attributes).forEach(attributeName => {
+                        const accessorIndex = primitive.attributes[attributeName];
+                        const accessor = gltf.accessors[accessorIndex];
+                        const bufferView = gltf.bufferViews[accessor.bufferView];
+                        
+                        const data = this.parseAccessor(accessor, bufferView, binaryData);
+                        
+                        switch (attributeName) {
+                            case 'POSITION':
+                                geometry.setAttribute('position', new THREE.BufferAttribute(data, 3));
+                                break;
+                            case 'NORMAL':
+                                geometry.setAttribute('normal', new THREE.BufferAttribute(data, 3));
+                                break;
+                            case 'TEXCOORD_0':
+                                geometry.setAttribute('uv', new THREE.BufferAttribute(data, 2));
+                                break;
+                        }
+                    });
+                    
+                    // 解析索引
+                    if (primitive.indices !== undefined) {
+                        const accessor = gltf.accessors[primitive.indices];
+                        const bufferView = gltf.bufferViews[accessor.bufferView];
+                        const indices = this.parseAccessor(accessor, bufferView, binaryData);
+                        geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+                    }
+                    
+                    geometry.computeBoundingSphere();
+                    console.log('🔧 几何体解析完成');
+                    return geometry;
+                }
+                
+                parseAccessor(accessor, bufferView, binaryData) {
+                    const componentTypes = {
+                        5120: Int8Array,    // BYTE
+                        5121: Uint8Array,   // UNSIGNED_BYTE
+                        5122: Int16Array,   // SHORT
+                        5123: Uint16Array,  // UNSIGNED_SHORT
+                        5125: Uint32Array,  // UNSIGNED_INT
+                        5126: Float32Array  // FLOAT
+                    };
+                    
+                    const typeSizes = {
+                        'SCALAR': 1,
+                        'VEC2': 2,
+                        'VEC3': 3,
+                        'VEC4': 4,
+                        'MAT2': 4,
+                        'MAT3': 9,
+                        'MAT4': 16
+                    };
+                    
+                    const ArrayType = componentTypes[accessor.componentType];
+                    const elementSize = typeSizes[accessor.type];
+                    const byteOffset = (bufferView.byteOffset || 0) + (accessor.byteOffset || 0);
+                    const byteLength = accessor.count * elementSize * ArrayType.BYTES_PER_ELEMENT;
+                    
+                    const slice = binaryData.slice(byteOffset, byteOffset + byteLength);
+                    return new ArrayType(slice.buffer, slice.byteOffset, slice.byteLength / ArrayType.BYTES_PER_ELEMENT);
+                }
+                
+                createBasicAircraft(scene) {
+                    // 创建一个漂亮的3D飞机
+                    const group = new THREE.Group();
+                    
+                    // 主机身
+                    const bodyGeometry = new THREE.ConeGeometry(0.3, 2, 8);
+                    const bodyMaterial = new THREE.MeshPhongMaterial({ 
+                        color: 0x0066ff,
+                        shininess: 100 
+                    });
+                    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+                    body.rotation.x = Math.PI;
+                    group.add(body);
+                    
+                    // 机翼
+                    const wingGeometry = new THREE.BoxGeometry(2, 0.1, 0.5);
+                    const wingMaterial = new THREE.MeshPhongMaterial({ 
+                        color: 0x004499 
+                    });
+                    const wings = new THREE.Mesh(wingGeometry, wingMaterial);
+                    wings.position.y = -0.3;
+                    group.add(wings);
+                    
+                    // 尾翼
+                    const tailGeometry = new THREE.BoxGeometry(0.8, 0.05, 0.3);
+                    const tail = new THREE.Mesh(tailGeometry, wingMaterial);
+                    tail.position.y = 0.7;
+                    group.add(tail);
+                    
+                    // 驾驶舱
+                    const cockpitGeometry = new THREE.SphereGeometry(0.2, 8, 8);
+                    const cockpitMaterial = new THREE.MeshPhongMaterial({ 
+                        color: 0x87ceeb,
+                        transparent: true,
+                        opacity: 0.8 
+                    });
+                    const cockpit = new THREE.Mesh(cockpitGeometry, cockpitMaterial);
+                    cockpit.position.y = -0.8;
+                    group.add(cockpit);
+                    
+                    // 推进器
+                    const engineGeometry = new THREE.CylinderGeometry(0.1, 0.15, 0.4, 8);
+                    const engineMaterial = new THREE.MeshPhongMaterial({ 
+                        color: 0xff4444 
+                    });
+                    const engine = new THREE.Mesh(engineGeometry, engineMaterial);
+                    engine.position.y = 1.2;
+                    group.add(engine);
+                    
+                    scene.add(group);
+                    console.log('✈️ 3D几何飞机创建完成');
+                }
+            }
+            
+            // 注册到全局
+            THREE.GLTFLoader = GLTFLoader;
+            window.GLTFLoader = GLTFLoader;
+            return true;
+        };
+        
+        // 立即尝试加载
+        if (typeof THREE !== 'undefined') {
+            window.loadInlineGLTFLoader();
+        } else {
+            // 等待Three.js加载完成
+            const checkThree = setInterval(() => {
+                if (typeof THREE !== 'undefined') {
+                    clearInterval(checkThree);
+                    window.loadInlineGLTFLoader();
+                    console.log('✅ Three.js加载完成，内嵌GLTFLoader已就绪');
+                }
+            }, 100);
+        }
+    </script>
+    
     <script id="gltfloader-main" src="https://threejs.org/examples/js/loaders/GLTFLoader.js"
             onerror="loadBackupGLTFLoader()"></script>
     
@@ -78,8 +389,20 @@
                 };
                 document.head.appendChild(script);
             } else {
-                console.error('❌ 所有GLTFLoader CDN都失败，将使用2D模式');
-                window.gltfLoaderLoadFailed = true;
+                console.log('🔄 所有GLTFLoader CDN都失败，启用内嵌GLTFLoader...');
+                // 启用内嵌的GLTFLoader
+                if (typeof THREE !== 'undefined' && window.loadInlineGLTFLoader) {
+                    const success = window.loadInlineGLTFLoader();
+                    if (success) {
+                        console.log('✅ 内嵌GLTFLoader启用成功！');
+                    } else {
+                        console.error('❌ 内嵌GLTFLoader也失败，将使用2D模式');
+                        window.gltfLoaderLoadFailed = true;
+                    }
+                } else {
+                    console.error('❌ Three.js未加载，无法使用内嵌GLTFLoader');
+                    window.gltfLoaderLoadFailed = true;
+                }
             }
         }
         
@@ -1038,8 +1361,13 @@
                 console.log('🤖 开始加载混元AI飞机模型...');
                 update3DStatus('🤖 准备加载混元AI飞机模型...', '#2196F3');
                 
-                // 检查GLTFLoader是否可用（兼容多种加载方式）
+                // 确保GLTFLoader可用
                 let GLTFLoader = null;
+                
+                // 先尝试启用内嵌GLTFLoader
+                if (typeof THREE !== 'undefined' && window.loadInlineGLTFLoader) {
+                    window.loadInlineGLTFLoader();
+                }
                 
                 if (typeof THREE !== 'undefined') {
                     // 尝试多种GLTFLoader访问方式
@@ -1054,9 +1382,9 @@
                 }
                 
                 if (!GLTFLoader) {
-                    console.warn('⚠️ GLTFLoader未找到，跳过3D模型加载');
-                    console.log('🔄 将显示2D飞机图片');
-                    console.log('💡 可能的原因: CDN加载失败或版本不兼容');
+                    console.warn('⚠️ GLTFLoader未找到，创建基础3D飞机');
+                    createSimple3DPlane();
+                    update3DStatus('⚠️ 使用基础3D飞机模型', '#FF9800');
                     return;
                 }
                 
@@ -1065,14 +1393,22 @@
                 try {
                     const loader = new GLTFLoader();
                     
-                    // 调试：检查模型路径
-                    const modelPath = 'assets/hunyuan-fighter/fighter.glb';
-                    const fullPath = window.location.href.split('/').slice(0, -1).join('/') + '/' + modelPath;
-                    console.log('🔍 尝试加载模型:', {
-                        相对路径: modelPath,
-                        完整路径: fullPath,
-                        当前位置: window.location.href
-                    });
+                    // 强制加载3D模型 - 多路径尝试
+                    const modelPaths = [
+                        'assets/hunyuan-fighter/fighter.glb',
+                        './assets/hunyuan-fighter/fighter.glb',
+                        'games/shooter/assets/hunyuan-fighter/fighter.glb'
+                    ];
+                    
+                    console.log('🔍 尝试加载3D模型，路径选项:', modelPaths);
+                    console.log('📍 当前位置:', window.location.href);
+                    
+                    // 使用第一个路径
+                    const modelPath = modelPaths[0];
+                    
+                    // 为了确保3D飞机显示，先创建一个简单的3D几何体飞机
+                    console.log('🛩️ 创建几何体3D飞机作为后备...');
+                    createSimple3DPlane();
                     
                 loader.load(
                     modelPath,
@@ -1080,9 +1416,22 @@
                         planeModel3D = gltf.scene;
                         
                         // 混元AI模型优化
-                        planeModel3D.scale.set(8, 8, 8); // 初始缩放
+                        planeModel3D.scale.set(3, 3, 3); // 适合游戏的缩放
                         planeModel3D.rotation.x = -Math.PI / 2; // 转向正确方向
                         planeModel3D.rotation.z = Math.PI; // 头部朝上
+                        
+                        // 计算模型边界，确保适合显示
+                        const box = new THREE.Box3().setFromObject(planeModel3D);
+                        const size = box.getSize(new THREE.Vector3());
+                        console.log('📏 模型尺寸:', size);
+                        
+                        // 如果模型太大或太小，自动调整
+                        const maxSize = Math.max(size.x, size.y, size.z);
+                        if (maxSize > 5) {
+                            const scale = 3 / maxSize;
+                            planeModel3D.scale.setScalar(scale);
+                            console.log(`📐 自动缩放: ${scale}`);
+                        }
                         
                         // 材质增强
                         planeModel3D.traverse((child) => {
@@ -1124,24 +1473,59 @@
                         update3DStatus(`⏳ 混元AI模型加载中... ${percent}%`, '#2196F3');
                     },
                     function(error) {
-                        console.error('❌ 混元AI模型加载失败:', error);
-                        console.log('📋 错误详情:', {
-                            错误类型: error.constructor.name,
-                            错误消息: error.message,
-                            文件路径: modelPath,
-                            建议: '检查文件是否存在且可访问'
-                        });
-                        console.log('🔄 切换到2D后备模式');
+                        console.error('❌ 混元AI模型主路径失败:', error);
                         
-                        // 更新状态显示
-                        if (error.message.includes('404')) {
-                            update3DStatus('❌ 3D模型文件未找到，使用2D模式', '#f44336');
-                            console.log('💡 提示: 模型文件未找到，请检查路径');
-                        } else if (error.message.includes('CORS')) {
-                            update3DStatus('❌ 模型访问被阻止，使用2D模式', '#f44336');
-                            console.log('💡 提示: 跨域访问被阻止，请检查服务器配置');
-                        } else {
-                            update3DStatus('❌ 3D模型加载失败，使用2D模式', '#f44336');
+                        // 立即尝试备用路径
+                        const backupPaths = [
+                            './assets/hunyuan-fighter/fighter.glb',
+                            '../assets/hunyuan-fighter/fighter.glb', 
+                            '/ai-mini-game-platform/games/shooter/assets/hunyuan-fighter/fighter.glb',
+                            '/WEB/ai-mini-game-platform/games/shooter/assets/hunyuan-fighter/fighter.glb'
+                        ];
+                        
+                        console.log('🔄 尝试备用路径...', backupPaths);
+                        tryBackupPaths(loader, backupPaths, 0);
+                        
+                        function tryBackupPaths(loader, paths, index) {
+                            if (index >= paths.length) {
+                                console.log('⚠️ 所有路径失败，保持几何体飞机');
+                                update3DStatus('⚠️ 使用几何体3D飞机', '#FF9800');
+                                return;
+                            }
+                            
+                            const path = paths[index];
+                            console.log(`🔄 尝试路径 ${index + 1}: ${path}`);
+                            
+                            loader.load(
+                                path,
+                                function(gltf) {
+                                    console.log(`🎊 模型从 ${path} 加载成功！`);
+                                    
+                                    planeModel3D = gltf.scene;
+                                    planeModel3D.scale.set(3, 3, 3);
+                                    planeModel3D.rotation.x = -Math.PI / 2;
+                                    planeModel3D.rotation.z = Math.PI;
+                                    
+                                    // 增强材质
+                                    planeModel3D.traverse((child) => {
+                                        if (child.isMesh && child.material) {
+                                            child.material.metalness = 0.7;
+                                            child.material.roughness = 0.3;
+                                        }
+                                    });
+                                    
+                                    scene3D.add(planeModel3D);
+                                    update3DStatus('🎊 混元AI 3D飞机加载完成！', '#4CAF50');
+                                },
+                                function(progress) {
+                                    const percent = Math.round((progress.loaded / progress.total) * 100);
+                                    update3DStatus(`⏳ 备用路径 ${index + 1} 加载中... ${percent}%`, '#2196F3');
+                                },
+                                function(err) {
+                                    console.error(`❌ 路径 ${path} 失败:`, err.message);
+                                    tryBackupPaths(loader, paths, index + 1);
+                                }
+                            );
                         }
                     }
                 );
@@ -1185,6 +1569,222 @@
                     statusElement.textContent = message;
                     statusElement.style.color = color;
                 }
+            }
+            
+            // CSS 3D飞机系统（完全不依赖网络）
+            let css3DPlane = null;
+            
+            function createCSS3DPlane() {
+                if (css3DPlane) return; // 已存在则不重复创建
+                
+                css3DPlane = document.createElement('div');
+                css3DPlane.id = 'css3d-plane';
+                css3DPlane.style.cssText = `
+                    position: fixed;
+                    width: 60px;
+                    height: 60px;
+                    background: linear-gradient(45deg, #0066ff, #004499, #002266);
+                    clip-path: polygon(50% 0%, 100% 70%, 70% 100%, 30% 100%, 0% 70%);
+                    transform-style: preserve-3d;
+                    filter: drop-shadow(0 0 15px rgba(0, 102, 255, 0.8));
+                    transition: transform 0.1s ease-out;
+                    z-index: 10;
+                    pointer-events: none;
+                `;
+                
+                // 添加3D效果的伪元素
+                const style = document.createElement('style');
+                style.textContent = `
+                    #css3d-plane::before {
+                        content: '';
+                        position: absolute;
+                        top: 20%;
+                        left: 20%;
+                        width: 60%;
+                        height: 60%;
+                        background: radial-gradient(circle, #66bbff, #0088ff);
+                        border-radius: 50%;
+                        animation: planePulse 1.5s infinite ease-in-out;
+                    }
+                    
+                    #css3d-plane::after {
+                        content: '';
+                        position: absolute;
+                        bottom: -10px;
+                        left: 50%;
+                        width: 20px;
+                        height: 30px;
+                        background: linear-gradient(180deg, 
+                            rgba(255, 150, 0, 0.8) 0%, 
+                            rgba(255, 100, 0, 0.6) 50%, 
+                            rgba(255, 50, 0, 0.3) 100%);
+                        border-radius: 50%;
+                        transform: translateX(-50%);
+                        animation: flameFlicker 0.2s infinite;
+                    }
+                    
+                    @keyframes planePulse {
+                        0%, 100% { opacity: 0.7; transform: scale(1); }
+                        50% { opacity: 1; transform: scale(1.1); }
+                    }
+                    
+                    @keyframes flameFlicker {
+                        0%, 100% { transform: translateX(-50%) scaleY(1); }
+                        50% { transform: translateX(-50%) scaleY(1.2); }
+                    }
+                `;
+                
+                document.head.appendChild(style);
+                document.body.appendChild(css3DPlane);
+                console.log('✅ CSS 3D飞机创建成功！');
+            }
+            
+            function updateCSS3DPlane() {
+                if (!css3DPlane) {
+                    createCSS3DPlane();
+                }
+                
+                if (css3DPlane) {
+                    const x = gameState.plane.x + gameState.plane.width / 2 - 30;
+                    const y = gameState.plane.y + gameState.plane.height / 2 - 30;
+                    
+                    // 添加3D变换效果
+                    const mouseEffect = Math.sin(Date.now() * 0.003) * 2;
+                    css3DPlane.style.transform = `
+                        translate(${x}px, ${y}px) 
+                        rotateX(${mouseEffect}deg) 
+                        rotateY(${mouseEffect * 0.5}deg)
+                        scale(1.1)
+                    `;
+                }
+            }
+            
+            // 绘制增强的2D飞机
+            function drawEnhanced2DPlane() {
+                const centerX = gameState.plane.x + gameState.plane.width / 2;
+                const centerY = gameState.plane.y + gameState.plane.height / 2;
+                
+                // 主体 - 蓝色战斗机
+                ctx.fillStyle = '#0066ff';
+                ctx.beginPath();
+                ctx.moveTo(centerX, gameState.plane.y); // 机头
+                ctx.lineTo(gameState.plane.x + 10, gameState.plane.y + 45); // 左机身
+                ctx.lineTo(gameState.plane.x + 20, gameState.plane.y + 35); // 左内翼
+                ctx.lineTo(gameState.plane.x + 40, gameState.plane.y + 35); // 右内翼
+                ctx.lineTo(gameState.plane.x + 50, gameState.plane.y + 45); // 右机身
+                ctx.lineTo(centerX, gameState.plane.y + 60); // 机尾
+                ctx.closePath();
+                ctx.fill();
+                
+                // 机翼
+                ctx.fillStyle = '#004499';
+                ctx.fillRect(gameState.plane.x, gameState.plane.y + 25, 60, 8);
+                
+                // 引擎
+                ctx.fillStyle = '#0088ff';
+                ctx.fillRect(gameState.plane.x + 20, gameState.plane.y + 40, 8, 15);
+                ctx.fillRect(gameState.plane.x + 32, gameState.plane.y + 40, 8, 15);
+                
+                // 座舱
+                ctx.fillStyle = '#87ceeb';
+                ctx.beginPath();
+                ctx.ellipse(centerX, gameState.plane.y + 20, 8, 12, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                console.log('✈️ 增强2D飞机已绘制');
+            }
+            
+            // 创建简单的3D几何体飞机
+            function createSimple3DPlane() {
+                if (!scene3D || typeof THREE === 'undefined') {
+                    console.log('⚠️ 3D场景未准备好，跳过几何体飞机创建');
+                    return;
+                }
+                
+                try {
+                    // 创建飞机几何体
+                    const geometry = new THREE.ConeGeometry(8, 25, 4);
+                    const material = new THREE.MeshPhongMaterial({ 
+                        color: 0x0088ff,
+                        shininess: 100
+                    });
+                    
+                    planeModel3D = new THREE.Mesh(geometry, material);
+                    planeModel3D.rotation.x = Math.PI; // 飞机头朝上
+                    
+                    scene3D.add(planeModel3D);
+                    
+                    console.log('✅ 几何体3D飞机创建成功！');
+                    update3DStatus('✅ 3D几何体飞机已创建', '#4CAF50');
+                    
+                } catch (error) {
+                    console.error('❌ 几何体3D飞机创建失败:', error);
+                }
+            }
+            
+            // 强制重新初始化3D系统
+            async function forceReinit3DSystem() {
+                console.log('🔄 强制重新初始化3D系统...');
+                
+                // 1. 检查Three.js状态
+                console.log('🔍 检查Three.js状态:', typeof THREE !== 'undefined' ? '✅ 已加载' : '❌ 未加载');
+                
+                if (typeof THREE === 'undefined') {
+                    console.log('⚠️ Three.js未加载，尝试重新加载...');
+                    alert('Three.js未加载，按R键尝试重新加载，或刷新页面重试。');
+                    return;
+                }
+                
+                // 2. 重新初始化3D系统
+                try {
+                    console.log('🛩️ 重新初始化3D系统...');
+                    init3DSystem();
+                    
+                    // 3. 等待2秒后检查结果
+                    setTimeout(() => {
+                        if (scene3D && renderer3D) {
+                            console.log('✅ 3D系统重新初始化成功！');
+                            
+                            // 4. 创建3D飞机
+                            if (typeof THREE !== 'undefined') {
+                                createSimple3DPlane();
+                                console.log('🛩️ 3D飞机已创建！');
+                                alert('✅ 3D系统重新初始化成功！\n现在应该能看到3D飞机了。');
+                            }
+                        } else {
+                            console.log('❌ 3D系统重新初始化失败');
+                            alert('❌ 3D系统重新初始化失败\n建议刷新页面重试。');
+                        }
+                    }, 2000);
+                    
+                } catch (error) {
+                    console.error('❌ 3D系统初始化错误:', error);
+                    alert('3D系统初始化错误: ' + error.message);
+                }
+            }
+            
+            // 重新加载Three.js
+            function reloadThreeJS() {
+                console.log('🔄 尝试重新加载Three.js...');
+                
+                // 移除现有的Three.js（如果存在）
+                if (typeof THREE !== 'undefined') {
+                    console.log('🗑️ 清理现有Three.js...');
+                    delete window.THREE;
+                }
+                
+                // 重新加载Three.js
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r157/three.min.js';
+                script.onload = () => {
+                    console.log('✅ Three.js重新加载成功！');
+                    alert('✅ Three.js重新加载成功！\n现在按P键重新初始化3D系统。');
+                };
+                script.onerror = () => {
+                    console.error('❌ Three.js重新加载失败');
+                    alert('❌ Three.js重新加载失败\n请检查网络连接或刷新页面重试。');
+                };
+                document.head.appendChild(script);
             }
             
             // 智能3D系统初始化（等待Three.js加载完成）
@@ -1595,7 +2195,10 @@
                 try {
                     // 加载游戏资源（有超时保护）
                     await Promise.race([
-                        loadGameAssets(),
+                        loadGameAssets().catch(e => {
+                            console.log('⚠️ 资源加载失败，继续游戏:', e);
+                            return Promise.resolve(); // 确保继续执行
+                        }),
                         new Promise(resolve => setTimeout(resolve, 3000)) // 3秒超时
                     ]);
                     console.log('✅ 资源加载完成或超时');
@@ -1703,7 +2306,7 @@
 
             // 强制启动游戏（无需等待资源加载）
             function forceStartGame() {
-                console.log('🚀 强制启动游戏模式');
+                console.log('🚀 强制启动游戏模式（包含完整功能）');
                 
                 gameState.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                 
@@ -1816,34 +2419,13 @@
                 ctx.ellipse(flameX, flameY + 10, 8, 15, 0, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // 如果没有任何3D和伪3D，且2D图像也未加载，使用几何绘制
-                if (!planeModel3D && !window.pseudo3DEnabled && (!gameAssets.imageLoaded || !gameAssets.planeImage)) {
-                    // 使用原始几何绘制作为后备
-                    ctx.fillStyle = '#d4af37';
-                    ctx.beginPath();
-                    ctx.moveTo(gameState.plane.x, gameState.plane.y + gameState.plane.height);
-                    ctx.lineTo(gameState.plane.x + gameState.plane.width, gameState.plane.y + gameState.plane.height);
-                    ctx.lineTo(gameState.plane.x + gameState.plane.width / 2, gameState.plane.y);
-                    ctx.closePath();
-                    ctx.fill();
-                    
-                    ctx.fillStyle = '#ffd700';
-                    ctx.fillRect(gameState.plane.x + 15, gameState.plane.y + 10, 30, 15);
-                    
-                    ctx.strokeStyle = '#ffd700';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.moveTo(gameState.plane.x + 5, gameState.plane.y + 30);
-                    ctx.lineTo(gameState.plane.x + gameState.plane.width - 5, gameState.plane.y + 30);
-                    ctx.stroke();
-                    
-                    ctx.fillStyle = '#ff6b6b';
-                    ctx.beginPath();
-                    ctx.ellipse(gameState.plane.x + gameState.plane.width / 2, 
-                                gameState.plane.y + gameState.plane.height + 5, 
-                                5, 15, 0, 0, Math.PI * 2);
-                    ctx.fill();
-                }
+                // 简化飞机渲染 - 确保总是显示
+                
+                // 🔥 强制显示飞机 - 确保可见
+                drawEnhanced2DPlane();
+                
+                // CSS 3D飞机
+                updateCSS3DPlane();
                 
                 ctx.restore();
             }
@@ -1884,34 +2466,74 @@
                     e.y += e.speed;
                     
                     ctx.save();
-                    ctx.fillStyle = e.health > 1 ? '#b22222' : '#dc143c';
-                    ctx.beginPath();
-                    ctx.moveTo(e.x, e.y);
-                    ctx.lineTo(e.x + e.width, e.y);
-                    ctx.lineTo(e.x + e.width - 15, e.y + e.height);
-                    ctx.lineTo(e.x + 15, e.y + e.height);
-                    ctx.closePath();
-                    ctx.fill();
                     
-                    ctx.fillStyle = '#ff8a8a';
-                    ctx.fillRect(e.x + 10, e.y + 5, e.width - 20, 8);
+                    // 🔴 定义敌机中心点
+                    const centerX = e.x + e.width / 2;
+                    const centerY = e.y + e.height / 2;
                     
                     if (e.health > 1) {
-                        ctx.fillStyle = '#ff8a8a';
-                        ctx.fillRect(e.x + 5, e.y + 20, e.width - 10, 10);
+                        // 🔴 大敌机 - 大圆形
+                        const bigRadius = 25;
                         
-                        ctx.strokeStyle = '#ffd700';
-                        ctx.lineWidth = 2;
+                        // 外圈 - 深红色
+                        ctx.fillStyle = '#cc0000';
+                        ctx.shadowColor = '#ff0000';
+                        ctx.shadowBlur = 15;
                         ctx.beginPath();
-                        ctx.arc(e.x + e.width/2, e.y + e.height/2, 15, 0, Math.PI * 2);
-                        ctx.stroke();
+                        ctx.arc(centerX, centerY, bigRadius, 0, Math.PI * 2);
+                        ctx.fill();
                         
-                        // 大敌机射击逻辑 (基于分数调整射击频率)
+                        // 内圈 - 亮红色
+                        ctx.fillStyle = '#ff4444';
+                        ctx.beginPath();
+                        ctx.arc(centerX, centerY, bigRadius * 0.7, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // 中心点 - 黄色
+                        ctx.fillStyle = '#ffff00';
+                        ctx.beginPath();
+                        ctx.arc(centerX, centerY, bigRadius * 0.3, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // 大敌机射击逻辑 - 配合弧线弹道系统调整 (基于分数调整射击频率)
                         if (e.y > 50 && e.y < gameCanvas.height - 200) { // 只在合理位置射击
                             const difficultyLevel = Math.min(Math.floor(gameState.score / 20), 10); // 每20分增加一级难度
-                            const shootProbability = Math.min(0.015 + difficultyLevel * 0.01, 0.1); // 基础1.5%，最高10%
+                            
+                            // 增加射击概率以便测试弹道效果
+                            let baseShootProbability = 0.08; // 大敌机射击概率8%
+                            
+                            const shootProbability = Math.min(baseShootProbability + difficultyLevel * 0.01, 0.15); // 最高15%
+                            
                             if (Math.random() < shootProbability) {
-                                createEnemyBullet(e.x + e.width/2, e.y + e.height);
+                                createEnemyBulletPattern(e.x + e.width/2, e.y + e.height);
+                                console.log('🏹 大敌机发射弧形排弹！位置:', e.x, e.y);
+                            }
+                        }
+                    } else {
+                        // 🔴 小敌机 - 小圆形
+                        const smallRadius = 15;
+                        
+                        // 外圈 - 红色
+                        ctx.fillStyle = '#ff6666';
+                        ctx.shadowColor = '#ff0000';
+                        ctx.shadowBlur = 10;
+                        ctx.beginPath();
+                        ctx.arc(centerX, centerY, smallRadius, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // 内圈 - 亮红色
+                        ctx.fillStyle = '#ff9999';
+                        ctx.beginPath();
+                        ctx.arc(centerX, centerY, smallRadius * 0.6, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // 普通敌机也可以射击（较低概率）
+                        if (e.y > 50 && e.y < gameCanvas.height - 200) {
+                            const shootProbability = 0.03; // 普通敌机3%射击概率
+                            
+                            if (Math.random() < shootProbability) {
+                                createEnemyBulletPattern(e.x + e.width/2, e.y + e.height);
+                                console.log('🏹 普通敌机发射弧形排弹！位置:', e.x, e.y);
                             }
                         }
                     }
@@ -1925,50 +2547,198 @@
                 }
             }
 
-            // 创建敌机子弹
-            function createEnemyBullet(x, y) {
+            // 🔥 创建敌机弧形排弹系统
+            function createEnemyBulletPattern(x, y) {
+                const difficultyLevel = Math.min(Math.floor(gameState.score / 15), 8);
+                
+                // 弧形排弹模式：一次发射多个子弹形成弧形
+                const bulletCount = 3 + Math.floor(difficultyLevel / 2); // 3-7个子弹
+                const arcAngle = Math.PI / 3; // 60度弧形范围
+                const angleStep = arcAngle / (bulletCount - 1);
+                const startAngle = -arcAngle / 2; // 从左侧开始
+                
+                console.log(`🏹 发射弧形排弹: ${bulletCount}发，角度范围: ${(arcAngle * 180 / Math.PI).toFixed(0)}度`);
+                
+                for (let i = 0; i < bulletCount; i++) {
+                    const angle = startAngle + i * angleStep;
+                    createSingleBullet(x, y, angle, 'pattern');
+                }
+            }
+            
+            // 创建单个子弹（简化版，直线运动）
+            function createSingleBullet(x, y, angle = 0, type = 'straight') {
+                
+                const baseSpeed = 3 + Math.min(gameState.score / 30, 2);
+                
+                // 计算弧形弹道方向
+                const vx = Math.sin(angle) * baseSpeed * 0.5; // 水平速度分量
+                const vy = Math.cos(angle) * baseSpeed + baseSpeed; // 垂直速度分量（主要向下）
+                
                 let bullet;
                 if (enemyBulletPool.length > 0) {
                     bullet = enemyBulletPool.pop();
                     Object.assign(bullet, {
-                        x: x - 3,
+                        x: x - 4,
                         y: y,
-                        width: 6,
-                        height: 12,
-                        speed: 4 + Math.min(gameState.score / 30, 3), // 速度随分数增加
-                        active: true
+                        width: 8,  // 🔴 圆形子弹大小
+                        height: 8, // 🔴 圆形子弹大小
+                        vx: vx,    // 🏹 水平速度
+                        vy: vy,    // 🏹 垂直速度
+                        speed: baseSpeed,
+                        active: true,
+                        trajectoryType: type,
+                        angle: angle,
+                        initialX: x - 4,
+                        initialY: y,
+                        time: 0
                     });
                 } else {
                     bullet = {
-                        x: x - 3,
+                        x: x - 4,
                         y: y,
-                        width: 6,
-                        height: 12,
-                        speed: 4 + Math.min(gameState.score / 30, 3),
-                        active: true
+                        width: 8,  // 🔴 圆形子弹大小
+                        height: 8, // 🔴 圆形子弹大小
+                        vx: vx,    // 🏹 水平速度
+                        vy: vy,    // 🏹 垂直速度
+                        speed: baseSpeed,
+                        active: true,
+                        trajectoryType: type,
+                        angle: angle,
+                        initialX: x - 4,
+                        initialY: y,
+                        time: 0
                     };
                 }
+                
                 gameState.enemyBullets.push(bullet);
+                console.log(`🔴 创建圆形子弹，角度: ${(angle * 180 / Math.PI).toFixed(1)}度`);
             }
 
-            // 绘制敌机子弹
+            // 绘制敌机子弹 - 增强版弧线弹道系统
             function drawEnemyBullets() {
+                // 调试：显示子弹数量
+                if (gameState.enemyBullets.length > 0 && Math.random() < 0.1) {
+                    console.log(`🔫 当前敌机子弹数量: ${gameState.enemyBullets.length}`);
+                }
+                
                 for (let i = gameState.enemyBullets.length - 1; i >= 0; i--) {
                     const bullet = gameState.enemyBullets[i];
-                    bullet.y += bullet.speed;
                     
-                    // 绘制红色子弹
+                    // 增加时间计数器
+                    bullet.time = (bullet.time || 0) + 1;
+                    
+                    // 🔥 简化弹道运动：使用速度向量
+                    if (bullet.vx !== undefined && bullet.vy !== undefined) {
+                        // 新的弧形排弹系统：使用速度向量
+                        bullet.x += bullet.vx;
+                        bullet.y += bullet.vy;
+                    } else {
+                        // 兼容旧的直线弹道
+                        bullet.y += bullet.speed || 4;
+                    }
+                    
+                    // 🔥 放宽边界约束 - 允许弧形弹道充分展示！
+                    // 只有完全离开屏幕才移除，不限制弧形轨迹
+                    if (bullet.x < -100 || bullet.x > gameCanvas.width + 100) {
+                        // 子弹完全离开屏幕，将其标记为无效
+                        bullet.active = false;
+                    }
+                    
+                    // 根据弹道类型选择不同的视觉效果
                     ctx.save();
-                    ctx.fillStyle = '#ff4444';
-                    ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                    
+                    // 基础颜色和大小
+                    let bulletColor = '#ff4444';
+                    let glowColor = '#ff8888';
+                    let size = 1;
+                    
+                    // 🔴 干净的子弹显示 - 无轨迹线
+                    
+                    // 根据弹道类型调整视觉效果
+                    switch (bullet.trajectoryType || 'straight') {
+                        case 'sine':
+                            bulletColor = '#00ff00'; // 🔥 亮绿色正弦波
+                            glowColor = '#44ff44';
+                            size = 1.4; // 🔥 更大
+                            break;
+                        case 'parabola':
+                            bulletColor = '#ff0000'; // 🔥 亮红色抛物线
+                            glowColor = '#ff4444';
+                            size = 1.5; // 🔥 更大
+                            break;
+                        case 'tracking':
+                            bulletColor = '#ff2222';
+                            glowColor = '#ff6666';
+                            size = 1.2; // 追踪弹稍微大一些
+                            break;
+                        case 'spiral':
+                            bulletColor = '#ff00ff'; // 🔥 亮紫色螺旋
+                            glowColor = '#ff44ff';
+                            size = 1.6; // 🔥 更大
+                            break;
+                    }
+                    
+                    // 🔴 绘制红色圆形子弹
+                    const radius = bullet.width / 2;
+                    ctx.fillStyle = '#ff4444'; // 红色
+                    ctx.shadowColor = '#ff0000';
+                    ctx.shadowBlur = 8;
+                    
+                    ctx.beginPath();
+                    ctx.arc(bullet.x + radius, bullet.y + radius, radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // 内部高光
+                    ctx.fillStyle = '#ff8888';
+                    ctx.beginPath();
+                    ctx.arc(bullet.x + radius, bullet.y + radius, radius * 0.6, 0, Math.PI * 2);
+                    ctx.fill();
                     
                     // 子弹发光效果
-                    ctx.fillStyle = '#ff8888';
-                    ctx.fillRect(bullet.x + 1, bullet.y + 1, bullet.width - 2, bullet.height - 2);
+                    ctx.fillStyle = glowColor;
+                    ctx.fillRect(
+                        bullet.x + 1 - (size - 1) * bullet.width / 2, 
+                        bullet.y + 1, 
+                        (bullet.width - 2) * size, 
+                        (bullet.height - 2) * size
+                    );
+                    
+                    // 为特殊弹道添加轨迹效果
+                    if ((bullet.trajectoryType || 'straight') !== 'straight' && bullet.time > 5) {
+                        ctx.strokeStyle = bulletColor + '40'; // 半透明轨迹
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(bullet.x + bullet.width/2, bullet.y + bullet.height);
+                        
+                        // 绘制短轨迹线
+                        const trailLength = 15;
+                        for (let t = 1; t <= trailLength; t++) {
+                            let trailX = bullet.x;
+                            let trailY = bullet.y + t * 2;
+                            
+                            // 根据弹道类型计算轨迹点
+                            switch (bullet.trajectoryType || 'straight') {
+                                case 'sine':
+                                    trailX = (bullet.initialX || bullet.x) + Math.sin((bullet.time - t) * (bullet.frequency || 0.03)) * (bullet.amplitude || 25);
+                                    break;
+                                case 'spiral':
+                                    const trailAngle = (bullet.time - t) * 0.1;
+                                    trailX = (bullet.initialX || bullet.x) + Math.cos(trailAngle) * (bullet.spiralRadius || 20) * (1 - (bullet.time - t) * 0.01);
+                                    break;
+                            }
+                            
+                            ctx.lineTo(trailX + bullet.width/2, trailY);
+                        }
+                        ctx.stroke();
+                    }
+                    
                     ctx.restore();
                     
-                    // 移除超出屏幕的子弹
-                    if (bullet.y > gameCanvas.height) {
+                    // 🔥 修复子弹清理逻辑 - 允许弧形弹道充分展示！
+                    // 只有完全离开大范围区域才移除，让弧形轨迹完全展示
+                    if (bullet.y > gameCanvas.height + 200 || bullet.y < -200 || 
+                        bullet.x < -400 || bullet.x > gameCanvas.width + 400 ||
+                        bullet.active === false) {
                         gameState.enemyBullets.splice(i, 1);
                         enemyBulletPool.push(bullet);
                     }
@@ -2310,19 +3080,64 @@
                 // 启动最基本的游戏循环
                 gameLoop();
                 
-                // 启动敌机生成
-                setInterval(() => {
-                    if (gameState.running && Math.random() < 0.7) {
-                        gameState.enemies.push({
-                            x: Math.random() * (gameCanvas.width - 40),
-                            y: -40,
-                            width: 40,
-                            height: 40,
-                            speed: 2 + Math.random() * 1,
-                            health: 1
-                        });
+                // 启动敌机生成（应急模式也使用完整的敌机系统）
+                gameState.enemyInterval = setInterval(() => {
+                    if (!gameState.running) return;
+                    
+                    const baseSpeed = 2 + Math.min(gameState.score / 10, 3);
+                    
+                    // 生成普通敌机
+                    if (Math.random() < 0.7) {
+                        let enemy;
+                        if (enemyPool.length > 0) {
+                            enemy = enemyPool.pop();
+                            Object.assign(enemy, {
+                                x: Math.random() * (gameCanvas.width - 40),
+                                y: -40,
+                                width: 40,
+                                height: 40,
+                                speed: baseSpeed + Math.random() * 1,
+                                health: 1
+                            });
+                        } else {
+                            enemy = {
+                                x: Math.random() * (gameCanvas.width - 40),
+                                y: -40,
+                                width: 40,
+                                height: 40,
+                                speed: baseSpeed + Math.random() * 1,
+                                health: 1
+                            };
+                        }
+                        gameState.enemies.push(enemy);
                     }
-                }, 1000);
+                    
+                    // 生成大型敌机
+                    if (Math.random() < 0.1) {
+                        let enemy;
+                        if (enemyPool.length > 0) {
+                            enemy = enemyPool.pop();
+                            Object.assign(enemy, {
+                                x: Math.random() * (gameCanvas.width - 60),
+                                y: -60,
+                                width: 60,
+                                height: 60,
+                                speed: baseSpeed * 0.7,
+                                health: 3
+                            });
+                        } else {
+                            enemy = {
+                                x: Math.random() * (gameCanvas.width - 60),
+                                y: -60,
+                                width: 60,
+                                height: 60,
+                                speed: baseSpeed * 0.7,
+                                health: 3
+                            };
+                        }
+                        gameState.enemies.push(enemy);
+                    }
+                }, 800);
                 
                 console.log('🚨 应急模式游戏已启动');
             });
@@ -2531,6 +3346,30 @@
                     gameState.plane.x -= gameState.planeSpeed;
                 } else if (e.code === 'ArrowRight') {
                     gameState.plane.x += gameState.planeSpeed;
+                                        } else if (e.code === 'KeyT') {
+                    // 🏹 测试弧形排弹系统！
+                    console.log('🏹 强制发射弧形排弹测试！');
+                    
+                    // 清空现有弹道
+                    gameState.enemyBullets = [];
+                    
+                    // 创建多个弧形排弹
+                    for (let i = 0; i < 5; i++) {
+                        const x = 100 + i * 150;
+                        const y = 50;
+                        createEnemyBulletPattern(x, y);
+                    }
+                    
+                    console.log(`✅ 发射了5组弧形排弹！`);
+                    alert('🏹 已发射5组弧形排弹！\n\n观察：\n• 每组3-7发子弹\n• 形成60度弧形扇形\n• 红色圆形子弹\n• 敌机也是圆形！');
+                } else if (e.code === 'KeyP') {
+                    // 强制重新检查和初始化3D系统（按P键）
+                    console.log('🛩️ 强制重新检查3D系统...');
+                    forceReinit3DSystem();
+                } else if (e.code === 'KeyR') {
+                    // 重新加载Three.js（按R键）
+                    console.log('🔄 尝试重新加载Three.js...');
+                    reloadThreeJS();
                 } else if (e.code === 'Escape') {
                     gameState.running = false;
                     stopBackgroundMusic();

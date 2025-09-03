@@ -180,3 +180,4 @@ if (typeof window !== 'undefined') {
     
     window.visitorCounter.init(pageName);
 }
+
