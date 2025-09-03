@@ -534,6 +534,25 @@
         };
     </script>
     
+    <!-- 兜底：确保在主GLTFLoader <script> 之前就存在 onerror 处理函数 -->
+    <script>
+        if (!window.loadBackupGLTFLoader) {
+            window.loadBackupGLTFLoader = function() {
+                try {
+                    console.warn('⚠️ GLTFLoader主CDN失败（早期触发），尝试临时备用源...');
+                    var s = document.createElement('script');
+                    s.src = 'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/loaders/GLTFLoader.js';
+                    s.onload = function(){ console.log('✅ 临时备用GLTFLoader加载成功'); };
+                    s.onerror = function(){ console.warn('❌ 临时备用GLTFLoader也失败，将使用内嵌版本'); if (window.loadInlineGLTFLoader) window.loadInlineGLTFLoader(); };
+                    document.head.appendChild(s);
+                } catch (e) {
+                    console.warn('❌ loadBackupGLTFLoader 兜底执行异常:', e);
+                    if (window.loadInlineGLTFLoader) window.loadInlineGLTFLoader();
+                }
+            };
+        }
+    </script>
+    
     <script id="gltfloader-main" src="https://threejs.org/examples/js/loaders/GLTFLoader.js"
             onerror="loadBackupGLTFLoader()"></script>
     
