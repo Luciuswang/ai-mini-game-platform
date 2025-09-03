@@ -838,7 +838,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 0; /* 在背景之上，游戏Canvas之下 */
+            z-index: 5; /* 位于游戏Canvas之上，但低于UI */
             pointer-events: none; /* 让点击事件穿透到游戏Canvas */
         }
 
@@ -1562,6 +1562,18 @@
                     });
                     renderer3D.setSize(window.innerWidth, window.innerHeight);
                     renderer3D.setClearColor(0x000000, 0); // 完全透明
+                    if (renderer3D.outputColorSpace !== undefined) {
+                        renderer3D.outputColorSpace = THREE.SRGBColorSpace;
+                    } else if (renderer3D.outputEncoding !== undefined) {
+                        renderer3D.outputEncoding = THREE.sRGBEncoding;
+                    }
+                    if (THREE && THREE.ACESFilmicToneMapping !== undefined) {
+                        renderer3D.toneMapping = THREE.ACESFilmicToneMapping;
+                        renderer3D.toneMappingExposure = 1.0;
+                    }
+                    if (window.devicePixelRatio) {
+                        renderer3D.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                    }
                     
                     // 添加环境光
                     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);

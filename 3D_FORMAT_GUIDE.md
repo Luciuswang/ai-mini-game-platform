@@ -182,3 +182,4 @@ https://raw.githubusercontent.com/Luciuswang/ai-mini-game-platform/main/games/sh
 - **P键** - 重新初始化3D系统
 
 **建议：先确保你的GLB文件可以正常访问，这是最可能的问题根源！** 🎯
+
