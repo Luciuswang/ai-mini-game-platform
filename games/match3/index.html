@@ -280,6 +280,16 @@
             height: 100%;
         }
 
+        /* 形状容器覆盖在网格上，确保绝对定位使用像素对齐 */
+        #shapesContainer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* 点击事件仍由每个shape处理 */
+        }
+
         .grid-row {
             display: flex;
             gap: 6px;
@@ -307,8 +317,7 @@
 
         .shape {
             position: absolute;
-            width: calc(25% - 4.5px);
-            aspect-ratio: 1;
+            /* 尺寸由JS按像素设置，避免变形与重叠 */
             border-radius: 12px;
             display: flex;
             align-items: center;
@@ -351,38 +360,38 @@
             border-color: rgba(255, 255, 255, 0.8);
         }
 
-        /* babo图片样式 - 使用3x3精灵图 */
+        /* babo图片样式 - 使用3x3精灵图（3列×3行） */
         .shape-red, .shape-blue, .shape-green, .shape-yellow, .shape-purple, .shape-orange {
             background-image: url('./assets/babo.png');
-            background-size: 300% 300%; /* 3x3网格 */
+            background-size: 300% 300%; /* 精灵图按3列×3行切分 */
             background-repeat: no-repeat;
-            padding: 12%; /* 大幅增加内边距，让图片显示更小（缩小一倍） */
+            padding: 0; /* 移除内边距，恢复正常大小 */
             box-sizing: border-box;
         }
 
-        /* 3x3网格位置定位 */
+        /* 3x3网格位置定位：x: 0/50/100%, y: 0/50/100% */
         .shape-red { 
-            background-position: 0% 0%; /* 第1行第1列 */
+            background-position: 0% 0%; /* 第1列 第1行 */
             color: var(--shape-red);
         }
         .shape-blue { 
-            background-position: 50% 0%; /* 第1行第2列 */
+            background-position: 50% 0%; /* 第2列 第1行 */
             color: var(--shape-blue);
         }
         .shape-green { 
-            background-position: 100% 0%; /* 第1行第3列 */
+            background-position: 100% 0%; /* 第3列 第1行 */
             color: var(--shape-green);
         }
         .shape-yellow { 
-            background-position: 0% 50%; /* 第2行第1列 */
+            background-position: 0% 50%; /* 第1列 第2行 */
             color: var(--shape-yellow);
         }
         .shape-purple { 
-            background-position: 50% 50%; /* 第2行第2列 */
+            background-position: 50% 50%; /* 第2列 第2行 */
             color: var(--shape-purple);
         }
         .shape-orange { 
-            background-position: 100% 50%; /* 第2行第3列 */
+            background-position: 100% 50%; /* 第3列 第2行 */
             color: var(--shape-orange);
         }
 
@@ -616,7 +625,7 @@
             }
 
             .shape {
-                width: calc(25% - 3px);
+                width: calc(25% - 4px);
                 font-size: 0.9rem;
             }
 
@@ -1212,6 +1221,7 @@
                 // 找到一个可能的移动
                 for (let row = 0; row < this.size; row++) {
                     for (let col = 0; col < this.size; col++) {
+                        
                         // 检查向右交换
                         if (col < this.size - 1) {
                             this.swapShapes({ row, col }, { row, col: col + 1 });
@@ -1347,38 +1357,51 @@
 
             renderGrid() {
                 this.shapesContainer.innerHTML = '';
-                
+
+                // 读取网格容器的像素大小，进行像素对齐
+                const boardRect = this.gameGrid.getBoundingClientRect();
+                const gapPx = 6; // 与CSS中grid-row/gap保持一致
+                const totalGapX = gapPx * (this.size - 1);
+                const totalGapY = gapPx * (this.size - 1);
+                const containerWidth = this.gameGrid.clientWidth;
+                const containerHeight = this.gameGrid.clientHeight;
+                const cellWidth = Math.floor((containerWidth - totalGapX) / this.size);
+                const cellHeight = Math.floor((containerHeight - totalGapY) / this.size);
+                const cellSizePx = Math.min(cellWidth, cellHeight);
+
                 for (let row = 0; row < this.size; row++) {
                     for (let col = 0; col < this.size; col++) {
                         const shape = this.grid[row][col];
-                        if (shape) {
-                            const shapeElement = document.createElement('div');
-                            shapeElement.className = `shape shape-${shape.type}`;
-                            shapeElement.dataset.row = row;
-                            shapeElement.dataset.col = col;
-                            
-                            if (shape.isNew) {
-                                shapeElement.classList.add('shape-new');
-                                shape.isNew = false;
-                            }
-                            
-                            // 计算位置
-                            const cellSize = 100 / this.size; // 百分比
-                            const gap = 0.75; // 间隙百分比
-                            
-                            shapeElement.style.left = `${col * (cellSize + gap)}%`;
-                            shapeElement.style.top = `${row * (cellSize + gap)}%`;
-                            
-                            this.shapesContainer.appendChild(shapeElement);
-                            
-                            // 移除动画类
-                            setTimeout(() => {
-                                shapeElement.classList.remove('shape-new');
-                            }, 500);
+                        if (!shape) continue;
+
+                        const shapeElement = document.createElement('div');
+                        shapeElement.className = `shape shape-${shape.type}`;
+                        shapeElement.dataset.row = row;
+                        shapeElement.dataset.col = col;
+
+                        if (shape.isNew) {
+                            shapeElement.classList.add('shape-new');
+                            shape.isNew = false;
                         }
+
+                        // 像素级定位，避免重叠与拉伸
+                        const leftPx = col * (cellSizePx + gapPx);
+                        const topPx = row * (cellSizePx + gapPx);
+                        shapeElement.style.left = leftPx + 'px';
+                        shapeElement.style.top = topPx + 'px';
+                        shapeElement.style.width = cellSizePx + 'px';
+                        shapeElement.style.height = cellSizePx + 'px';
+                        shapeElement.style.pointerEvents = 'auto';
+
+                        this.shapesContainer.appendChild(shapeElement);
+
+                        // 移除动画类
+                        setTimeout(() => {
+                            shapeElement.classList.remove('shape-new');
+                        }, 500);
                     }
                 }
-                
+
                 this.updateShapeDisplay();
             }
 
@@ -1427,6 +1450,13 @@
             document.body.addEventListener('touchmove', (e) => {
                 e.preventDefault();
             }, { passive: false });
+
+            // 监听窗口尺寸变化，重绘以保持对齐
+            window.addEventListener('resize', () => {
+                if (game) {
+                    game.renderGrid();
+                }
+            });
         });
 
         // 全局函数

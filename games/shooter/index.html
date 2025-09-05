@@ -553,8 +553,10 @@
         }
     </script>
     
-    <script id="gltfloader-main" src="https://threejs.org/examples/js/loaders/GLTFLoader.js"
-            onerror="loadBackupGLTFLoader()"></script>
+    <!-- 移除可能与内嵌GLTFLoader冲突的主CDN，改为占位并依赖上方多CDN/内嵌方案 -->
+    <script id="gltfloader-main">
+        // 使用上方 githubThreeJSLoader + loadBackupGLTFLoader + loadInlineGLTFLoader 的链路，不再强制从 threejs.org 加载
+    </script>
     
     <!-- 多CDN备用系统 -->
     <script>
@@ -1544,6 +1546,7 @@
             
             // =============== 3D渲染系统初始化 ===============
             let scene3D, camera3D, renderer3D, planeModel3D;
+            let baseRotation = { x: -Math.PI / 2, y: 0, z: Math.PI }; // 顶视且机头向上（不侧视）
             let animationId3D;
             
             function init3DSystem() {
@@ -1655,9 +1658,13 @@
             // 🚀 多格式3D文件加载器
             function tryLoadMultipleFormats(formats, formatIndex) {
                 if (formatIndex >= formats.length) {
-                    console.warn('⚠️ 所有3D格式尝试失败，使用Canvas 3D');
-                    createSimple3DPlaneCanvas();
-                    update3DStatus('⚠️ 使用Canvas 3D飞机', '#FF9800');
+                    console.warn('⚠️ 所有3D格式尝试失败，使用THREE几何体飞机');
+                    if (typeof createSimple3DPlane === 'function') {
+                        createSimple3DPlane();
+                    } else {
+                        createSimple3DPlaneCanvas();
+                    }
+                    update3DStatus('⚠️ 使用几何体3D飞机', '#FF9800');
                     return;
                 }
                 
@@ -1735,36 +1742,38 @@
                     modelPath,
                     function(gltf) {
                         planeModel3D = gltf.scene;
-                        
-                        // 混元AI模型优化
-                        planeModel3D.scale.set(3, 3, 3); // 适合游戏的缩放
-                        planeModel3D.rotation.x = -Math.PI / 2; // 转向正确方向
-                        planeModel3D.rotation.z = Math.PI; // 头部朝上
-                        
-                        // 计算模型边界，确保适合显示
-                        const box = new THREE.Box3().setFromObject(planeModel3D);
-                        const size = box.getSize(new THREE.Vector3());
-                        console.log('📏 模型尺寸:', size);
-                        
-                        // 如果模型太大或太小，自动调整
-                        const maxSize = Math.max(size.x, size.y, size.z);
-                        if (maxSize > 5) {
-                            const scale = 3 / maxSize;
-                            planeModel3D.scale.setScalar(scale);
-                            console.log(`📐 自动缩放: ${scale}`);
-                        }
-                        
-                        // 材质增强
+
+                        // 姿态与朝向
+                        planeModel3D.rotation.set(baseRotation.x, baseRotation.y, baseRotation.z);
+
+                        // 统一可见性和材质，避免透明/背面剔除导致看不见
                         planeModel3D.traverse((child) => {
                             if (child.isMesh) {
+                                child.frustumCulled = false;
                                 if (child.material) {
-                                    child.material.metalness = 0.7;
-                                    child.material.roughness = 0.3;
-                                    child.material.envMapIntensity = 1.0;
+                                    child.material.transparent = false;
+                                    child.material.opacity = 1;
+                                    if (typeof THREE !== 'undefined' && THREE.DoubleSide) {
+                                        child.material.side = THREE.DoubleSide;
+                                    }
+                                    if ('metalness' in child.material) child.material.metalness = 0.4;
+                                    if ('roughness' in child.material) child.material.roughness = 0.6;
                                 }
                             }
                         });
-                        
+
+                        // 居中并按目标尺寸缩放，保证可见
+                        const box = new THREE.Box3().setFromObject(planeModel3D);
+                        const size = box.getSize(new THREE.Vector3());
+                        const center = box.getCenter(new THREE.Vector3());
+                        planeModel3D.position.sub(center); // 将模型中心移至原点
+
+                        const maxSize = Math.max(size.x, size.y, size.z) || 1;
+                        const targetSize = 120; // 略放大显示
+                        const scale = targetSize / maxSize;
+                        planeModel3D.scale.setScalar(scale);
+                        console.log('📏 模型尺寸:', size, '→ 缩放:', scale);
+
                         scene3D.add(planeModel3D);
                         console.log('🎊 混元AI飞机模型加载成功！');
                         update3DStatus('🎊 混元AI 3D飞机加载完成！', '#4CAF50');
@@ -1830,29 +1839,34 @@
                                     
                                     planeModel3D = gltf.scene;
                                     
-                                    // 🛩️ 优化hunyuan-fighter模型显示
-                                    planeModel3D.scale.set(2, 2, 2); // 适合的缩放
-                                    planeModel3D.rotation.x = -Math.PI / 2; // 正确朝向
-                                    planeModel3D.rotation.z = Math.PI; // 头部向上
-                                    
-                                    // 自动调整大小
-                                    const box = new THREE.Box3().setFromObject(planeModel3D);
-                                    const size = box.getSize(new THREE.Vector3());
-                                    const maxSize = Math.max(size.x, size.y, size.z);
-                                    if (maxSize > 4) {
-                                        const scale = 3 / maxSize;
-                                        planeModel3D.scale.setScalar(scale);
-                                        console.log(`📐 hunyuan模型自动缩放: ${scale.toFixed(2)}`);
-                                    }
-                                    
-                                    // 增强材质
+                                    // 姿态与材质保障
+                                    planeModel3D.rotation.set(baseRotation.x, baseRotation.y, baseRotation.z);
                                     planeModel3D.traverse((child) => {
-                                        if (child.isMesh && child.material) {
-                                            child.material.metalness = 0.7;
-                                            child.material.roughness = 0.3;
+                                        if (child.isMesh) {
+                                            child.frustumCulled = false;
+                                            if (child.material) {
+                                                child.material.transparent = false;
+                                                child.material.opacity = 1;
+                                                if (typeof THREE !== 'undefined' && THREE.DoubleSide) {
+                                                    child.material.side = THREE.DoubleSide;
+                                                }
+                                                if ('metalness' in child.material) child.material.metalness = 0.4;
+                                                if ('roughness' in child.material) child.material.roughness = 0.6;
+                                            }
                                         }
                                     });
-                                    
+
+                                    // 居中并按固定目标尺寸缩放
+                                    const box = new THREE.Box3().setFromObject(planeModel3D);
+                                    const size = box.getSize(new THREE.Vector3());
+                                    const center = box.getCenter(new THREE.Vector3());
+                                    planeModel3D.position.sub(center);
+                                    const maxSize = Math.max(size.x, size.y, size.z) || 1;
+                                    const targetSize = 120;
+                                    const scale = targetSize / maxSize;
+                                    planeModel3D.scale.setScalar(scale);
+                                    console.log(`📐 hunyuan模型缩放: ${scale.toFixed(2)} 尺寸:`, size);
+
                                     scene3D.add(planeModel3D);
                                     update3DStatus('🎊 混元AI 3D飞机加载完成！', '#4CAF50');
                                 },
@@ -1890,8 +1904,11 @@
                         
                         // 添加微妙的飞行动画
                         const time = Date.now() * 0.002;
-                        planeModel3D.rotation.x = -Math.PI / 2 + Math.sin(time) * 0.02;
-                        planeModel3D.rotation.z = Math.PI + Math.sin(time * 1.5) * 0.01;
+                        planeModel3D.rotation.set(
+                            baseRotation.x + Math.sin(time) * 0.02,
+                            baseRotation.y,
+                            baseRotation.z + Math.sin(time * 1.5) * 0.01
+                        );
                     } catch (error) {
                         console.warn('⚠️ 3D飞机位置更新失败:', error);
                     }
