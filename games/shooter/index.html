@@ -1450,10 +1450,10 @@
             </div>
         </div>
         
-        <!-- 新的移动端射击按钮（右下角） -->
-        <div class="mobile-shoot-btn" id="mobileShootBtn">
+        <!-- 自动射击模式 - 隐藏射击按钮 -->
+        <!-- <div class="mobile-shoot-btn" id="mobileShootBtn" style="display: none;">
             <i class="fas fa-rocket"></i>
-        </div>
+        </div> -->
         
         <!-- 全屏模式按钮（移动端右上角） -->
         <div class="fullscreen-btn" id="fullscreenBtn">
@@ -1468,6 +1468,7 @@
         <div id="startScreen" class="screen">
             <h1 class="title">✈️ 打飞机有惊喜</h1>
             <p class="subtitle">经典空战射击游戏 - PC端：鼠标控制战机；手机端：手指滑动控制位置，右下角射击按钮开火。击毁100架敌机解锁神秘惊喜！</p>
+            <p class="subtitle">经典空战射击游戏 - 自动射击模式：单手滑动控制战机躲避敌机和子弹，自动连续射击。收集血包恢复生命值。击毁100架敌机解锁神秘惊喜！</p>
             <button id="startBtn" class="btn">开始游戏</button>
             <button id="emergencyBtn" class="btn" style="margin-top: 10px; background: #ff6b6b; display: none;">🚨 应急启动</button>
             <button id="test3DBtn" class="btn" style="margin-top: 10px; background: #4CAF50; font-size: 12px; padding: 6px 16px;">🛩️ 测试3D</button>
@@ -1543,10 +1544,20 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             console.log('页面加载完成，开始初始化...');
+            console.log('✅ 3D飞机顶视图已优化完成！');
+            console.log('🎨 材质系统已优化 - GLB材质修复功能已启用');
+            console.log('📏 碰撞体尺寸已修正 - 3D模型与碰撞体匹配');
+            console.log('💡 PBR光照系统已优化 - 6种光源协同工作');
+            console.log('🎮 可用调试键：');
+            console.log('  • R: 重载Three.js');
+            console.log('  • H: 加载混元模型'); 
+            console.log('  • P: 重置3D系统');
+            console.log('  • Q: 简化测试环境');
+            console.log('  • M: 显示材质调试信息');
             
             // =============== 3D渲染系统初始化 ===============
             let scene3D, camera3D, renderer3D, planeModel3D;
-            let baseRotation = { x: -Math.PI / 2, y: 0, z: Math.PI }; // 顶视且机头向上（不侧视）
+            let baseRotation = { x: 0, y: 0, z: Math.PI / 2 }; // 顶视图旋转，机头朝上
             let animationId3D;
             
             function init3DSystem() {
@@ -1597,14 +1608,49 @@
                         renderer3D.setPixelRatio(Math.min(window.devicePixelRatio, 2));
                     }
                     
-                    // 添加环境光
+                    // 启用物理正确光照以支持PBR材质
+                    if (renderer3D.physicallyCorrectLights !== undefined) {
+                        renderer3D.physicallyCorrectLights = true;
+                        console.log('💡 启用物理正确光照');
+                    }
+                    
+                    // 📸 为PBR材质优化的完整光照系统
+                    console.log('💡 创建PBR优化光照环境...');
+                    
+                    // 1. 环境光 - 基础照明
                     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
                     scene3D.add(ambientLight);
                     
-                    // 添加方向光
-                    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-                    directionalLight.position.set(10, 10, 5);
-                    scene3D.add(directionalLight);
+                    // 2. 主方向光 - 模拟太阳光
+                    const mainLight = new THREE.DirectionalLight(0xffffff, 1.2);
+                    mainLight.position.set(10, 10, 5);
+                    mainLight.castShadow = false;
+                    scene3D.add(mainLight);
+                    
+                    // 3. 侧面补光 - 减少阴影过重
+                    const sideLight = new THREE.DirectionalLight(0xffffff, 0.4);
+                    sideLight.position.set(-5, 5, 5);
+                    scene3D.add(sideLight);
+                    
+                    // 4. 背面补光 - 确保材质细节可见
+                    const backLight = new THREE.DirectionalLight(0xffffff, 0.3);
+                    backLight.position.set(0, -5, -5);
+                    scene3D.add(backLight);
+                    
+                    // 5. 点光源 - 增强金属材质反射
+                    const pointLight = new THREE.PointLight(0xffffff, 0.5, 100);
+                    pointLight.position.set(0, 10, 0);
+                    scene3D.add(pointLight);
+                    
+                    // 6. 添加半球光 - 模拟天空和地面反射
+                    const hemisphereLight = new THREE.HemisphereLight(
+                        0x87CEEB, // 天空颜色 - 天蓝色
+                        0x8B7355, // 地面颜色 - 土褐色  
+                        0.3
+                    );
+                    scene3D.add(hemisphereLight);
+                    
+                    console.log('💡 PBR光照系统创建完成 - 6种光源协同工作');
                     
                     // 加载混元AI飞机模型
                     load3DAircraft();
@@ -1741,24 +1787,62 @@
                 loader.load(
                     modelPath,
                     function(gltf) {
+                        console.log('🎊 GLB文件加载成功，开始处理...');
                         planeModel3D = gltf.scene;
 
                         // 姿态与朝向
                         planeModel3D.rotation.set(baseRotation.x, baseRotation.y, baseRotation.z);
 
-                        // 统一可见性和材质，避免透明/背面剔除导致看不见
+                        // 🎨 等待纹理完全加载后再修复材质
+                        const textureLoadPromises = [];
+                        
+                        gltf.scene.traverse((child) => {
+                            if (child.isMesh && child.material) {
+                                const material = child.material;
+                                const textureProps = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap'];
+                                
+                                textureProps.forEach(prop => {
+                                    if (material[prop] && material[prop].image) {
+                                        const texture = material[prop];
+                                        if (!texture.image.complete) {
+                                            const promise = new Promise((resolve) => {
+                                                texture.image.onload = () => {
+                                                    console.log(`✅ 纹理加载完成: ${prop}`);
+                                                    resolve();
+                                                };
+                                                texture.image.onerror = () => {
+                                                    console.warn(`❌ 纹理加载失败: ${prop}`);
+                                                    resolve();
+                                                };
+                                            });
+                                            textureLoadPromises.push(promise);
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                        
+                        // 等待所有纹理加载完成
+                        Promise.all(textureLoadPromises).then(() => {
+                            console.log('🎨 所有纹理加载完成，开始材质修复...');
+                            
+                            // 🎨 修复GLB材质显示问题
+                            fixGLBMaterials(planeModel3D);
+                            
+                            // 基础渲染设置
+                            planeModel3D.traverse((child) => {
+                                if (child.isMesh) {
+                                    child.frustumCulled = false;
+                                    child.castShadow = false;
+                                    child.receiveShadow = false;
+                                }
+                            });
+                        });
+                        
+                        // 即使纹理还在加载，也先显示模型
                         planeModel3D.traverse((child) => {
                             if (child.isMesh) {
                                 child.frustumCulled = false;
-                                if (child.material) {
-                                    child.material.transparent = false;
-                                    child.material.opacity = 1;
-                                    if (typeof THREE !== 'undefined' && THREE.DoubleSide) {
-                                        child.material.side = THREE.DoubleSide;
-                                    }
-                                    if ('metalness' in child.material) child.material.metalness = 0.4;
-                                    if ('roughness' in child.material) child.material.roughness = 0.6;
-                                }
                             }
                         });
 
@@ -1769,7 +1853,7 @@
                         planeModel3D.position.sub(center); // 将模型中心移至原点
 
                         const maxSize = Math.max(size.x, size.y, size.z) || 1;
-                        const targetSize = 120; // 略放大显示
+                        const targetSize = 60; // 匹配碰撞体尺寸
                         const scale = targetSize / maxSize;
                         planeModel3D.scale.setScalar(scale);
                         console.log('📏 模型尺寸:', size, '→ 缩放:', scale);
@@ -1841,18 +1925,46 @@
                                     
                                     // 姿态与材质保障
                                     planeModel3D.rotation.set(baseRotation.x, baseRotation.y, baseRotation.z);
+                                    
+                                    // 🎨 等待纹理完全加载后再修复材质 (备用路径)
+                                    const textureLoadPromises = [];
+                                    
+                                    gltf.scene.traverse((child) => {
+                                        if (child.isMesh && child.material) {
+                                            const material = child.material;
+                                            const textureProps = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap'];
+                                            
+                                            textureProps.forEach(prop => {
+                                                if (material[prop] && material[prop].image) {
+                                                    const texture = material[prop];
+                                                    if (!texture.image.complete) {
+                                                        const promise = new Promise((resolve) => {
+                                                            texture.image.onload = () => {
+                                                                console.log(`✅ 备用纹理加载完成: ${prop}`);
+                                                                resolve();
+                                                            };
+                                                            texture.image.onerror = () => {
+                                                                console.warn(`❌ 备用纹理加载失败: ${prop}`);
+                                                                resolve();
+                                                            };
+                                                        });
+                                                        textureLoadPromises.push(promise);
+                                                    }
+                                                }
+                                            });
+                                        }
+                                    });
+                                    
+                                    // 等待所有纹理加载完成
+                                    Promise.all(textureLoadPromises).then(() => {
+                                        console.log('🎨 备用路径纹理加载完成，开始材质修复...');
+                                        fixGLBMaterials(planeModel3D);
+                                    });
+                                    
+                                    // 基础渲染设置
                                     planeModel3D.traverse((child) => {
                                         if (child.isMesh) {
                                             child.frustumCulled = false;
-                                            if (child.material) {
-                                                child.material.transparent = false;
-                                                child.material.opacity = 1;
-                                                if (typeof THREE !== 'undefined' && THREE.DoubleSide) {
-                                                    child.material.side = THREE.DoubleSide;
-                                                }
-                                                if ('metalness' in child.material) child.material.metalness = 0.4;
-                                                if ('roughness' in child.material) child.material.roughness = 0.6;
-                                            }
                                         }
                                     });
 
@@ -1862,7 +1974,7 @@
                                     const center = box.getCenter(new THREE.Vector3());
                                     planeModel3D.position.sub(center);
                                     const maxSize = Math.max(size.x, size.y, size.z) || 1;
-                                    const targetSize = 120;
+                                    const targetSize = 60; // 匹配碰撞体尺寸
                                     const scale = targetSize / maxSize;
                                     planeModel3D.scale.setScalar(scale);
                                     console.log(`📐 hunyuan模型缩放: ${scale.toFixed(2)} 尺寸:`, size);
@@ -2063,7 +2175,8 @@
                     });
                     
                     planeModel3D = new THREE.Mesh(geometry, material);
-                    planeModel3D.rotation.x = Math.PI; // 飞机头朝上
+                    // 使用与GLTF模型相同的顶视图旋转设置
+                    planeModel3D.rotation.set(baseRotation.x, baseRotation.y, baseRotation.z);
                     
                     scene3D.add(planeModel3D);
                     
@@ -2116,6 +2229,345 @@
                 }
             }
             
+            // 🔧 调试：测试不同的3D飞机旋转角度
+            function testRotations() {
+                console.log('🔧 开始测试3D飞机旋转角度...');
+                
+                const rotationTests = [
+                    { name: '默认', x: 0, y: 0, z: 0 },
+                    { name: '顶视图1', x: -Math.PI / 2, y: 0, z: 0 },
+                    { name: '顶视图2', x: -Math.PI / 2, y: 0, z: Math.PI },
+                    { name: '顶视图3', x: -Math.PI / 2, y: Math.PI, z: 0 },
+                    { name: '顶视图4', x: Math.PI / 2, y: 0, z: 0 },
+                    { name: '侧视转顶', x: 0, y: -Math.PI / 2, z: 0 },
+                ];
+                
+                let currentTest = 0;
+                
+                function applyNextRotation() {
+                    if (currentTest >= rotationTests.length) {
+                        console.log('🔧 所有旋转测试完成');
+                        alert('旋转测试完成！请检查哪个角度显示最好，然后告诉我。');
+                        return;
+                    }
+                    
+                    const test = rotationTests[currentTest];
+                    console.log(`🔧 测试 ${currentTest + 1}: ${test.name} (${test.x}, ${test.y}, ${test.z})`);
+                    
+                    // 更新旋转设置
+                    baseRotation.x = test.x;
+                    baseRotation.y = test.y;
+                    baseRotation.z = test.z;
+                    
+                    // 应用到3D模型
+                    if (planeModel3D) {
+                        planeModel3D.rotation.set(test.x, test.y, test.z);
+                    }
+                    
+                    update3DStatus(`🔧 测试 ${test.name}: 机头应该向前`, '#FFA500');
+                    
+                    currentTest++;
+                    setTimeout(applyNextRotation, 3000); // 3秒后切换到下一个
+                }
+                
+                applyNextRotation();
+            }
+            
+            // 🎨 修复GLB材质显示问题 - 高级版本
+            function fixGLBMaterials(model) {
+                console.log('🎨 开始深度GLB材质诊断和修复...');
+                
+                let materialCount = 0;
+                let textureCount = 0;
+                let missingTextures = [];
+                
+                model.traverse((child) => {
+                    if (child.isMesh) {
+                        console.log('🔍 检查网格:', child.name || '未命名', '几何体类型:', child.geometry.type);
+                        
+                        if (child.material) {
+                            materialCount++;
+                            const material = child.material;
+                            
+                            // 详细材质诊断
+                            const materialInfo = {
+                                name: material.name || '未命名',
+                                type: material.type,
+                                color: material.color ? `#${material.color.getHexString()}` : 'none',
+                                emissive: material.emissive ? `#${material.emissive.getHexString()}` : 'none',
+                                metalness: material.metalness,
+                                roughness: material.roughness,
+                                opacity: material.opacity,
+                                transparent: material.transparent,
+                                alphaTest: material.alphaTest,
+                                side: material.side
+                            };
+                            
+                            // 检查所有可能的纹理贴图
+                            const textureProps = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap', 'bumpMap', 'displacementMap'];
+                            textureProps.forEach(prop => {
+                                if (material[prop]) {
+                                    textureCount++;
+                                    const texture = material[prop];
+                                    materialInfo[prop] = {
+                                        hasImage: !!texture.image,
+                                        imageUrl: texture.image ? texture.image.src || texture.image.currentSrc || 'data/blob' : 'none',
+                                        format: texture.format,
+                                        type: texture.type,
+                                        wrapS: texture.wrapS,
+                                        wrapT: texture.wrapT,
+                                        magFilter: texture.magFilter,
+                                        minFilter: texture.minFilter
+                                    };
+                                    
+                                    // 检查纹理是否成功加载
+                                    if (!texture.image || texture.image.width === 0 || texture.image.height === 0) {
+                                        missingTextures.push(`${child.name || '未命名'}.${prop}`);
+                                        console.warn(`❌ 纹理加载失败: ${child.name || '未命名'}.${prop}`);
+                                    } else {
+                                        console.log(`✅ 纹理已加载: ${child.name || '未命名'}.${prop} (${texture.image.width}x${texture.image.height})`);
+                                    }
+                                }
+                            });
+                            
+                            console.log('🎨 完整材质信息:', materialInfo);
+                            
+                            // 保守的修复策略 - 只修复明显的问题
+                            let needsUpdate = false;
+                            
+                            // 1. 修复完全透明的材质
+                            if (material.opacity <= 0.01) {
+                                material.opacity = 1.0;
+                                material.transparent = false;
+                                needsUpdate = true;
+                                console.log('🔧 修复透明度问题');
+                            }
+                            
+                            // 2. 确保双面渲染
+                            if (material.side === THREE.FrontSide) {
+                                material.side = THREE.DoubleSide;
+                                needsUpdate = true;
+                                console.log('🔧 启用双面渲染');
+                            }
+                            
+                            // 3. 对于没有任何纹理且颜色为黑色的材质，提升亮度
+                            if (!material.map && material.color && 
+                                material.color.r === 0 && material.color.g === 0 && material.color.b === 0) {
+                                material.color.setHex(0x999999); // 设为较亮的灰色
+                                needsUpdate = true;
+                                console.log('🔧 修复黑色材质为亮灰色');
+                            }
+                            
+                            // 4. 确保纹理正确设置
+                            textureProps.forEach(prop => {
+                                if (material[prop] && material[prop].image) {
+                                    const texture = material[prop];
+                                    if (texture.wrapS === undefined) texture.wrapS = THREE.RepeatWrapping;
+                                    if (texture.wrapT === undefined) texture.wrapT = THREE.RepeatWrapping;
+                                    texture.needsUpdate = true;
+                                    needsUpdate = true;
+                                }
+                            });
+                            
+                            if (needsUpdate) {
+                                material.needsUpdate = true;
+                                console.log('🔧 材质已更新');
+                            }
+                        } else {
+                            // 如果没有材质，创建一个基础材质
+                            console.log('🔧 创建默认材质');
+                            child.material = new THREE.MeshStandardMaterial({
+                                color: 0xcccccc,
+                                metalness: 0.1,
+                                roughness: 0.8,
+                                side: THREE.DoubleSide
+                            });
+                        }
+                    }
+                });
+                
+                console.log('📊 GLB材质统计:', {
+                    材质数量: materialCount,
+                    纹理数量: textureCount,
+                    缺失纹理: missingTextures.length,
+                    缺失纹理列表: missingTextures
+                });
+                
+                if (missingTextures.length > 0) {
+                    console.warn('⚠️ 发现纹理加载问题，这可能是材质显示不正确的原因');
+                    console.warn('建议检查GLB文件的纹理路径和文件完整性');
+                }
+                
+                console.log('✅ GLB材质深度修复完成');
+            }
+            
+            // 🎨 材质调试信息
+            function debugMaterialInfo() {
+                if (!planeModel3D) {
+                    console.warn('❌ 没有3D飞机模型可以调试');
+                    alert('没有3D飞机模型可以调试\n请先按H键加载模型');
+                    return;
+                }
+                
+                console.log('🎨 ========== 3D飞机材质调试报告 ==========');
+                
+                let meshCount = 0;
+                let materialCount = 0;
+                let textureCount = 0;
+                let errorCount = 0;
+                
+                planeModel3D.traverse((child) => {
+                    if (child.isMesh) {
+                        meshCount++;
+                        console.log(`\n🔍 网格 ${meshCount}: ${child.name || '未命名'}`);
+                        console.log('   几何体:', child.geometry.type);
+                        console.log('   顶点数:', child.geometry.attributes.position ? child.geometry.attributes.position.count : 'unknown');
+                        
+                        if (child.material) {
+                            materialCount++;
+                            const mat = child.material;
+                            
+                            console.log('   📦 材质信息:');
+                            console.log('     名称:', mat.name || '未命名');
+                            console.log('     类型:', mat.type);
+                            console.log('     颜色:', mat.color ? `#${mat.color.getHexString()}` : 'none');
+                            console.log('     不透明度:', mat.opacity);
+                            console.log('     透明:', mat.transparent);
+                            console.log('     双面渲染:', mat.side === THREE.DoubleSide ? 'Yes' : 'No');
+                            
+                            if (mat.type === 'MeshStandardMaterial') {
+                                console.log('     金属度:', mat.metalness);
+                                console.log('     粗糙度:', mat.roughness);
+                                console.log('     发光颜色:', mat.emissive ? `#${mat.emissive.getHexString()}` : 'none');
+                            }
+                            
+                            // 检查纹理
+                            const textureProps = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap'];
+                            textureProps.forEach(prop => {
+                                if (mat[prop]) {
+                                    textureCount++;
+                                    const texture = mat[prop];
+                                    const status = texture.image && texture.image.complete && texture.image.width > 0 ? '✅' : '❌';
+                                    if (status === '❌') errorCount++;
+                                    
+                                    console.log(`     ${prop}: ${status}`, texture.image ? 
+                                        `${texture.image.width}x${texture.image.height}` : '无图像');
+                                    
+                                    if (texture.image && texture.image.src) {
+                                        console.log(`       URL: ${texture.image.src.substring(0, 100)}...`);
+                                    }
+                                }
+                            });
+                        } else {
+                            console.log('   ❌ 无材质');
+                            errorCount++;
+                        }
+                    }
+                });
+                
+                console.log('\n📊 ========== 调试总结 ==========');
+                console.log(`网格数量: ${meshCount}`);
+                console.log(`材质数量: ${materialCount}`);
+                console.log(`纹理数量: ${textureCount}`);
+                console.log(`错误数量: ${errorCount}`);
+                
+                if (errorCount === 0) {
+                    console.log('✅ 所有材质和纹理状态正常');
+                } else {
+                    console.log(`⚠️ 发现 ${errorCount} 个问题，可能影响材质显示效果`);
+                }
+                
+                console.log('==========================================\n');
+                
+                // 显示简化的弹窗报告
+                alert(`🎨 材质调试报告\n\n` +
+                      `网格数量: ${meshCount}\n` +
+                      `材质数量: ${materialCount}\n` +
+                      `纹理数量: ${textureCount}\n` +
+                      `问题数量: ${errorCount}\n\n` +
+                      `${errorCount === 0 ? '✅ 材质状态正常' : '⚠️ 发现材质问题'}\n\n` +
+                      `详细信息请查看控制台`);
+            }
+            
+            // 🔧 简化测试环境（无敌机干扰）
+            function startSimplifiedTest() {
+                console.log('🔧 启动简化测试环境...');
+                
+                // 停止游戏循环
+                if (gameState.running) {
+                    gameState.running = false;
+                    clearInterval(gameState.enemyInterval);
+                    cancelAnimationFrame(gameState.gameLoopId);
+                }
+                
+                // 清空所有敌机和子弹
+                gameState.enemies = [];
+                gameState.enemyBullets = [];
+                gameState.bullets = [];
+                gameState.particles = [];
+                gameState.healthPacks = []; // 重置血包
+                
+                // 重置飞机位置
+                gameState.plane.x = gameCanvas.width / 2 - gameState.plane.width / 2;
+                gameState.plane.y = gameCanvas.height - 150;
+                
+                // 设置简化环境标志
+                gameState.testMode = true;
+                
+                // 启动简化渲染循环
+                function simplifiedRenderLoop() {
+                    if (!gameState.testMode) return;
+                    
+                    // 清空画布
+                    ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+                    
+                    // 绘制背景
+                    drawBackground();
+                    
+                    // 保留2D尾焰效果在游戏Canvas上
+                    ctx.save();
+                    const flameX = gameState.plane.x + gameState.plane.width / 2;
+                    const flameY = gameState.plane.y + gameState.plane.height;
+                    const flameIntensity = 0.3 + Math.random() * 0.4;
+                    
+                    // 顶视图尾焰渐变
+                    const gradient = ctx.createRadialGradient(flameX, flameY, 0, flameX, flameY + 25, 25);
+                    gradient.addColorStop(0, `rgba(255, 100, 0, ${flameIntensity})`);
+                    gradient.addColorStop(0.5, `rgba(255, 150, 0, ${flameIntensity * 0.6})`);
+                    gradient.addColorStop(1, 'rgba(255, 200, 0, 0)');
+                    
+                    ctx.fillStyle = gradient;
+                    
+                    // 双引擎尾焰
+                    ctx.beginPath();
+                    ctx.ellipse(flameX - 8, flameY + 15, 6, 18, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.beginPath();
+                    ctx.ellipse(flameX + 8, flameY + 15, 6, 18, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                    
+                    // 绘制3D飞机（如果有的话）
+                    if (typeof draw3DPlaneOnCanvas === 'function') {
+                        draw3DPlaneOnCanvas();
+                    }
+                    
+                    // 更新3D飞机位置
+                    update3DPlane(gameState.plane.x + gameState.plane.width/2, gameState.plane.y + gameState.plane.height/2);
+                    
+                    // 继续下一帧
+                    requestAnimationFrame(simplifiedRenderLoop);
+                }
+                
+                // 启动简化渲染
+                simplifiedRenderLoop();
+                
+                // 提示用户
+                alert('🔧 简化测试环境已启动！\n\n现在可以：\n• 按T键测试3D飞机旋转\n• 鼠标移动控制飞机\n• 没有敌机干扰\n\n按ESC退出测试模式');
+                update3DStatus('🔧 简化测试环境：按T键测试旋转', '#00BCD4');
+            }
+            
             // 🛩️ 强制加载用户的hunyuan-fighter模型
             function forceLoadHunyuanModel() {
                 console.log('🛩️ 开始强制加载hunyuan-fighter模型...');
@@ -2149,10 +2601,45 @@
                         
                         planeModel3D = gltf.scene;
                         
-                        // 优化显示
-                        planeModel3D.scale.set(1.5, 1.5, 1.5);
-                        planeModel3D.rotation.x = -Math.PI / 2;
-                        planeModel3D.rotation.z = Math.PI;
+                        // 🎨 等待纹理完全加载后再修复材质 (强制加载)
+                        const textureLoadPromises = [];
+                        
+                        gltf.scene.traverse((child) => {
+                            if (child.isMesh && child.material) {
+                                const material = child.material;
+                                const textureProps = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap'];
+                                
+                                textureProps.forEach(prop => {
+                                    if (material[prop] && material[prop].image) {
+                                        const texture = material[prop];
+                                        if (!texture.image.complete) {
+                                            const promise = new Promise((resolve) => {
+                                                texture.image.onload = () => {
+                                                    console.log(`✅ 强制加载纹理完成: ${prop}`);
+                                                    resolve();
+                                                };
+                                                texture.image.onerror = () => {
+                                                    console.warn(`❌ 强制加载纹理失败: ${prop}`);
+                                                    resolve();
+                                                };
+                                            });
+                                            textureLoadPromises.push(promise);
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                        
+                        // 等待所有纹理加载完成
+                        Promise.all(textureLoadPromises).then(() => {
+                            console.log('🎨 强制加载纹理完成，开始材质修复...');
+                            fixGLBMaterials(planeModel3D);
+                        });
+                        
+                        // 优化显示 - 匹配碰撞体尺寸
+                        planeModel3D.scale.set(0.5, 0.5, 0.5); // 缩小至合适尺寸
+                        // 使用统一的顶视图旋转设置
+                        planeModel3D.rotation.set(baseRotation.x, baseRotation.y, baseRotation.z);
                         
                         // 添加到场景
                         if (scene3D) {
@@ -2393,8 +2880,12 @@
                 enemies: [],
                 enemyBullets: [],
                 particles: [],
+                healthPacks: [], // 血包数组
                 plane: { x: 0, y: 0, width: 60, height: 72 }, // 调整高度比例
                 running: false,
+                testMode: false, // 简化测试模式
+                autoShooting: true, // 自动射击开关
+                autoShootInterval: null, // 自动射击定时器
                 score: 0,
                 health: 100,
                 gameLoopId: null,
@@ -2413,6 +2904,7 @@
             const enemyPool = [];
             const enemyBulletPool = [];
             const particlePool = [];
+            const healthPackPool = []; // 血包对象池
 
             // 初始化Web Audio Context（需要用户交互）
             function initAudioContext() {
@@ -2614,17 +3106,17 @@
                 return window.location.protocol === 'file:';
             }
             
-            // 🛩️ 增强版3D飞机渲染（Canvas 2D模拟3D效果）
+            // 🛩️ 增强版3D飞机渲染（Canvas 2D模拟3D效果 - 顶视图）
             function draw3DPlaneOnCanvas() {
                 const plane = gameState.plane;
                 ctx.save();
                 ctx.translate(plane.x + plane.width/2, plane.y + plane.height/2);
                 
-                // 华人战机风格渲染
+                // 华人战机风格渲染 - 顶视图
                 const size = Math.min(plane.width, plane.height);
                 
-                // 机身主体 - 金属质感
-                const bodyGradient = ctx.createLinearGradient(-size/3, -size/2, size/3, size/2);
+                // 机身主体 - 金属质感（顶视图纵向渐变）
+                const bodyGradient = ctx.createLinearGradient(0, -size/2, 0, size/2);
                 bodyGradient.addColorStop(0, '#2E8B57');
                 bodyGradient.addColorStop(0.3, '#4CAF50');
                 bodyGradient.addColorStop(0.7, '#66BB6A');
@@ -2634,9 +3126,9 @@
                 ctx.strokeStyle = '#1B5E20';
                 ctx.lineWidth = 2;
                 
-                // 绘制机身
+                // 绘制机身（顶视图 - 纵向椭圆）
                 ctx.beginPath();
-                ctx.ellipse(0, 0, size/3, size/2, 0, 0, Math.PI * 2);
+                ctx.ellipse(0, 0, size/6, size/1.8, 0, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
                 
@@ -2649,20 +3141,20 @@
                 ctx.fillStyle = wingGradient;
                 ctx.strokeStyle = '#1B5E20';
                 
-                // 左翼
+                // 左翼（顶视图 - 水平延伸）
                 ctx.beginPath();
-                ctx.ellipse(-size/2.5, size/8, size/4, size/6, -Math.PI/6, 0, Math.PI * 2);
+                ctx.ellipse(-size/3, 0, size/4, size/12, 0, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
                 
-                // 右翼
+                // 右翼（顶视图 - 水平延伸）
                 ctx.beginPath();
-                ctx.ellipse(size/2.5, size/8, size/4, size/6, Math.PI/6, 0, Math.PI * 2);
+                ctx.ellipse(size/3, 0, size/4, size/12, 0, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
                 
-                // 机头 - 高亮效果
-                const noseGradient = ctx.createRadialGradient(0, -size/2.5, 0, 0, -size/2.5, size/4);
+                // 机头 - 高亮效果（顶视图 - 前端椭圆）
+                const noseGradient = ctx.createRadialGradient(0, -size/2.2, 0, 0, -size/2.2, size/6);
                 noseGradient.addColorStop(0, '#FFEB3B');
                 noseGradient.addColorStop(0.4, '#FFC107');
                 noseGradient.addColorStop(1, '#FF8F00');
@@ -2671,27 +3163,27 @@
                 ctx.strokeStyle = '#E65100';
                 
                 ctx.beginPath();
-                ctx.arc(0, -size/2.5, size/8, 0, Math.PI * 2);
+                ctx.ellipse(0, -size/2.2, size/8, size/16, 0, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
                 
-                // 引擎尾焰效果 - 动态颜色
+                // 引擎尾焰效果 - 动态颜色（顶视图 - 向后喷射）
                 const flameIntensity = 0.5 + 0.5 * Math.sin(Date.now() * 0.01);
-                const flameGradient = ctx.createLinearGradient(0, size/3, 0, size/1.5);
+                const flameGradient = ctx.createLinearGradient(0, size/2.5, 0, size/1.2);
                 flameGradient.addColorStop(0, `rgba(255, ${Math.floor(100 + 50 * flameIntensity)}, 0, 0.9)`);
                 flameGradient.addColorStop(0.5, `rgba(255, ${Math.floor(69 + 30 * flameIntensity)}, 0, 0.7)`);
                 flameGradient.addColorStop(1, `rgba(255, 0, 0, 0.3)`);
                 
                 ctx.fillStyle = flameGradient;
                 
-                // 左引擎
+                // 左引擎（顶视图 - 机尾左侧）
                 ctx.beginPath();
-                ctx.ellipse(-size/6, size/2.2, size/12, size/4 * flameIntensity, 0, 0, Math.PI * 2);
+                ctx.ellipse(-size/8, size/2.5, size/16, size/5 * flameIntensity, 0, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // 右引擎
+                // 右引擎（顶视图 - 机尾右侧）
                 ctx.beginPath();
-                ctx.ellipse(size/6, size/2.2, size/12, size/4 * flameIntensity, 0, 0, Math.PI * 2);
+                ctx.ellipse(size/8, size/2.5, size/16, size/5 * flameIntensity, 0, 0, Math.PI * 2);
                 ctx.fill();
                 
                 // 驾驶舱反光
@@ -2742,6 +3234,7 @@
                 gameState.enemies = [];
                 gameState.enemyBullets = [];
                 gameState.particles = [];
+                gameState.healthPacks = []; // 重置血包
                 gameState.plane.x = gameCanvas.width / 2 - gameState.plane.width / 2;
                 gameState.plane.y = gameCanvas.height - 150;
                 gameState.score = 0;
@@ -2755,6 +3248,9 @@
                 resumeScreen.style.display = 'none';
                 perfWarning.style.display = 'none';
                 gameState.running = true;
+                
+                // 🎯 启动自动射击系统
+                startAutoShooting();
                 
                 // 启动游戏循环
                 console.log('🔄 启动游戏循环...');
@@ -2848,6 +3344,7 @@
                 gameState.enemies = [];
                 gameState.enemyBullets = [];
                 gameState.particles = [];
+                gameState.healthPacks = []; // 重置血包
                 gameState.plane.x = gameCanvas.width / 2 - gameState.plane.width / 2;
                 gameState.plane.y = gameCanvas.height - 150;
                 gameState.score = 0;
@@ -2861,6 +3358,9 @@
                 resumeScreen.style.display = 'none';
                 perfWarning.style.display = 'none';
                 gameState.running = true;
+                
+                // 🎯 启动自动射击系统
+                startAutoShooting();
                 
                 // 启动游戏循环
                 console.log('🔄 强制模式启动游戏循环...');
@@ -2942,19 +3442,26 @@
                 // 保留2D尾焰效果在游戏Canvas上（所有模式都保留）
                 ctx.save();
                 
-                // 绘制发动机尾焰效果（保留在2D层）
+                // 绘制发动机尾焰效果（顶视图 - 向后喷射）
                 const flameX = gameState.plane.x + gameState.plane.width / 2;
                 const flameY = gameState.plane.y + gameState.plane.height;
                 const flameIntensity = 0.3 + Math.random() * 0.4;
                 
-                const gradient = ctx.createRadialGradient(flameX, flameY, 0, flameX, flameY + 20, 20);
+                // 顶视图尾焰渐变（向后延伸）
+                const gradient = ctx.createRadialGradient(flameX, flameY, 0, flameX, flameY + 25, 25);
                 gradient.addColorStop(0, `rgba(255, 100, 0, ${flameIntensity})`);
                 gradient.addColorStop(0.5, `rgba(255, 150, 0, ${flameIntensity * 0.6})`);
                 gradient.addColorStop(1, 'rgba(255, 200, 0, 0)');
                 
                 ctx.fillStyle = gradient;
+                
+                // 双引擎尾焰（顶视图）
                 ctx.beginPath();
-                ctx.ellipse(flameX, flameY + 10, 8, 15, 0, 0, Math.PI * 2);
+                ctx.ellipse(flameX - 8, flameY + 15, 6, 18, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.ellipse(flameX + 8, flameY + 15, 6, 18, 0, 0, Math.PI * 2);
                 ctx.fill();
                 
                 // 简化飞机渲染 - 确保总是显示
@@ -3371,6 +3878,138 @@
                 }
             }
 
+            // 🩺 血包系统
+            function createHealthPack(x, y) {
+                let healthPack;
+                if (healthPackPool.length > 0) {
+                    healthPack = healthPackPool.pop();
+                    Object.assign(healthPack, {
+                        x: x,
+                        y: y,
+                        width: 30,
+                        height: 30,
+                        speed: 2,
+                        healAmount: 30, // 恢复30点生命值（单手操作需要更多支持）
+                        rotation: 0
+                    });
+                } else {
+                    healthPack = {
+                        x: x,
+                        y: y,
+                        width: 30,
+                        height: 30,
+                        speed: 2,
+                        healAmount: 30,
+                        rotation: 0
+                    };
+                }
+                gameState.healthPacks.push(healthPack);
+                console.log('🩺 生成血包于位置:', x, y);
+            }
+            
+            // 绘制血包
+            function drawHealthPacks() {
+                for (let i = gameState.healthPacks.length - 1; i >= 0; i--) {
+                    const pack = gameState.healthPacks[i];
+                    pack.y += pack.speed;
+                    pack.rotation += 0.1; // 旋转动画
+                    
+                    // 移出屏幕则移除
+                    if (pack.y > gameCanvas.height + 50) {
+                        gameState.healthPacks.splice(i, 1);
+                        healthPackPool.push(pack);
+                        continue;
+                    }
+                    
+                    ctx.save();
+                    ctx.translate(pack.x + pack.width/2, pack.y + pack.height/2);
+                    ctx.rotate(pack.rotation);
+                    
+                    // 绘制血包 - 绿十字设计
+                    const size = pack.width;
+                    
+                    // 外框 - 白色圆形背景
+                    ctx.fillStyle = '#ffffff';
+                    ctx.strokeStyle = '#00cc44';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, size/2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    
+                    // 绿十字
+                    ctx.fillStyle = '#00cc44';
+                    // 垂直条
+                    ctx.fillRect(-size/8, -size/3, size/4, size*2/3);
+                    // 水平条
+                    ctx.fillRect(-size/3, -size/8, size*2/3, size/4);
+                    
+                    // 发光效果
+                    ctx.shadowColor = '#00cc44';
+                    ctx.shadowBlur = 10;
+                    ctx.strokeStyle = '#44ff66';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, size/2, 0, Math.PI * 2);
+                    ctx.stroke();
+                    
+                    ctx.restore();
+                }
+            }
+            
+            // 🌟 治疗特效
+            function createHealingEffect(x, y) {
+                // 创建绿色治疗粒子效果
+                const particleCount = 8;
+                for (let i = 0; i < particleCount; i++) {
+                    let p;
+                    if (particlePool.length > 0) {
+                        p = particlePool.pop();
+                        Object.assign(p, {
+                            x: x + (Math.random() - 0.5) * 20,
+                            y: y + (Math.random() - 0.5) * 20,
+                            vx: (Math.random() - 0.5) * 4,
+                            vy: -Math.random() * 3 - 2,
+                            life: 30 + Math.random() * 20,
+                            color: '#00ff44', // 绿色治疗效果
+                            size: 4 + Math.random() * 4
+                        });
+                    } else {
+                        p = {
+                            x: x + (Math.random() - 0.5) * 20,
+                            y: y + (Math.random() - 0.5) * 20,
+                            vx: (Math.random() - 0.5) * 4,
+                            vy: -Math.random() * 3 - 2,
+                            life: 30 + Math.random() * 20,
+                            color: '#00ff44',
+                            size: 4 + Math.random() * 4
+                        };
+                    }
+                    gameState.particles.push(p);
+                }
+                
+                console.log('🌟 创建治疗特效');
+            }
+            
+            // 随机生成血包
+            function generateHealthPacks() {
+                // 根据玩家血量调整生成概率
+                const healthRatio = gameState.health / 100;
+                let spawnChance = 0.001; // 基础生成概率
+                
+                // 血量越低，生成概率越高
+                if (healthRatio < 0.3) {
+                    spawnChance = 0.005; // 血量低于30%时增加生成率
+                } else if (healthRatio < 0.6) {
+                    spawnChance = 0.003; // 血量低于60%时适度增加
+                }
+                
+                if (Math.random() < spawnChance) {
+                    const x = Math.random() * (gameCanvas.width - 30);
+                    createHealthPack(x, -30);
+                }
+            }
+
             // 碰撞检测
             function checkCollisions() {
                 for (let i = gameState.bullets.length - 1; i >= 0; i--) {
@@ -3403,6 +4042,7 @@
                                 if (gameState.score >= 100) {
                                     gameState.running = false;
                                     stopBackgroundMusic();
+                                    stopAutoShooting(); // 停止自动射击
                                     clearInterval(gameState.enemyInterval);
                                     cancelAnimationFrame(gameState.gameLoopId);
                                     
@@ -3453,6 +4093,7 @@
                         if (gameState.health <= 0) {
                             gameState.running = false;
                             stopBackgroundMusic();
+                            stopAutoShooting(); // 停止自动射击
                             clearInterval(gameState.enemyInterval);
                             cancelAnimationFrame(gameState.gameLoopId);
                             
@@ -3499,6 +4140,7 @@
                         if (gameState.health <= 0) {
                             gameState.running = false;
                             stopBackgroundMusic();
+                            stopAutoShooting(); // 停止自动射击
                             clearInterval(gameState.enemyInterval);
                             cancelAnimationFrame(gameState.gameLoopId);
                             
@@ -3512,6 +4154,40 @@
                                 startScreen.style.display = 'flex';
                             }, 500);
                         }
+                    }
+                }
+                
+                // 🩺 血包与玩家飞机碰撞检测
+                for (let i = gameState.healthPacks.length - 1; i >= 0; i--) {
+                    const pack = gameState.healthPacks[i];
+                    
+                    if (gameState.plane.x < pack.x + pack.width &&
+                        gameState.plane.x + gameState.plane.width > pack.x &&
+                        gameState.plane.y < pack.y + pack.height &&
+                        gameState.plane.y + gameState.plane.height > pack.y) {
+                        
+                        // 拾取血包
+                        const oldHealth = gameState.health;
+                        gameState.health = Math.min(100, gameState.health + pack.healAmount);
+                        const actualHeal = gameState.health - oldHealth;
+                        
+                        healthDisplay.textContent = gameState.health;
+                        
+                        // 显示治疗效果
+                        if (actualHeal > 0) {
+                            showFloatingText(`+${actualHeal} ❤️`, pack.x + pack.width/2, pack.y);
+                            console.log(`🩺 拾取血包！恢复${actualHeal}点生命值`);
+                            
+                            // 播放治疗音效
+                            playSound('heal', 0.4);
+                            
+                            // 治疗特效
+                            createHealingEffect(pack.x + pack.width/2, pack.y + pack.height/2);
+                        }
+                        
+                        // 移除血包
+                        gameState.healthPacks.splice(i, 1);
+                        healthPackPool.push(pack);
                     }
                 }
             }
@@ -3528,7 +4204,9 @@
                 drawBullets();
                 drawEnemies();
                 drawEnemyBullets();
+                drawHealthPacks(); // 绘制血包
                 drawParticles();
+                generateHealthPacks(); // 生成血包
                 checkCollisions();
                 
                 gameState.gameLoopId = requestAnimationFrame(gameLoop);
@@ -3545,10 +4223,11 @@
                 gameState.plane.y = Math.max(0, Math.min(gameCanvas.height - gameState.plane.height, gameState.plane.y));
             });
 
-            gameCanvas.addEventListener('click', () => {
-                if (!gameState.running) return;
-                shoot();
-            });
+            // 自动射击模式 - 移除点击射击事件
+            // gameCanvas.addEventListener('click', () => {
+            //     if (!gameState.running) return;
+            //     shoot();
+            // });
 
             function shoot() {
                 let bullet;
@@ -3568,6 +4247,30 @@
                 
                 // 🔫 播放射击音效
                 playSound('shoot', 0.3);
+            }
+            
+            // 🎯 自动射击系统
+            function startAutoShooting() {
+                if (gameState.autoShootInterval) {
+                    clearInterval(gameState.autoShootInterval);
+                }
+                
+                // 设置自动射击频率 - 150ms间隔 (每秒6.7发，提升火力以适配躲避玩法)
+                gameState.autoShootInterval = setInterval(() => {
+                    if (gameState.running && gameState.autoShooting) {
+                        shoot();
+                    }
+                }, 150);
+                
+                console.log('🎯 自动射击已启动 - 每秒6.7发');
+            }
+            
+            function stopAutoShooting() {
+                if (gameState.autoShootInterval) {
+                    clearInterval(gameState.autoShootInterval);
+                    gameState.autoShootInterval = null;
+                    console.log('🎯 自动射击已停止');
+                }
             }
 
             console.log('绑定按钮事件...');
@@ -3667,6 +4370,9 @@
                     perfWarning.style.display = 'none';
                     gameState.running = true;
                     
+                    // 🎯 启动自动射击系统
+                    startAutoShooting();
+                    
                     // 启动游戏循环
                     console.log('🔄 启动本地游戏循环...');
                     gameLoop();
@@ -3721,10 +4427,14 @@
                 gameState.enemies = [];
                 gameState.enemyBullets = [];
                 gameState.particles = [];
+                gameState.healthPacks = []; // 重置血包
                 gameState.plane.x = gameCanvas.width / 2 - gameState.plane.width / 2;
                 gameState.plane.y = gameCanvas.height - 150;
                 gameState.score = 0;
                 gameState.health = 100;
+                
+                // 🎯 启动自动射击系统
+                startAutoShooting();
                 
                 scoreDisplay.textContent = gameState.score;
                 healthDisplay.textContent = gameState.health;
@@ -3919,23 +4629,24 @@
                 gameState.touchX = 0;
             });
 
-            shootBtn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                shoot();
-            });
+            // 自动射击模式 - 移除射击按钮事件
+            // shootBtn.addEventListener('touchstart', (e) => {
+            //     e.preventDefault();
+            //     shoot();
+            // });
             
-            // 新的移动端射击按钮事件
-            mobileShootBtn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                shoot();
-            });
+            // 新的移动端射击按钮事件 - 已禁用
+            // mobileShootBtn.addEventListener('touchstart', (e) => {
+            //     e.preventDefault();
+            //     shoot();
+            // });
             
-            mobileShootBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (gameState.running) {
-                    shoot();
-                }
-            });
+            // mobileShootBtn.addEventListener('click', (e) => {
+            //     e.preventDefault();
+            //     if (gameState.running) {
+            //         shoot();
+            //     }
+            // });
             
             // 全屏功能
             function enterFullscreen() {
@@ -3991,48 +4702,65 @@
 
             // 键盘控制
             document.addEventListener('keydown', (e) => {
-                if (!gameState.running) return;
-                
-                if (e.code === 'Space') {
-                    shoot();
-                } else if (e.code === 'ArrowLeft') {
-                    gameState.plane.x -= gameState.planeSpeed;
-                } else if (e.code === 'ArrowRight') {
-                    gameState.plane.x += gameState.planeSpeed;
-                                        } else if (e.code === 'KeyT') {
-                    // 🏹 测试弧形排弹系统！
-                    console.log('🏹 强制发射弧形排弹测试！');
-                    
-                    // 清空现有弹道
-                    gameState.enemyBullets = [];
-                    
-                    // 创建多个弧形排弹
-                    for (let i = 0; i < 5; i++) {
-                        const x = 100 + i * 150;
-                        const y = 50;
-                        createEnemyBulletPattern(x, y);
-                    }
-                    
-                    console.log(`✅ 发射了5组弧形排弹！`);
-                    alert('🏹 已发射5组弧形排弹！\n\n观察：\n• 每组3-7发子弹\n• 形成60度弧形扇形\n• 红色圆形子弹\n• 敌机也是圆形！');
-                } else if (e.code === 'KeyP') {
-                    // 强制重新检查和初始化3D系统（按P键）
-                    console.log('🛩️ 强制重新检查3D系统...');
-                    forceReinit3DSystem();
-                } else if (e.code === 'KeyH') {
-                    // 🛩️ 强制加载hunyuan-fighter模型（按H键）
-                    console.log('🚀 强制加载用户的hunyuan-fighter模型...');
-                    forceLoadHunyuanModel();
+                // 调试功能键（不需要游戏运行状态）
+                if (e.code === 'KeyT') {
+                    // 🔧 测试3D飞机旋转角度（按T键）
+                    console.log('🔧 开始旋转角度测试...');
+                    testRotations();
+                    return;
                 } else if (e.code === 'KeyR') {
                     // 重新加载Three.js（按R键）
                     console.log('🔄 尝试重新加载Three.js...');
                     reloadThreeJS();
+                    return;
+                } else if (e.code === 'KeyH') {
+                    // 🛩️ 强制加载hunyuan-fighter模型（按H键）
+                    console.log('🚀 强制加载用户的hunyuan-fighter模型...');
+                    forceLoadHunyuanModel();
+                    return;
+                } else if (e.code === 'KeyP') {
+                    // 强制重新检查和初始化3D系统（按P键）
+                    console.log('🛩️ 强制重新检查3D系统...');
+                    forceReinit3DSystem();
+                    return;
+                } else if (e.code === 'KeyQ') {
+                    // 🔧 简化测试环境（按Q键）
+                    console.log('🔧 启动简化测试环境...');
+                    startSimplifiedTest();
+                    return;
+                } else if (e.code === 'KeyM') {
+                    // 🎨 材质调试信息（按M键）
+                    console.log('🎨 显示材质调试信息...');
+                    debugMaterialInfo();
+                    return;
+                }
+                
+                // 游戏控制键（需要游戏运行状态）
+                if (!gameState.running) return;
+                
+                // 自动射击模式 - 移除空格键射击事件
+                // if (e.code === 'Space') {
+                //     shoot();
+                // } else 
+                if (e.code === 'ArrowLeft') {
+                    gameState.plane.x -= gameState.planeSpeed;
+                } else if (e.code === 'ArrowRight') {
+                    gameState.plane.x += gameState.planeSpeed;
                 } else if (e.code === 'Escape') {
-                    gameState.running = false;
-                    stopBackgroundMusic();
-                    startScreen.style.display = 'flex';
-                    clearInterval(gameState.enemyInterval);
-                    cancelAnimationFrame(gameState.gameLoopId);
+                    if (gameState.testMode) {
+                        // 退出测试模式
+                        gameState.testMode = false;
+                        update3DStatus('测试模式已退出', '#666');
+                        startScreen.style.display = 'flex';
+                    } else {
+                        // 正常退出游戏
+                        gameState.running = false;
+                        stopBackgroundMusic();
+                        stopAutoShooting(); // 停止自动射击
+                        startScreen.style.display = 'flex';
+                        clearInterval(gameState.enemyInterval);
+                        cancelAnimationFrame(gameState.gameLoopId);
+                    }
                 }
                 
                 gameState.plane.x = Math.max(0, Math.min(gameCanvas.width - gameState.plane.width, gameState.plane.x));
