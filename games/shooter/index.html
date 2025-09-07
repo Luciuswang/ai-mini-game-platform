@@ -1,4 +1,4 @@
-rang'wo'm嗯<!DOCTYPE html>
+rang'wo'm嗯cao'zuo了<!DOCTYPE html>
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
@@ -3458,58 +3458,65 @@ rang'wo'm嗯<!DOCTYPE html>
             function drawSimpleMobilePlane() {
                 ctx.save();
                 
-                // 🔧 关键修复：与原版飞机绘制保持一致，从左上角坐标开始绘制
-                // 不使用translate，直接使用绝对坐标确保与碰撞体完全对齐
+                // 🔧 完全按照原版飞机绘制坐标系统
+                // 原版: ctx.drawImage(planeImage, gameState.plane.x, gameState.plane.y, width, height)
+                // 确保简化版飞机严格在同样的区域内绘制
                 
-                // 简化版飞机设计 - 更轻量，减少GPU负担
+                const planeLeft = gameState.plane.x;
+                const planeTop = gameState.plane.y;
+                const planeRight = gameState.plane.x + gameState.plane.width;
+                const planeBottom = gameState.plane.y + gameState.plane.height;
+                const centerX = planeLeft + gameState.plane.width / 2;
+                const centerY = planeTop + gameState.plane.height / 2;
+                
+                // 🔍 先绘制碰撞体调试框（在飞机下方，方便看到重叠）
+                if (window.showCollisionDebug) {
+                    ctx.strokeStyle = '#ff0000';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([8, 8]); // 更明显的虚线
+                    ctx.strokeRect(planeLeft, planeTop, gameState.plane.width, gameState.plane.height);
+                    ctx.setLineDash([]);
+                    
+                    // 显示坐标信息
+                    ctx.fillStyle = '#ff0000';
+                    ctx.font = '10px Arial';
+                    ctx.fillText(`碰撞体: ${gameState.plane.width}×${gameState.plane.height}`, planeLeft, planeTop - 15);
+                    ctx.fillText(`位置: (${Math.round(planeLeft)}, ${Math.round(planeTop)})`, planeLeft, planeTop - 5);
+                }
+                
+                // 简化版飞机设计 - 完全在碰撞体区域内
                 ctx.fillStyle = '#1e88e5';
                 ctx.strokeStyle = '#0d47a1';
-                ctx.lineWidth = 2;
+                ctx.lineWidth = 1.5;
                 
-                // 计算飞机中心点（用于绘制）
-                const centerX = gameState.plane.x + gameState.plane.width / 2;
-                const centerY = gameState.plane.y + gameState.plane.height / 2;
-                
-                // 主机体 - 简单三角形（机头朝上）
+                // 主机体 - 机头朝上的飞机形状
                 ctx.beginPath();
-                ctx.moveTo(centerX, gameState.plane.y);  // 机头（飞机顶部）
-                ctx.lineTo(gameState.plane.x, gameState.plane.y + gameState.plane.height);  // 左下角
-                ctx.lineTo(gameState.plane.x + gameState.plane.width, gameState.plane.y + gameState.plane.height);  // 右下角
+                // 机头尖端（顶部中心，稍微向内一点避免超出边界）
+                ctx.moveTo(centerX, planeTop + 2);
+                // 左机翼顶点
+                ctx.lineTo(planeLeft + 5, centerY - 10);
+                // 左机身
+                ctx.lineTo(planeLeft + 15, centerY + 5);
+                // 左尾翼
+                ctx.lineTo(planeLeft + 8, planeBottom - 5);
+                // 尾部中心
+                ctx.lineTo(centerX, planeBottom - 2);
+                // 右尾翼
+                ctx.lineTo(planeRight - 8, planeBottom - 5);
+                // 右机身  
+                ctx.lineTo(planeRight - 15, centerY + 5);
+                // 右机翼顶点
+                ctx.lineTo(planeRight - 5, centerY - 10);
+                // 回到机头
                 ctx.closePath();
                 ctx.fill();
                 ctx.stroke();
                 
-                // 简单机翼（水平横条）
-                ctx.fillStyle = '#1565c0';
-                ctx.fillRect(
-                    gameState.plane.x, 
-                    centerY - 5, 
-                    gameState.plane.width, 
-                    10
-                );
-                
-                // 🔍 碰撞体调试可视化（可选，按C键切换）
-                if (window.showCollisionDebug) {
-                    ctx.strokeStyle = '#ff0000';
-                    ctx.lineWidth = 2;
-                    ctx.setLineDash([5, 5]); // 虚线
-                    ctx.strokeRect(
-                        gameState.plane.x, 
-                        gameState.plane.y, 
-                        gameState.plane.width, 
-                        gameState.plane.height
-                    );
-                    ctx.setLineDash([]); // 恢复实线
-                    
-                    // 显示碰撞体信息
-                    ctx.fillStyle = '#ff0000';
-                    ctx.font = '12px Arial';
-                    ctx.fillText(
-                        `${gameState.plane.width}x${gameState.plane.height}`, 
-                        gameState.plane.x, 
-                        gameState.plane.y - 5
-                    );
-                }
+                // 驾驶舱（小圆点）
+                ctx.fillStyle = '#0d47a1';
+                ctx.beginPath();
+                ctx.arc(centerX, planeTop + 12, 3, 0, Math.PI * 2);
+                ctx.fill();
                 
                 ctx.restore();
             }
