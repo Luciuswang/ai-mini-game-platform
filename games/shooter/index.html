@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+rang'wo'm嗯<!DOCTYPE html>
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
@@ -1467,8 +1467,7 @@
         
         <div id="startScreen" class="screen">
             <h1 class="title">✈️ 打飞机有惊喜</h1>
-            <p class="subtitle">经典空战射击游戏 - PC端：鼠标控制战机；手机端：手指滑动控制位置，右下角射击按钮开火。击毁100架敌机解锁神秘惊喜！</p>
-            <p class="subtitle">经典空战射击游戏 - 自动射击模式：单手滑动控制战机躲避敌机和子弹，自动连续射击。收集血包恢复生命值。击毁100架敌机解锁神秘惊喜！</p>
+            <p class="subtitle">经典空战射击游戏 - 自动射击模式：单手滑动控制战机躲避敌机和子弹，自动连续射击。收集血包恢复生命值。击毁100架敌机解锁神秘惊喜！<br/><span id="mobile-optimization-info" style="color: #4CAF50; font-size: 0.9em; display: none;">📱 移动端性能优化已启用</span></p>
             <button id="startBtn" class="btn">开始游戏</button>
             <button id="emergencyBtn" class="btn" style="margin-top: 10px; background: #ff6b6b; display: none;">🚨 应急启动</button>
             <button id="test3DBtn" class="btn" style="margin-top: 10px; background: #4CAF50; font-size: 12px; padding: 6px 16px;">🛩️ 测试3D</button>
@@ -1544,6 +1543,17 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             console.log('页面加载完成，开始初始化...');
+            
+            // 🚀 移动端优化提示
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            if (isMobile) {
+                const mobileInfo = document.getElementById('mobile-optimization-info');
+                if (mobileInfo) {
+                    mobileInfo.style.display = 'inline';
+                    console.log('📱 移动端性能优化已启用');
+                }
+            }
+            
             console.log('✅ 3D飞机顶视图已优化完成！');
             console.log('🎨 材质系统已优化 - GLB材质修复功能已启用');
             console.log('📏 碰撞体尺寸已修正 - 3D模型与碰撞体匹配');
@@ -1554,6 +1564,7 @@
             console.log('  • P: 重置3D系统');
             console.log('  • Q: 简化测试环境');
             console.log('  • M: 显示材质调试信息');
+            console.log('  • C: 切换碰撞体可视化（红色虚线框）');
             
             // =============== 3D渲染系统初始化 ===============
             let scene3D, camera3D, renderer3D, planeModel3D;
@@ -1562,6 +1573,13 @@
             
             function init3DSystem() {
                 console.log('🛩️ 初始化3D飞机渲染系统...');
+                
+                // 🚀 移动端性能优化：跳过3D系统初始化
+                if (gameState.mobile3DOptimization && gameState.mobile3DOptimization.skipComplexModels) {
+                    console.log('📱 移动端性能优化：跳过3D系统初始化');
+                    window.use3D = false;
+                    return;
+                }
                 
                 // 检查Three.js是否可用
                 if (typeof THREE === 'undefined') {
@@ -1667,6 +1685,19 @@
             
             function load3DAircraft() {
                 console.log('🤖 开始加载混元AI飞机模型...');
+                
+                // 🚀 移动端性能优化：跳过复杂3D模型加载
+                if (gameState.mobile3DOptimization && gameState.mobile3DOptimization.skipComplexModels) {
+                    console.log('📱 移动端性能优化：跳过3D模型加载，使用Canvas绘制');
+                    update3DStatus('📱 移动端优化 - Canvas绘制', '#4CAF50');
+                    
+                    // 直接设置Canvas 3D模式，不加载GLB文件
+                    window.use3D = false;
+                    window.pseudo3DEnabled = false;
+                    
+                    return;
+                }
+                
                 update3DStatus('🤖 准备加载混元AI飞机模型...', '#2196F3');
                 
                 // 🎯 多格式3D文件支持系统
@@ -3230,6 +3261,17 @@
                 
                 gameState.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                 
+                // 🚀 移动端3D优化配置
+                gameState.mobile3DOptimization = {
+                    skipComplexModels: gameState.isMobile,     // 移动端跳过复杂3D模型
+                    useSimplePlane: gameState.isMobile,       // 移动端使用简化飞机
+                    reducedLighting: gameState.isMobile,      // 移动端简化光照
+                    disableAntialiasing: gameState.isMobile,  // 移动端禁用抗锯齿
+                    lowResolutionMode: gameState.isMobile,    // 移动端低分辨率模式
+                    skipTextureLoading: gameState.isMobile    // 移动端跳过复杂纹理
+                };
+                console.log('📱 移动端3D优化已启用:', gameState.mobile3DOptimization);
+                
                 gameState.bullets = [];
                 gameState.enemies = [];
                 gameState.enemyBullets = [];
@@ -3412,8 +3454,74 @@
                 console.log('🚀 强制游戏初始化完成');
             }
 
+            // 🚀 移动端简化飞机绘制
+            function drawSimpleMobilePlane() {
+                ctx.save();
+                
+                // 🔧 关键修复：与原版飞机绘制保持一致，从左上角坐标开始绘制
+                // 不使用translate，直接使用绝对坐标确保与碰撞体完全对齐
+                
+                // 简化版飞机设计 - 更轻量，减少GPU负担
+                ctx.fillStyle = '#1e88e5';
+                ctx.strokeStyle = '#0d47a1';
+                ctx.lineWidth = 2;
+                
+                // 计算飞机中心点（用于绘制）
+                const centerX = gameState.plane.x + gameState.plane.width / 2;
+                const centerY = gameState.plane.y + gameState.plane.height / 2;
+                
+                // 主机体 - 简单三角形（机头朝上）
+                ctx.beginPath();
+                ctx.moveTo(centerX, gameState.plane.y);  // 机头（飞机顶部）
+                ctx.lineTo(gameState.plane.x, gameState.plane.y + gameState.plane.height);  // 左下角
+                ctx.lineTo(gameState.plane.x + gameState.plane.width, gameState.plane.y + gameState.plane.height);  // 右下角
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                // 简单机翼（水平横条）
+                ctx.fillStyle = '#1565c0';
+                ctx.fillRect(
+                    gameState.plane.x, 
+                    centerY - 5, 
+                    gameState.plane.width, 
+                    10
+                );
+                
+                // 🔍 碰撞体调试可视化（可选，按C键切换）
+                if (window.showCollisionDebug) {
+                    ctx.strokeStyle = '#ff0000';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 5]); // 虚线
+                    ctx.strokeRect(
+                        gameState.plane.x, 
+                        gameState.plane.y, 
+                        gameState.plane.width, 
+                        gameState.plane.height
+                    );
+                    ctx.setLineDash([]); // 恢复实线
+                    
+                    // 显示碰撞体信息
+                    ctx.fillStyle = '#ff0000';
+                    ctx.font = '12px Arial';
+                    ctx.fillText(
+                        `${gameState.plane.width}x${gameState.plane.height}`, 
+                        gameState.plane.x, 
+                        gameState.plane.y - 5
+                    );
+                }
+                
+                ctx.restore();
+            }
+
             // 绘制飞机 - 3D/2D混合渲染
             function drawPlane() {
+                // 🚀 移动端性能优化：使用简化绘制
+                if (gameState.mobile3DOptimization && gameState.mobile3DOptimization.useSimplePlane) {
+                    drawSimpleMobilePlane();
+                    return;
+                }
+                
                 // 飞机渲染优先级：真3D > 伪3D > 2D图片 > 几何形状
                 
                 // 1. 优先使用真3D飞机
@@ -4732,6 +4840,11 @@
                     // 🎨 材质调试信息（按M键）
                     console.log('🎨 显示材质调试信息...');
                     debugMaterialInfo();
+                    return;
+                } else if (e.code === 'KeyC') {
+                    // 🔍 碰撞体调试可视化（按C键切换）
+                    window.showCollisionDebug = !window.showCollisionDebug;
+                    console.log('🔍 碰撞体调试:', window.showCollisionDebug ? '开启' : '关闭');
                     return;
                 }
                 
