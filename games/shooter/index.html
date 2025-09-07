@@ -1861,6 +1861,33 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
         
         // 🔧 确保函数在全局作用域中正确定义
         function ensureGlobalFunctions() {
+            // 从URL参数读取分享消息
+            window.getMessageFromURL = function() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const message = urlParams.get('msg');
+                if (message) {
+                    backgroundMessage = decodeURIComponent(message);
+                    console.log('🌟 检测到分享消息:', backgroundMessage);
+                }
+            };
+            
+            // 生成包含消息的分享链接
+            window.generateShareURL = function(message) {
+                const baseURL = window.location.protocol + '//' + window.location.host + window.location.pathname;
+                const encodedMessage = encodeURIComponent(message);
+                return `${baseURL}?msg=${encodedMessage}`;
+            };
+            
+            // 显示背景消息（如果有）
+            window.showBackgroundMessage = function() {
+                const messageEl = document.getElementById('backgroundMessage');
+                if (backgroundMessage && backgroundMessage.length > 0) {
+                    messageEl.textContent = backgroundMessage;
+                    messageEl.style.display = 'block';
+                    console.log('🌟 显示背景消息:', backgroundMessage);
+                }
+            };
+            
             // 强制重新定义所有需要的函数
             window.showMessageInput = function() {
                 console.log('🌟 showMessageInput被调用');
@@ -1890,30 +1917,26 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                     backgroundMessage = message;
                     
                     // 更新URL以便分享
-                    const shareURL = generateShareURL(message);
+                    const shareURL = window.generateShareURL(message);
                     window.history.replaceState(null, null, shareURL);
                     
                     // 显示背景消息
-                    showBackgroundMessage();
+                    window.showBackgroundMessage();
                     
                     console.log('🌟 设置消息成功:', message);
                     console.log('🔗 分享链接:', shareURL);
                 }
                 
                 window.hideMessageInput();
-                // 找到initGame函数并调用
-                if (typeof initGame === 'function') {
-                    initGame();
+                
+                // 🔧 修复：直接触发开始游戏按钮的点击事件，避免重复定义initGame逻辑
+                const startBtn = document.getElementById('startBtn');
+                if (startBtn) {
+                    console.log('🎮 通过startBtn启动游戏');
+                    startBtn.click();
                 } else {
-                    // 如果initGame还未定义，延迟调用
-                    setTimeout(() => {
-                        if (typeof initGame === 'function') {
-                            initGame();
-                        } else {
-                            console.error('initGame函数未找到');
-                            alert('游戏初始化失败，请刷新页面重试');
-                        }
-                    }, 1000);
+                    console.error('❌ 找不到开始游戏按钮');
+                    alert('游戏初始化失败，请刷新页面重试');
                 }
             };
             
@@ -1944,6 +1967,9 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
             
             // 验证函数定义
             console.log('✅ 全局函数定义状态:', {
+                getMessageFromURL: typeof window.getMessageFromURL,
+                generateShareURL: typeof window.generateShareURL,
+                showBackgroundMessage: typeof window.showBackgroundMessage,
                 showMessageInput: typeof window.showMessageInput,
                 hideMessageInput: typeof window.hideMessageInput, 
                 confirmMessage: typeof window.confirmMessage,
@@ -1971,10 +1997,10 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
             }
             
             // 初始化消息系统
-            getMessageFromURL();
+            window.getMessageFromURL();
             
             // 页面加载时显示背景消息
-            showBackgroundMessage();
+            window.showBackgroundMessage();
             
             console.log('✅ 3D飞机顶视图已优化完成！');
             console.log('🎨 材质系统已优化 - GLB材质修复功能已启用');
