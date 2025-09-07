@@ -932,6 +932,7 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
             overflow-y: auto;
             padding: 0;
             background: linear-gradient(rgba(10, 15, 40, 0.95), rgba(5, 10, 30, 0.95));
+            z-index: 3000; /* 🔧 确保作者履历页面显示在最前面 */
             /* 移动端滚动优化 */
             -webkit-overflow-scrolling: touch;
             overscroll-behavior: contain;
@@ -1965,6 +1966,30 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                 }
             };
             
+            // 测试作者履历显示功能
+            window.testResumeDisplay = function() {
+                console.log('🧪 测试作者履历显示功能...');
+                const resumeScreen = document.getElementById('resumeScreen');
+                const startScreen = document.getElementById('startScreen');
+                
+                if (startScreen) {
+                    startScreen.style.display = 'none';
+                }
+                
+                if (resumeScreen) {
+                    resumeScreen.style.display = 'flex';
+                    resumeScreen.style.zIndex = '3000';
+                    resumeScreen.style.visibility = 'visible';
+                    resumeScreen.style.opacity = '1';
+                    resumeScreen.scrollTop = 0;
+                    
+                    console.log('✅ 作者履历页面已强制显示！');
+                    alert('作者履历页面测试显示成功！');
+                } else {
+                    console.error('❌ 找不到作者履历页面元素');
+                }
+            };
+            
             // 验证函数定义
             console.log('✅ 全局函数定义状态:', {
                 getMessageFromURL: typeof window.getMessageFromURL,
@@ -1973,7 +1998,8 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                 showMessageInput: typeof window.showMessageInput,
                 hideMessageInput: typeof window.hideMessageInput, 
                 confirmMessage: typeof window.confirmMessage,
-                shareGame: typeof window.shareGame
+                shareGame: typeof window.shareGame,
+                testResumeDisplay: typeof window.testResumeDisplay
             });
         }
         
@@ -5146,29 +5172,47 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                                     cancelAnimationFrame(gameState.gameLoopId);
                                     
                                                                     setTimeout(() => {
-                                    // 强制重置滚动位置 - 多次尝试确保生效
-                                    resumeScreen.scrollTop = 0;
-                                    resumeScreen.style.display = 'flex';
-                                    
-                                    console.log('🎉 恭喜！简历页面已解锁！');
-                                    console.log('📋 简历头部元素检查:', resumeScreen.querySelector('.resume-header') ? '✅ 找到' : '❌ 未找到');
-                                    console.log('🎨 头部艺术背景检查:', resumeScreen.querySelector('.header-art') ? '✅ 找到' : '❌ 未找到');
-                                    
-                                    // 再次确保滚动到顶部（移动端可能需要延迟）
-                                    setTimeout(() => {
+                                        // 🔧 强制隐藏其他可能遮挡的元素
+                                        const startScreen = document.getElementById('startScreen');
+                                        if (startScreen) {
+                                            startScreen.style.display = 'none';
+                                        }
+                                        
+                                        // 强制重置滚动位置 - 多次尝试确保生效
                                         resumeScreen.scrollTop = 0;
-                                        const resumeContent = resumeScreen.querySelector('.resume-content');
-                                        if (resumeContent) {
-                                            resumeContent.scrollTop = 0;
-                                        }
-                                        // 使用 scrollIntoView 确保顶部可见
-                                        const firstElement = resumeScreen.querySelector('.resume-header');
-                                        if (firstElement) {
-                                            firstElement.scrollIntoView({ behavior: 'instant', block: 'start' });
-                                            console.log('📍 简历头部已滚动到可见区域');
-                                        }
-                                    }, 100);
-                                }, 1000);
+                                        resumeScreen.style.display = 'flex';
+                                        resumeScreen.style.zIndex = '3000'; // 🔧 强制设置最高层级
+                                        resumeScreen.style.visibility = 'visible'; // 🔧 确保可见
+                                        resumeScreen.style.opacity = '1'; // 🔧 确保不透明
+                                        
+                                        console.log('🎉 恭喜！作者履历页面已解锁！');
+                                        console.log('📋 作者履历显示状态检查:', {
+                                            display: resumeScreen.style.display,
+                                            zIndex: resumeScreen.style.zIndex,
+                                            visibility: resumeScreen.style.visibility,
+                                            opacity: resumeScreen.style.opacity
+                                        });
+                                        console.log('📋 作者履历头部元素检查:', resumeScreen.querySelector('.resume-header') ? '✅ 找到' : '❌ 未找到');
+                                        console.log('🎨 头部艺术背景检查:', resumeScreen.querySelector('.header-art') ? '✅ 找到' : '❌ 未找到');
+                                        
+                                        // 再次确保滚动到顶部（移动端可能需要延迟）
+                                        setTimeout(() => {
+                                            resumeScreen.scrollTop = 0;
+                                            const resumeContent = resumeScreen.querySelector('.resume-content');
+                                            if (resumeContent) {
+                                                resumeContent.scrollTop = 0;
+                                            }
+                                            // 使用 scrollIntoView 确保顶部可见
+                                            const firstElement = resumeScreen.querySelector('.resume-header');
+                                            if (firstElement) {
+                                                firstElement.scrollIntoView({ behavior: 'instant', block: 'start' });
+                                                console.log('📍 作者履历头部已滚动到可见区域');
+                                            }
+                                            
+                                            // 🔧 添加一个明显的提示确保用户知道作者履历已显示
+                                            alert('🎉 恭喜达成100架击毁！神秘惊喜已解锁 - 请查看作者履历页面！');
+                                        }, 100);
+                                    }, 1000);
                                 }
                             }
                             break;
@@ -5935,7 +5979,7 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                         lastTouchEnd = now;
                     }, { passive: false });
                     
-                    // 优化简历滚动
+                    // 优化作者履历滚动
                     resumeScreen.style.webkitOverflowScrolling = 'touch';
                     resumeScreen.style.overscrollBehavior = 'contain';
                 }
