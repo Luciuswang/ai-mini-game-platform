@@ -1571,6 +1571,13 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
             let baseRotation = { x: 0, y: 0, z: Math.PI / 2 }; // 顶视图旋转，机头朝上
             let animationId3D;
             
+            // 🔥 3D粒子尾焰系统
+            let exhaustParticleSystem = null;
+            const exhaustParticles = [];
+            
+            // ✈️ 玩家飞机3D喷气特效系统
+            let playerJetParticleSystem = null;
+            
             function init3DSystem() {
                 console.log('🛩️ 初始化3D飞机渲染系统...');
                 
@@ -1669,6 +1676,12 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                     scene3D.add(hemisphereLight);
                     
                     console.log('💡 PBR光照系统创建完成 - 6种光源协同工作');
+                    
+                    // 🔥 初始化3D粒子尾焰系统
+                    init3DExhaustParticles();
+                    
+                    // ✈️ 初始化玩家飞机3D喷气特效系统
+                    initPlayerJetParticles();
                     
                     // 加载混元AI飞机模型
                     load3DAircraft();
@@ -2077,6 +2090,273 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                         console.warn('⚠️ 3D飞机位置更新失败:', error);
                     }
                 }
+            }
+            
+            // 🔥 3D粒子尾焰系统
+            function init3DExhaustParticles() {
+                if (!scene3D) return;
+                
+                console.log('🔥 初始化3D粒子尾焰系统...');
+                
+                // 创建粒子几何体和材质
+                const particleGeometry = new THREE.BufferGeometry();
+                const particleCount = 100;
+                
+                // 粒子位置数组
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+                const sizes = new Float32Array(particleCount);
+                
+                // 初始化粒子数据
+                for (let i = 0; i < particleCount; i++) {
+                    const i3 = i * 3;
+                    
+                    // 初始位置（在飞机后方）
+                    positions[i3] = 0; // x
+                    positions[i3 + 1] = 0; // y  
+                    positions[i3 + 2] = -50 - Math.random() * 100; // z (向后延伸)
+                    
+                    // 颜色：从橙红到黄色渐变
+                    colors[i3] = 1.0; // r
+                    colors[i3 + 1] = 0.5 + Math.random() * 0.5; // g
+                    colors[i3 + 2] = Math.random() * 0.3; // b
+                    
+                    // 大小
+                    sizes[i] = 2 + Math.random() * 4;
+                }
+                
+                particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                particleGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+                
+                // 粒子材质
+                const particleMaterial = new THREE.ShaderMaterial({
+                    uniforms: {
+                        time: { value: 0.0 }
+                    },
+                    vertexShader: `
+                        attribute float size;
+                        varying vec3 vColor;
+                        uniform float time;
+                        
+                        void main() {
+                            vColor = color;
+                            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                            
+                            // 添加闪烁效果
+                            gl_PointSize = size * (0.8 + 0.4 * sin(time * 10.0 + position.z * 0.1));
+                            gl_Position = projectionMatrix * mvPosition;
+                        }
+                    `,
+                    fragmentShader: `
+                        varying vec3 vColor;
+                        
+                        void main() {
+                            // 创建圆形粒子
+                            float distance = length(gl_PointCoord - vec2(0.5));
+                            if (distance > 0.5) discard;
+                            
+                            float alpha = 1.0 - (distance * 2.0);
+                            alpha = pow(alpha, 2.0);
+                            
+                            gl_FragColor = vec4(vColor, alpha * 0.8);
+                        }
+                    `,
+                    transparent: true,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false,
+                    vertexColors: true
+                });
+                
+                // 创建粒子系统
+                exhaustParticleSystem = new THREE.Points(particleGeometry, particleMaterial);
+                scene3D.add(exhaustParticleSystem);
+                
+                console.log('🔥 3D粒子尾焰系统初始化完成');
+            }
+            
+            function update3DExhaustParticles() {
+                if (!exhaustParticleSystem || !planeModel3D) return;
+                
+                // 更新粒子系统位置到飞机位置
+                exhaustParticleSystem.position.copy(planeModel3D.position);
+                exhaustParticleSystem.rotation.copy(planeModel3D.rotation);
+                
+                // 更新粒子动画
+                const time = Date.now() * 0.001;
+                if (exhaustParticleSystem.material.uniforms) {
+                    exhaustParticleSystem.material.uniforms.time.value = time;
+                }
+                
+                // 更新粒子位置（模拟尾焰流动）
+                const positions = exhaustParticleSystem.geometry.attributes.position.array;
+                const colors = exhaustParticleSystem.geometry.attributes.color.array;
+                
+                for (let i = 0; i < positions.length / 3; i++) {
+                    const i3 = i * 3;
+                    
+                    // 粒子向后流动
+                    positions[i3 + 2] -= 2; // z方向向后移动
+                    
+                    // 添加随机扰动
+                    positions[i3] += (Math.random() - 0.5) * 1;
+                    positions[i3 + 1] += (Math.random() - 0.5) * 1;
+                    
+                    // 重置超出范围的粒子
+                    if (positions[i3 + 2] < -150) {
+                        positions[i3] = (Math.random() - 0.5) * 20; // 重置到飞机附近
+                        positions[i3 + 1] = (Math.random() - 0.5) * 20;
+                        positions[i3 + 2] = 0; // 从飞机位置开始
+                        
+                        // 更新颜色（新粒子更亮）
+                        colors[i3] = 1.0;
+                        colors[i3 + 1] = 0.8 + Math.random() * 0.2;
+                        colors[i3 + 2] = Math.random() * 0.4;
+                    } else {
+                        // 逐渐变暗
+                        colors[i3 + 1] *= 0.995;
+                        colors[i3 + 2] *= 0.99;
+                    }
+                }
+                
+                exhaustParticleSystem.geometry.attributes.position.needsUpdate = true;
+                exhaustParticleSystem.geometry.attributes.color.needsUpdate = true;
+            }
+            
+            // ✈️ 玩家飞机3D喷气特效系统
+            function initPlayerJetParticles() {
+                if (!scene3D) return;
+                
+                console.log('✈️ 初始化玩家飞机3D喷气特效系统...');
+                
+                // 创建粒子几何体和材质
+                const particleGeometry = new THREE.BufferGeometry();
+                const particleCount = 80; // 相对少一些，避免过度绚丽
+                
+                // 粒子位置数组
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+                const sizes = new Float32Array(particleCount);
+                
+                // 初始化粒子数据
+                for (let i = 0; i < particleCount; i++) {
+                    const i3 = i * 3;
+                    
+                    // 初始位置（在飞机后方）
+                    positions[i3] = (Math.random() - 0.5) * 15; // x
+                    positions[i3 + 1] = (Math.random() - 0.5) * 15; // y  
+                    positions[i3 + 2] = -30 - Math.random() * 80; // z (向后延伸)
+                    
+                    // 颜色：蓝白色喷气效果
+                    colors[i3] = 0.3 + Math.random() * 0.7; // r - 蓝白混合
+                    colors[i3 + 1] = 0.6 + Math.random() * 0.4; // g - 明亮
+                    colors[i3 + 2] = 1.0; // b - 蓝色主导
+                    
+                    // 大小
+                    sizes[i] = 1.5 + Math.random() * 2.5;
+                }
+                
+                particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                particleGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+                
+                // 粒子材质
+                const particleMaterial = new THREE.ShaderMaterial({
+                    uniforms: {
+                        time: { value: 0.0 }
+                    },
+                    vertexShader: `
+                        attribute float size;
+                        varying vec3 vColor;
+                        uniform float time;
+                        
+                        void main() {
+                            vColor = color;
+                            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                            
+                            // 添加闪烁效果
+                            gl_PointSize = size * (0.7 + 0.5 * sin(time * 15.0 + position.z * 0.2));
+                            gl_Position = projectionMatrix * mvPosition;
+                        }
+                    `,
+                    fragmentShader: `
+                        varying vec3 vColor;
+                        
+                        void main() {
+                            // 创建圆形粒子
+                            float distance = length(gl_PointCoord - vec2(0.5));
+                            if (distance > 0.5) discard;
+                            
+                            float alpha = 1.0 - (distance * 2.0);
+                            alpha = pow(alpha, 1.5);
+                            
+                            gl_FragColor = vec4(vColor, alpha * 0.9);
+                        }
+                    `,
+                    transparent: true,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false,
+                    vertexColors: true
+                });
+                
+                // 创建玩家喷气粒子系统
+                playerJetParticleSystem = new THREE.Points(particleGeometry, particleMaterial);
+                scene3D.add(playerJetParticleSystem);
+                
+                console.log('✈️ 玩家飞机3D喷气特效系统初始化完成');
+            }
+            
+            function updatePlayerJetParticles() {
+                if (!playerJetParticleSystem || !camera3D) return;
+                
+                // 🎯 将粒子系统位置映射到玩家飞机位置
+                // 使用游戏坐标转换到3D世界坐标
+                const planeWorldX = ((gameState.plane.x + gameState.plane.width/2) / gameCanvas.width - 0.5) * (camera3D.right - camera3D.left);
+                const planeWorldY = -((gameState.plane.y + gameState.plane.height/2) / gameCanvas.height - 0.5) * (camera3D.top - camera3D.bottom);
+                
+                playerJetParticleSystem.position.x = planeWorldX;
+                playerJetParticleSystem.position.y = planeWorldY;
+                playerJetParticleSystem.position.z = 0;
+                
+                // 更新粒子动画
+                const time = Date.now() * 0.001;
+                if (playerJetParticleSystem.material.uniforms) {
+                    playerJetParticleSystem.material.uniforms.time.value = time;
+                }
+                
+                // 更新粒子位置（模拟喷气流动）
+                const positions = playerJetParticleSystem.geometry.attributes.position.array;
+                const colors = playerJetParticleSystem.geometry.attributes.color.array;
+                
+                for (let i = 0; i < positions.length / 3; i++) {
+                    const i3 = i * 3;
+                    
+                    // 粒子向后流动
+                    positions[i3 + 2] -= 2.5; // z方向向后移动
+                    
+                    // 添加轻微扰动
+                    positions[i3] += (Math.random() - 0.5) * 0.8;
+                    positions[i3 + 1] += (Math.random() - 0.5) * 0.8;
+                    
+                    // 重置超出范围的粒子
+                    if (positions[i3 + 2] < -120) {
+                        positions[i3] = (Math.random() - 0.5) * 15; // 重置到飞机附近
+                        positions[i3 + 1] = (Math.random() - 0.5) * 15;
+                        positions[i3 + 2] = 5; // 从飞机位置稍后开始
+                        
+                        // 更新颜色（新粒子更亮）
+                        colors[i3] = 0.4 + Math.random() * 0.6;
+                        colors[i3 + 1] = 0.7 + Math.random() * 0.3;
+                        colors[i3 + 2] = 1.0;
+                    } else {
+                        // 逐渐变暗
+                        colors[i3] *= 0.997;
+                        colors[i3 + 1] *= 0.996;
+                    }
+                }
+                
+                playerJetParticleSystem.geometry.attributes.position.needsUpdate = true;
+                playerJetParticleSystem.geometry.attributes.color.needsUpdate = true;
             }
             
             // 更新3D状态显示
@@ -3597,30 +3877,46 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                 }
                 ctx.restore();
                 
-                // 保留2D尾焰效果在游戏Canvas上（所有模式都保留）
-                ctx.save();
+                // 🔥 智能尾焰系统：3D模式用粒子特效，其他模式用2D特效
+                if (planeModel3D) {
+                    // 3D模式：使用3D粒子尾焰特效（在3D场景中渲染）
+                    update3DExhaustParticles();
+                }
                 
-                // 绘制发动机尾焰效果（顶视图 - 向后喷射）
-                const flameX = gameState.plane.x + gameState.plane.width / 2;
-                const flameY = gameState.plane.y + gameState.plane.height;
-                const flameIntensity = 0.3 + Math.random() * 0.4;
+                // ✈️ 玩家飞机3D喷气特效（总是更新，不管是否有3D飞机模型）
+                if (scene3D) {
+                    updatePlayerJetParticles();
+                }
                 
-                // 顶视图尾焰渐变（向后延伸）
-                const gradient = ctx.createRadialGradient(flameX, flameY, 0, flameX, flameY + 25, 25);
-                gradient.addColorStop(0, `rgba(255, 100, 0, ${flameIntensity})`);
-                gradient.addColorStop(0.5, `rgba(255, 150, 0, ${flameIntensity * 0.6})`);
-                gradient.addColorStop(1, 'rgba(255, 200, 0, 0)');
-                
-                ctx.fillStyle = gradient;
-                
-                // 双引擎尾焰（顶视图）
-                ctx.beginPath();
-                ctx.ellipse(flameX - 8, flameY + 15, 6, 18, 0, 0, Math.PI * 2);
-                ctx.fill();
-                
-                ctx.beginPath();
-                ctx.ellipse(flameX + 8, flameY + 15, 6, 18, 0, 0, Math.PI * 2);
-                ctx.fill();
+                // 2D/简化模式尾焰效果
+                if (!planeModel3D) {
+                    // 2D/简化模式：保留2D尾焰效果
+                    ctx.save();
+                    
+                    // 绘制发动机尾焰效果（顶视图 - 向后喷射）
+                    const flameX = gameState.plane.x + gameState.plane.width / 2;
+                    const flameY = gameState.plane.y + gameState.plane.height;
+                    const flameIntensity = 0.3 + Math.random() * 0.4;
+                    
+                    // 顶视图尾焰渐变（向后延伸）
+                    const gradient = ctx.createRadialGradient(flameX, flameY, 0, flameX, flameY + 25, 25);
+                    gradient.addColorStop(0, `rgba(255, 100, 0, ${flameIntensity})`);
+                    gradient.addColorStop(0.5, `rgba(255, 150, 0, ${flameIntensity * 0.6})`);
+                    gradient.addColorStop(1, 'rgba(255, 200, 0, 0)');
+                    
+                    ctx.fillStyle = gradient;
+                    
+                    // 双引擎尾焰（顶视图）
+                    ctx.beginPath();
+                    ctx.ellipse(flameX - 8, flameY + 15, 6, 18, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.beginPath();
+                    ctx.ellipse(flameX + 8, flameY + 15, 6, 18, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.restore();
+                }
                 
                 // 简化飞机渲染 - 确保总是显示
                 
@@ -3695,19 +3991,129 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                         ctx.arc(centerX, centerY, bigRadius * 0.3, 0, Math.PI * 2);
                         ctx.fill();
                         
-                        // 大敌机射击逻辑 - 配合弧线弹道系统调整 (基于分数调整射击频率)
+                        // 🌪️ 大敌机增强射击逻辑 - 螺旋旋转攻击系统
                         if (e.y > 50 && e.y < gameCanvas.height - 200) { // 只在合理位置射击
                             const difficultyLevel = Math.min(Math.floor(gameState.score / 20), 10); // 每20分增加一级难度
                             
-                            // 增加射击概率以便测试弹道效果
-                            let baseShootProbability = 0.08; // 大敌机射击概率8%
-                            
-                            const shootProbability = Math.min(baseShootProbability + difficultyLevel * 0.01, 0.15); // 最高15%
-                            
-                            if (Math.random() < shootProbability) {
-                                createEnemyBulletPattern(e.x + e.width/2, e.y + e.height);
-                                console.log('🏹 大敌机发射弧形排弹！位置:', e.x, e.y);
+                            // 初始化敌机旋转状态（如果没有）
+                            if (e.rotation === undefined) {
+                                e.rotation = 0;
+                                e.rotationSpeed = (Math.random() - 0.5) * 0.015; // 🔧 进一步降低旋转速度 - 慢50%
+                                e.lastShot = 0; // 上次射击时间
+                                e.spiralShotCount = 0; // 螺旋射击计数器
                             }
+                            
+                            // 更新敌机非常缓慢的旋转
+                            e.rotation += e.rotationSpeed;
+                            e.lastShot = (e.lastShot || 0) + 1;
+                            
+                            // 🌪️ 连续螺旋弹阵列系统
+                            // 初始化螺旋发射状态
+                            if (e.spiralBurstMode === undefined) {
+                                e.spiralBurstMode = false; // 是否在连发模式
+                                e.spiralBurstCount = 0;    // 当前连发计数
+                                e.spiralBurstTarget = 0;   // 目标连发数量
+                            }
+                            
+                            // 🔥 连续螺旋弹发射逻辑
+                            if (e.spiralBurstMode) {
+                                // 连发模式：密集弹幕连续发射
+                                if (e.lastShot > 16) { // 🔧 调整到0.27秒间隔 - 保持密集但给玩家微调空间
+                                    e.lastShot = 0;
+                                    createSimpleSpiralShot(e.x + e.width/2, e.y + e.height, e.rotation);
+                                    e.spiralBurstCount++;
+                                    console.log(`🔥 密集螺旋弹幕！第${e.spiralBurstCount}/${e.spiralBurstTarget}发，角度:${(e.rotation * 180 / Math.PI).toFixed(0)}°`);
+                                    
+                                    // 连发完成，退出连发模式
+                                    if (e.spiralBurstCount >= e.spiralBurstTarget) {
+                                        e.spiralBurstMode = false;
+                                        e.spiralBurstCount = 0;
+                                        e.lastShot = 0;
+                                        console.log('✅ 超大螺旋弹幕完成，进入冷却');
+                                    }
+                                }
+                            } else {
+                                // 普通模式：决定是否进入连发模式或发射单发
+                                let baseShootProbability = 0.04; // 🔧 略微提高触发概率
+                                const shootProbability = Math.min(baseShootProbability + difficultyLevel * 0.008, 0.08);
+                                
+                                if (Math.random() < shootProbability && e.lastShot > 80) { // 🔧 缩短到1.3秒冷却
+                                    e.lastShot = 0;
+                                    
+                                    // 🎯 大幅提升螺旋连发：90%螺旋阵列，10%弧形弹
+                                    if (Math.random() < 0.9) {
+                                        // 开始超大型螺旋连发阵列
+                                        e.spiralBurstMode = true;
+                                        e.spiralBurstTarget = 12 + Math.floor(difficultyLevel / 1); // 🔥 12-24发连发！(双倍！)
+                                        e.spiralBurstCount = 0;
+                                        console.log(`🚀 大敌机开始超大螺旋阵列！目标${e.spiralBurstTarget}发密集弹幕`);
+                                    } else {
+                                        // 很少发射弧形弹
+                                        createEnemyBulletPattern(e.x + e.width/2, e.y + e.height);
+                                        console.log('🏹 大敌机弧形射击（罕见）');
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // 🌪️ 增强视觉效果：显示敌机旋转状态和连发状态
+                        if (e.rotation !== undefined) {
+                            ctx.save();
+                            ctx.translate(centerX, centerY);
+                            ctx.rotate(e.rotation);
+                            
+                            // 根据连发状态改变指示器颜色
+                            let indicatorColor = '#ffff00'; // 默认黄色
+                            let indicatorWidth = 2;
+                            
+                            if (e.spiralBurstMode) {
+                                // 连发模式：红色闪烁指示器
+                                indicatorColor = '#ff0000';
+                                indicatorWidth = 3;
+                                ctx.shadowColor = '#ff0000';
+                                ctx.shadowBlur = 8;
+                            }
+                            
+                            // 绘制旋转指示器
+                            ctx.strokeStyle = indicatorColor;
+                            ctx.lineWidth = indicatorWidth;
+                            ctx.beginPath();
+                            ctx.moveTo(0, -bigRadius * 0.9);
+                            ctx.lineTo(0, -bigRadius * 0.4);
+                            ctx.stroke();
+                            
+                            // 绘制旋转方向指示箭头
+                            const direction = e.rotationSpeed > 0 ? 1 : -1;
+                            ctx.beginPath();
+                            ctx.moveTo(-6 * direction, -bigRadius * 0.6);
+                            ctx.lineTo(0, -bigRadius * 0.9);
+                            ctx.lineTo(6 * direction, -bigRadius * 0.6);
+                            ctx.stroke();
+                            
+                            // 🚨 连发模式危险警告视觉效果
+                            if (e.spiralBurstMode) {
+                                // 危险连发进度环 - 脉动效果
+                                const pulseIntensity = 0.8 + 0.4 * Math.sin(Date.now() * 0.01);
+                                ctx.strokeStyle = `rgba(255, 0, 0, ${pulseIntensity})`;
+                                ctx.lineWidth = 3; // 🔧 更粗的警告环
+                                ctx.shadowColor = '#ff0000';
+                                ctx.shadowBlur = 15;
+                                ctx.beginPath();
+                                const progress = e.spiralBurstCount / e.spiralBurstTarget;
+                                ctx.arc(0, 0, bigRadius * 1.15, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * progress));
+                                ctx.stroke();
+                                
+                                // 额外的危险指示闪烁点
+                                ctx.fillStyle = `rgba(255, 255, 0, ${pulseIntensity})`;
+                                ctx.beginPath();
+                                ctx.arc(-bigRadius * 0.3, -bigRadius * 0.3, 3, 0, Math.PI * 2);
+                                ctx.fill();
+                                ctx.beginPath();
+                                ctx.arc(bigRadius * 0.3, -bigRadius * 0.3, 3, 0, Math.PI * 2);
+                                ctx.fill();
+                            }
+                            
+                            ctx.restore();
                         }
                     } else {
                         // 🔴 小敌机 - 小圆形
@@ -3763,6 +4169,47 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                     const angle = startAngle + i * angleStep;
                     createSingleBullet(x, y, angle, 'pattern');
                 }
+            }
+            
+            // 🌪️ 简化螺旋射击系统 - 敌机旋转导致的自然螺旋弹道
+            function createSimpleSpiralShot(x, y, rotation) {
+                const baseSpeed = 3 + Math.min(gameState.score / 30, 2);
+                
+                // 🎯 根据敌机旋转角度计算发射方向
+                const shootAngle = rotation; // 直接使用敌机旋转角度
+                
+                // 主要向下，轻微的水平偏移（因为敌机旋转）
+                const vx = Math.sin(shootAngle) * baseSpeed * 0.6; // 水平分量较小
+                const vy = baseSpeed; // 主要向下运动
+                
+                console.log(`🌪️ 螺旋子弹发射 - 角度: ${(rotation * 180 / Math.PI).toFixed(0)}°, 速度: (${vx.toFixed(1)}, ${vy.toFixed(1)})`);
+                
+                // 🔥 创建大型危险螺旋弹
+                let bullet;
+                if (enemyBulletPool.length > 0) {
+                    bullet = enemyBulletPool.pop();
+                    Object.assign(bullet, {
+                        x: x,
+                        y: y,
+                        width: 14,  // 🔧 从8增加到14 (75%更大!)
+                        height: 18, // 🔧 从12增加到18 (50%更大!)
+                        vx: vx,
+                        vy: vy,
+                        type: 'spiral_simple' // 简化螺旋类型
+                    });
+                } else {
+                    bullet = {
+                        x: x,
+                        y: y,
+                        width: 14,  // 🔧 大型螺旋弹
+                        height: 18, // 🔧 更威胁性的尺寸
+                        vx: vx,
+                        vy: vy,
+                        type: 'spiral_simple'
+                    };
+                }
+                
+                gameState.enemyBullets.push(bullet);
             }
             
             // 创建单个子弹（简化版，直线运动）
@@ -3827,9 +4274,39 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                     // 增加时间计数器
                     bullet.time = (bullet.time || 0) + 1;
                     
-                    // 🔥 简化弹道运动：使用速度向量
-                    if (bullet.vx !== undefined && bullet.vy !== undefined) {
-                        // 新的弧形排弹系统：使用速度向量
+                    // 🌪️ 增强弹道运动：支持不同类型的子弹
+                    if (bullet.type === 'spiral_simple') {
+                        // 🎯 简化螺旋弹：直接使用速度向量，主要向下运动
+                        bullet.x += bullet.vx;
+                        bullet.y += bullet.vy;
+                        
+                    } else if (bullet.type === 'spiral') {
+                        // 🗑️ 保留复杂螺旋弹逻辑（向后兼容）
+                        if (bullet.delay && bullet.time < bullet.delay * 60) {
+                            continue; // 跳过还未到发射时间的子弹
+                        }
+                        
+                        // 计算螺旋运动
+                        if (bullet.spiralRadius !== undefined) {
+                            bullet.spiralRadius += 0.5;
+                            bullet.spiralAngle += 0.15;
+                            
+                            bullet.x += bullet.initialVx || bullet.vx;
+                            bullet.y += bullet.initialVy || bullet.vy;
+                            
+                            const spiralOffsetX = Math.cos(bullet.spiralAngle) * bullet.spiralRadius * 0.3;
+                            const spiralOffsetY = Math.sin(bullet.spiralAngle) * bullet.spiralRadius * 0.2;
+                            
+                            bullet.x += spiralOffsetX;
+                            bullet.y += spiralOffsetY;
+                        } else {
+                            // 如果没有螺旋参数，当作普通子弹处理
+                            bullet.x += bullet.vx;
+                            bullet.y += bullet.vy;
+                        }
+                        
+                    } else if (bullet.vx !== undefined && bullet.vy !== undefined) {
+                        // 弧形排弹系统：使用速度向量
                         bullet.x += bullet.vx;
                         bullet.y += bullet.vy;
                     } else {
@@ -3878,18 +4355,49 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                             break;
                     }
                     
-                    // 🔴 绘制红色圆形子弹
+                    // 🌪️ 绘制子弹（根据类型区分颜色）
                     const radius = bullet.width / 2;
-                    ctx.fillStyle = '#ff4444'; // 红色
-                    ctx.shadowColor = '#ff0000';
-                    ctx.shadowBlur = 8;
+                    let fillColor = '#ff4444'; // 默认红色
+                    let shadowColor = '#ff0000';
+                    let shadowBlur = 8;
+                    
+                    // 🔥 根据子弹类型设置危险颜色
+                    if (bullet.type === 'spiral_simple') {
+                        fillColor = '#cc0000'; // 🚨 危险深红色 - 更威胁！
+                        shadowColor = '#ff0000';
+                        shadowBlur = 15; // 🔥 更强的发光警告
+                    } else if (bullet.type === 'spiral') {
+                        fillColor = '#ff00ff'; // 复杂螺旋弹：亮紫色
+                        shadowColor = '#ff44ff';
+                        shadowBlur = 12; // 更强的发光效果
+                    }
+                    
+                    ctx.fillStyle = fillColor;
+                    ctx.shadowColor = shadowColor;
+                    ctx.shadowBlur = shadowBlur;
                     
                     ctx.beginPath();
                     ctx.arc(bullet.x + radius, bullet.y + radius, radius, 0, Math.PI * 2);
                     ctx.fill();
                     
-                    // 内部高光
-                    ctx.fillStyle = '#ff8888';
+                    // 🔥 螺旋弹视觉效果 - 移除拖尾，保持简洁
+                    if (bullet.type === 'spiral_simple') {
+                        // 🚨 不再绘制拖尾 - 保持弹幕清晰可见
+                        // 拖尾已移除，只保留子弹本体的危险红色
+                        
+                    } else if (bullet.type === 'spiral') {
+                        // 🚨 复杂螺旋弹也移除拖尾 - 保持弹幕清晰
+                        // 所有拖尾和特效已移除
+                    }
+                    
+                    // 🔥 内部高光
+                    let highlightColor = '#ff8888'; // 默认红色高光
+                    if (bullet.type === 'spiral_simple') {
+                        highlightColor = '#ff6666'; // 🚨 危险螺旋弹：亮红色高光
+                    } else if (bullet.type === 'spiral') {
+                        highlightColor = '#ffaaff'; // 复杂螺旋弹：紫色高光
+                    }
+                    ctx.fillStyle = highlightColor;
                     ctx.beginPath();
                     ctx.arc(bullet.x + radius, bullet.y + radius, radius * 0.6, 0, Math.PI * 2);
                     ctx.fill();
