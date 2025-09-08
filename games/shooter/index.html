@@ -5559,6 +5559,10 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                                     window.pseudo3DPlaneElement.style.display = 'none';
                                     console.log('🎨 伪3D飞机已隐藏');
                                 }
+                                
+                                // 🔧 重置开始按钮状态
+                                resetStartButton();
+                                
                                 alert('游戏结束！点击确定重新开始。');
                                 startScreen.style.display = 'flex';
                             }, 500);
@@ -5606,6 +5610,10 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                                     window.pseudo3DPlaneElement.style.display = 'none';
                                     console.log('🎨 伪3D飞机已隐藏');
                                 }
+                                
+                                // 🔧 重置开始按钮状态
+                                resetStartButton();
+                                
                                 alert('游戏结束！敌机反击成功！点击确定重新开始。');
                                 startScreen.style.display = 'flex';
                             }, 500);
@@ -5738,6 +5746,18 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
             console.log('startBtn:', startBtn);
             console.log('initGame函数:', typeof initGame);
             
+            // 🔧 重置开始按钮状态的统一函数
+            function resetStartButton() {
+                const startBtn = document.getElementById('startBtn');
+                if (startBtn) {
+                    startBtn.disabled = false;
+                    startBtn.textContent = '直接开始游戏';
+                    console.log('🔄 开始按钮状态已重置');
+                } else {
+                    console.warn('⚠️ 未找到开始按钮元素');
+                }
+            }
+            
             // 诊断函数
             function diagnoseSystem() {
                 console.log('🔍 系统诊断报告:');
@@ -5789,8 +5809,7 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                         console.log('🚨 显示应急启动按钮');
                         
                         // 恢复按钮状态
-                        startBtn.disabled = false;
-                        startBtn.textContent = '开始游戏';
+                        resetStartButton();
                         
                         emergencyBtn.style.display = 'block';
                         alert('正常启动失败，请使用应急启动按钮');
