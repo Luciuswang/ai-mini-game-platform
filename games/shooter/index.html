@@ -1,4 +1,4 @@
-rang'wo'm嗯cao'zuo了<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
@@ -751,7 +751,6 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
             }
         }
     </script>
-    
     <!-- 3D模型调试工具 -->
     <script>
         // 检查Three.js和模型文件状态
@@ -885,34 +884,7 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
             z-index: 10;
         }
 
-        #score {
-            position: absolute;
-            top: 15px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 10px 20px;
-            border-radius: 10px;
-            font-size: 18px;
-            font-weight: bold;
-            color: #ffd700;
-            border: 1px solid #ffd700;
-            backdrop-filter: blur(5px);
-            z-index: 10;
-        }
-
-        #health {
-            position: absolute;
-            top: 60px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 10px 15px;
-            border-radius: 10px;
-            font-size: 16px;
-            color: #ff6b6b;
-            border: 1px solid #ff6b6b;
-            backdrop-filter: blur(5px);
-            z-index: 10;
-        }
+        /* 游戏UI样式已移动到下方统一管理 */
 
         .screen {
             position: fixed;
@@ -1286,9 +1258,9 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
         
         /* 全屏模式按钮 */
         .fullscreen-btn {
-            position: absolute;
-            top: 30px;
-            right: 30px;
+            position: fixed;
+            top: 20px;
+            right: 80px;
             width: 50px;
             height: 50px;
             border-radius: 8px;
@@ -1538,7 +1510,6 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
             background: rgba(255, 255, 255, 0.3);
             transform: translateY(-2px);
         }
-
         .background-message {
             position: absolute;
             top: 50%;
@@ -1573,13 +1544,127 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
             }
             
             .share-btn {
-                right: 20px !important;
+                right: 100px !important;
                 width: 40px !important;
                 height: 40px !important;
             }
             
             .share-btn i {
                 font-size: 16px !important;
+            }
+            
+            .fullscreen-btn {
+                right: 50px !important;
+                width: 40px !important;
+                height: 40px !important;
+            }
+            
+            /* 音效按钮已移除 */
+        }
+
+        /* 🔧 修复右上角UI布局 - 确保所有元素整齐排列 */
+        .visitor-counter {
+            position: fixed !important;
+            top: 20px !important;
+            right: 20px !important;
+            z-index: 9999 !important;
+            font-size: 12px !important;
+            padding: 8px 12px !important;
+            background: rgba(0, 0, 0, 0.8) !important;
+            border-radius: 8px !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            backdrop-filter: blur(10px) !important;
+        }
+
+        /* 分享按钮位置调整 - 避免与访客计数器重叠 */
+        .share-btn {
+            position: fixed !important;
+            top: 20px !important;
+            right: 180px !important;
+            z-index: 1001 !important;
+            width: 50px !important;
+            height: 50px !important;
+        }
+
+        /* 全屏按钮位置调整 - 避免与分享按钮重叠 */
+        .fullscreen-btn {
+            position: fixed !important;
+            top: 20px !important;
+            right: 240px !important;
+            z-index: 1002 !important;
+            width: 50px !important;
+            height: 50px !important;
+        }
+
+        /* 音效按钮已移除 */
+
+        /* 游戏UI（分数和生命值）调整到右上角但不重叠 */
+        #score {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffd700;
+            border: 1px solid #ffd700;
+            backdrop-filter: blur(10px);
+            z-index: 10;
+        }
+
+        #health {
+            position: absolute;
+            top: 130px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 16px;
+            color: #ff6b6b;
+            border: 1px solid #ff6b6b;
+            backdrop-filter: blur(10px);
+            z-index: 10;
+        }
+
+        /* 移动端UI重新排列 */
+        @media (max-width: 768px) {
+            .visitor-counter {
+                font-size: 10px !important;
+                padding: 6px 8px !important;
+                top: 10px !important;
+                right: 10px !important;
+            }
+            
+            .share-btn {
+                right: 120px !important;
+                width: 40px !important;
+                height: 40px !important;
+                top: 10px !important;
+            }
+            
+            .fullscreen-btn {
+                right: 170px !important;
+                width: 40px !important;
+                height: 40px !important;
+                top: 10px !important;
+            }
+            
+            /* 音效按钮已移除 */
+
+            #score {
+                top: 60px;
+                right: 10px;
+                font-size: 14px;
+                padding: 8px 15px;
+            }
+
+            #health {
+                top: 100px;
+                right: 10px;
+                font-size: 14px;
+                padding: 8px 12px;
             }
         }
     </style>
@@ -1623,6 +1708,8 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
             <i class="fas fa-expand"></i>
         </div>
         
+        <!-- 音效按钮已移除 -->
+        
         <!-- 退出全屏按钮（全屏时显示） -->
         <div class="exit-fullscreen-btn" id="exitFullscreenBtn">
             <i class="fas fa-times"></i>
@@ -1632,7 +1719,7 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
         <div class="share-btn" id="shareBtn" onclick="shareGame()" style="
             position: fixed;
             top: 20px;
-            right: 80px;
+            right: 140px;
             width: 45px;
             height: 45px;
             background: linear-gradient(45deg, #ff6b6b, #ff5722);
@@ -1656,7 +1743,7 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
             <button id="emergencyBtn" class="btn" style="margin-top: 10px; background: #ff6b6b; display: none;">🚨 应急启动</button>
             <button id="test3DBtn" class="btn" style="margin-top: 10px; background: #4CAF50; font-size: 12px; padding: 6px 16px;">🛩️ 测试3D</button>
             <div id="3d-status" style="margin-top: 8px; font-size: 11px; color: #888; text-align: center;">🔄 3D系统初始化中...</div>
-            <button id="audioToggle" class="btn" style="margin-top: 15px; font-size: 14px; padding: 8px 20px;">🔊 音效开启</button>
+            <!-- 测试音效按钮已移除 -->
             <div style="position: absolute; bottom: 30px; color: #5d8aa8; font-size: 14px;">
                 空中战斗 | 挑战极限 | 神秘惊喜
             </div>
@@ -1757,15 +1844,283 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
         let messageDisplayed = false; // 标记是否已经显示过留言
         let messageDisplayTimer = null; // 留言显示定时器
         
-        // 检查是否已经显示过留言（使用sessionStorage在本次会话中记录）
+        // 🎵 声音系统
+        let audioContext = null;
+        let sounds = {
+            shoot: null,
+            explosion: null,
+            powerup: null,
+            hit: null,
+            heal: null,
+            bgm: null
+        };
+        let soundEnabled = true;
+        
+        // 🎵 初始化声音系统
+        function initAudioSystem() {
+            try {
+                // 检查浏览器支持
+                if (!window.AudioContext && !window.webkitAudioContext) {
+                    console.warn('⚠️ 浏览器不支持Web Audio API');
+                    soundEnabled = false;
+                    return;
+                }
+
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                console.log('🎵 音频系统初始化成功，状态:', audioContext.state);
+                
+                // 创建程序化音效
+                createProgrammaticSounds();
+                
+                // 强制启动音频上下文
+                const forceStartAudio = () => {
+                    if (audioContext && audioContext.state === 'suspended') {
+                        console.log('🎵 尝试启动音频上下文...');
+                        audioContext.resume().then(() => {
+                            console.log('🎵 音频上下文已启动，状态:', audioContext.state);
+                            // 播放一个测试音来确认音频工作
+                            if (soundEnabled) {
+                                setTimeout(() => {
+                                    console.log('🎵 播放启动测试音');
+                                    playSound('powerup');
+                                }, 100);
+                            }
+                        }).catch(error => {
+                            console.error('❌ 音频上下文启动失败:', error);
+                        });
+                    }
+                };
+
+                // 立即尝试启动
+                forceStartAudio();
+                
+                // 添加多种用户交互监听器
+                const userInteractionEvents = ['click', 'touchstart', 'keydown', 'mousedown'];
+                const startAudioOnInteraction = () => {
+                    forceStartAudio();
+                    // 移除监听器，只需启动一次
+                    userInteractionEvents.forEach(event => {
+                        document.removeEventListener(event, startAudioOnInteraction);
+                    });
+                };
+                
+                userInteractionEvents.forEach(event => {
+                    document.addEventListener(event, startAudioOnInteraction, { once: true });
+                });
+                
+            } catch (error) {
+                console.error('❌ 音频系统初始化失败:', error);
+                soundEnabled = false;
+                
+                // 音频按钮已移除，但音效系统仍会尝试工作
+            }
+        }
+
+        // 创建程序化音效
+        function createProgrammaticSounds() {
+            if (!audioContext) return;
+
+            // 射击音效
+            sounds.shoot = () => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.1);
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+            };
+
+            // 爆炸音效
+            sounds.explosion = () => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                const noiseBuffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.5, audioContext.sampleRate);
+                const noiseSource = audioContext.createBufferSource();
+                
+                // 创建噪音
+                const data = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < data.length; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                
+                noiseSource.buffer = noiseBuffer;
+                noiseSource.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                noiseSource.start(audioContext.currentTime);
+                noiseSource.stop(audioContext.currentTime + 0.5);
+            };
+
+            // 能量包音效
+            sounds.powerup = () => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.2);
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.2);
+            };
+
+            // 受击音效
+            sounds.hit = () => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(150, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.3);
+                
+                gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            };
+
+            // 治疗音效
+            sounds.heal = () => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(1000, audioContext.currentTime + 0.15);
+                
+                gainNode.gain.setValueAtTime(0.25, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.15);
+            };
+        }
+
+        // 播放音效
+        function playSound(soundName, volume = 1.0) {
+            console.log('🎵 尝试播放音效:', soundName, '音量:', volume);
+            
+            if (!soundEnabled) {
+                console.log('🔇 音效已关闭');
+                return;
+            }
+            
+            if (!audioContext) {
+                console.warn('⚠️ 音频上下文未初始化，尝试立即初始化...');
+                initAudioSystem();
+                if (!audioContext) {
+                    console.error('❌ 音频上下文初始化失败');
+                    return;
+                }
+            }
+            
+            if (!sounds[soundName]) {
+                console.warn('⚠️ 音效不存在:', soundName, '可用音效:', Object.keys(sounds));
+                return;
+            }
+            
+            try {
+                console.log('🎵 音频上下文状态:', audioContext.state, '类型:', typeof sounds[soundName]);
+                
+                if (audioContext.state === 'suspended') {
+                    console.log('🎵 音频上下文已暂停，尝试恢复...');
+                    audioContext.resume().then(() => {
+                        console.log('🎵 音频上下文已恢复，播放音效:', soundName);
+                        sounds[soundName]();
+                    });
+                } else {
+                    console.log('🎵 直接播放音效:', soundName);
+                    sounds[soundName]();
+                    console.log('✅ 音效调用完成:', soundName);
+                }
+            } catch (error) {
+                console.error('❌ 播放音效失败:', soundName, error);
+                console.error('❌ 错误堆栈:', error.stack);
+            }
+        }
+
+        // 切换音效开关
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            console.log(soundEnabled ? '🔊 音效已开启' : '🔇 音效已关闭');
+            return soundEnabled;
+        }
+
+        // 确保音频系统正常并播放音效
+        function ensureAudioAndPlay(soundName, volume = 1.0) {
+            // 确保音频系统已初始化
+            if (!audioContext) {
+                console.log('🎵 音频系统未初始化，立即初始化...');
+                initAudioSystem();
+            }
+            
+            // 确保音频上下文正常
+            if (audioContext && audioContext.state === 'suspended') {
+                console.log('🎵 音频上下文暂停，尝试恢复...');
+                audioContext.resume().then(() => {
+                    console.log('🎵 音频上下文已恢复，播放音效:', soundName);
+                    playSound(soundName, volume);
+                }).catch(err => {
+                    console.warn('🎵 音频上下文恢复失败:', err);
+                });
+            } else {
+                playSound(soundName, volume);
+            }
+        }
+
+        // UI音效切换函数已移除，音效会自动启用
+
+        // 测试音效函数已移除，游戏内音效会自动工作
+
+        // 检查是否已经显示过留言（每次新分享重置状态）
         function hasMessageBeenDisplayed() {
+            const currentMessage = new URLSearchParams(window.location.search).get('msg');
+            const lastDisplayedMessage = sessionStorage.getItem('lastDisplayedMessage');
+            
+            // 如果是新的消息或者没有消息，允许显示
+            if (!currentMessage || currentMessage !== lastDisplayedMessage) {
+                return false;
+            }
+            
             return sessionStorage.getItem('messageDisplayed') === 'true';
         }
         
         // 标记留言已经显示过
         function markMessageAsDisplayed() {
+            const currentMessage = new URLSearchParams(window.location.search).get('msg');
+            if (currentMessage) {
+                sessionStorage.setItem('lastDisplayedMessage', currentMessage);
+            }
             sessionStorage.setItem('messageDisplayed', 'true');
             messageDisplayed = true;
+        }
+        
+        // 重置留言显示状态（用于新分享）
+        function resetMessageDisplayStatus() {
+            sessionStorage.removeItem('messageDisplayed');
+            messageDisplayed = false;
+            console.log('🔄 留言显示状态已重置');
         }
         
         // 隐藏背景消息
@@ -1855,6 +2210,9 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
             if (message) {
                 backgroundMessage = message;
                 
+                // 重置留言显示状态（允许新分享显示）
+                resetMessageDisplayStatus();
+                
                 // 更新URL以便分享
                 const shareURL = generateShareURL(message);
                 window.history.replaceState(null, null, shareURL);
@@ -1910,7 +2268,6 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                 });
             }
         }
-        
         // 🔧 确保函数在全局作用域中正确定义
         function ensureGlobalFunctions() {
             // 从URL参数读取分享消息
@@ -1988,6 +2345,9 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                 
                 if (message) {
                     backgroundMessage = message;
+                    
+                    // 重置留言显示状态（允许新分享显示）
+                    resetMessageDisplayStatus();
                     
                     // 更新URL以便分享
                     const shareURL = window.generateShareURL(message);
@@ -2113,6 +2473,9 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
             
             // 再次确保函数定义
             ensureGlobalFunctions();
+            
+            // 🎵 预备音频系统，但不立即初始化（等待用户交互）
+            console.log('🎵 准备音频系统，等待用户交互激活...');
             
             // 🚀 移动端优化提示
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -2396,7 +2759,7 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                     if (typeof createSimple3DPlane === 'function') {
                         createSimple3DPlane();
                     } else {
-                        createSimple3DPlaneCanvas();
+                    createSimple3DPlaneCanvas();
                     }
                     update3DStatus('⚠️ 使用几何体3D飞机', '#FF9800');
                     return;
@@ -2477,7 +2840,7 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                     function(gltf) {
                         console.log('🎊 GLB文件加载成功，开始处理...');
                         planeModel3D = gltf.scene;
-
+                        
                         // 姿态与朝向
                         planeModel3D.rotation.set(baseRotation.x, baseRotation.y, baseRotation.z);
 
@@ -2518,8 +2881,8 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                             fixGLBMaterials(planeModel3D);
                             
                             // 基础渲染设置
-                            planeModel3D.traverse((child) => {
-                                if (child.isMesh) {
+                        planeModel3D.traverse((child) => {
+                            if (child.isMesh) {
                                     child.frustumCulled = false;
                                     child.castShadow = false;
                                     child.receiveShadow = false;
@@ -2545,7 +2908,7 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                         const scale = targetSize / maxSize;
                         planeModel3D.scale.setScalar(scale);
                         console.log('📏 模型尺寸:', size, '→ 缩放:', scale);
-
+                        
                         scene3D.add(planeModel3D);
                         console.log('🎊 混元AI飞机模型加载成功！');
                         update3DStatus('🎊 混元AI 3D飞机加载完成！', '#4CAF50');
@@ -2670,7 +3033,7 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                                     const scale = targetSize / maxSize;
                                     planeModel3D.scale.setScalar(scale);
                                     console.log(`📐 hunyuan模型缩放: ${scale.toFixed(2)} 尺寸:`, size);
-
+                                    
                                     scene3D.add(planeModel3D);
                                     update3DStatus('🎊 混元AI 3D飞机加载完成！', '#4CAF50');
                                     
@@ -2700,7 +3063,6 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                 }
                 animationId3D = requestAnimationFrame(render3D);
             }
-            
             function update3DPlane(x, y) {
                 // 安全检查：只有在3D系统完全初始化后才更新
                 if (planeModel3D && scene3D && renderer3D && camera3D) {
@@ -3478,7 +3840,6 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                       `${errorCount === 0 ? '✅ 材质状态正常' : '⚠️ 发现材质问题'}\n\n` +
                       `详细信息请查看控制台`);
             }
-            
             // 🔧 简化测试环境（无敌机干扰）
             function startSimplifiedTest() {
                 console.log('🔧 启动简化测试环境...');
@@ -3881,7 +4242,7 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
             const exitFullscreenBtn = document.getElementById('exitFullscreenBtn');
             const emergencyBtn = document.getElementById('emergencyBtn');
             const test3DBtn = document.getElementById('test3DBtn');
-            const audioToggle = document.getElementById('audioToggle');
+            // audioToggle 按钮已移除
 
             // 游戏资源（必须在使用前定义）
             let gameAssets = {
@@ -4259,7 +4620,6 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                 
                 initGameDirect();
             }
-            
             // 直接初始化游戏（本地环境专用）
             function initGameDirect() {
                 
@@ -4650,20 +5010,20 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                 }
                 
                 // 4. 最后使用2D图片后备方案
-                ctx.save();
-                if (gameAssets.imageLoaded && gameAssets.planeImage) {
-                    ctx.drawImage(
-                        gameAssets.planeImage,
-                        gameState.plane.x,
-                        gameState.plane.y,
-                        gameState.plane.width,
-                        gameState.plane.height
-                    );
+                    ctx.save();
+                    if (gameAssets.imageLoaded && gameAssets.planeImage) {
+                        ctx.drawImage(
+                            gameAssets.planeImage,
+                            gameState.plane.x,
+                            gameState.plane.y,
+                            gameState.plane.width,
+                            gameState.plane.height
+                        );
                 } else {
                     // 5. 使用增强2D飞机绘制替代白色矩形
                     drawEnhanced2DPlane();
-                }
-                ctx.restore();
+                    }
+                    ctx.restore();
                 
                 // 🔥 智能尾焰系统：3D模式用粒子特效，其他模式用2D特效
                 if (planeModel3D) {
@@ -4679,26 +5039,26 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                 // 2D/简化模式尾焰效果
                 if (!planeModel3D) {
                     // 2D/简化模式：保留2D尾焰效果
-                    ctx.save();
-                    
+                ctx.save();
+                
                     // 绘制发动机尾焰效果（顶视图 - 向后喷射）
-                    const flameX = gameState.plane.x + gameState.plane.width / 2;
-                    const flameY = gameState.plane.y + gameState.plane.height;
-                    const flameIntensity = 0.3 + Math.random() * 0.4;
-                    
+                const flameX = gameState.plane.x + gameState.plane.width / 2;
+                const flameY = gameState.plane.y + gameState.plane.height;
+                const flameIntensity = 0.3 + Math.random() * 0.4;
+                
                     // 顶视图尾焰渐变（向后延伸）
                     const gradient = ctx.createRadialGradient(flameX, flameY, 0, flameX, flameY + 25, 25);
-                    gradient.addColorStop(0, `rgba(255, 100, 0, ${flameIntensity})`);
-                    gradient.addColorStop(0.5, `rgba(255, 150, 0, ${flameIntensity * 0.6})`);
-                    gradient.addColorStop(1, 'rgba(255, 200, 0, 0)');
-                    
-                    ctx.fillStyle = gradient;
+                gradient.addColorStop(0, `rgba(255, 100, 0, ${flameIntensity})`);
+                gradient.addColorStop(0.5, `rgba(255, 150, 0, ${flameIntensity * 0.6})`);
+                gradient.addColorStop(1, 'rgba(255, 200, 0, 0)');
+                
+                ctx.fillStyle = gradient;
                     
                     // 双引擎尾焰（顶视图）
-                    ctx.beginPath();
+                ctx.beginPath();
                     ctx.ellipse(flameX - 8, flameY + 15, 6, 18, 0, 0, Math.PI * 2);
-                    ctx.fill();
-                    
+                ctx.fill();
+                
                     ctx.beginPath();
                     ctx.ellipse(flameX + 8, flameY + 15, 6, 18, 0, 0, Math.PI * 2);
                     ctx.fill();
@@ -4837,7 +5197,7 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                                         console.log(`🚀 大敌机开始超大螺旋阵列！目标${e.spiralBurstTarget}发密集弹幕`);
                                     } else {
                                         // 很少发射弧形弹
-                                        createEnemyBulletPattern(e.x + e.width/2, e.y + e.height);
+                                createEnemyBulletPattern(e.x + e.width/2, e.y + e.height);
                                         console.log('🏹 大敌机弧形射击（罕见）');
                                     }
                                 }
@@ -5048,7 +5408,6 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                 gameState.enemyBullets.push(bullet);
                 console.log(`🔴 创建圆形子弹，角度: ${(angle * 180 / Math.PI).toFixed(1)}度`);
             }
-
             // 绘制敌机子弹 - 增强版弧线弹道系统
             function drawEnemyBullets() {
                 // 调试：显示子弹数量
@@ -5284,7 +5643,7 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
             // 创建爆炸效果
             function createExplosion(x, y, color = '#ffd700') {
                 // 💥 播放爆炸音效
-                playSound('explosion', 0.4);
+                ensureAudioAndPlay('explosion', 0.4);
                 
                 const particleCount = gameState.fps > 45 ? (gameState.isMobile ? 15 : 20) : 10;
                 
@@ -5470,6 +5829,9 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                                 gameState.score++;
                                 scoreDisplay.textContent = gameState.score;
                                 
+                                // 🎵 播放敌人被击中音效
+                                ensureAudioAndPlay('explosion');
+                                
                                 // 前99次击毁显示干扰信息，第100次才显示真相
                                 if (gameState.score < 100) {
                                     const fakeTexts = ['💥', '🔥', '⚡', '💀', '🎯', '✨', '💫', '🌟', '🔴', '🟡'];
@@ -5491,9 +5853,9 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                                             startScreen.style.display = 'none';
                                         }
                                         
-                                        // 强制重置滚动位置 - 多次尝试确保生效
-                                        resumeScreen.scrollTop = 0;
-                                        resumeScreen.style.display = 'flex';
+                                    // 强制重置滚动位置 - 多次尝试确保生效
+                                    resumeScreen.scrollTop = 0;
+                                    resumeScreen.style.display = 'flex';
                                         resumeScreen.style.zIndex = '3000'; // 🔧 强制设置最高层级
                                         resumeScreen.style.visibility = 'visible'; // 🔧 确保可见
                                         resumeScreen.style.opacity = '1'; // 🔧 确保不透明
@@ -5506,26 +5868,26 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                                             opacity: resumeScreen.style.opacity
                                         });
                                         console.log('📋 作者履历头部元素检查:', resumeScreen.querySelector('.resume-header') ? '✅ 找到' : '❌ 未找到');
-                                        console.log('🎨 头部艺术背景检查:', resumeScreen.querySelector('.header-art') ? '✅ 找到' : '❌ 未找到');
-                                        
-                                        // 再次确保滚动到顶部（移动端可能需要延迟）
-                                        setTimeout(() => {
-                                            resumeScreen.scrollTop = 0;
-                                            const resumeContent = resumeScreen.querySelector('.resume-content');
-                                            if (resumeContent) {
-                                                resumeContent.scrollTop = 0;
-                                            }
-                                            // 使用 scrollIntoView 确保顶部可见
-                                            const firstElement = resumeScreen.querySelector('.resume-header');
-                                            if (firstElement) {
-                                                firstElement.scrollIntoView({ behavior: 'instant', block: 'start' });
+                                    console.log('🎨 头部艺术背景检查:', resumeScreen.querySelector('.header-art') ? '✅ 找到' : '❌ 未找到');
+                                    
+                                    // 再次确保滚动到顶部（移动端可能需要延迟）
+                                    setTimeout(() => {
+                                        resumeScreen.scrollTop = 0;
+                                        const resumeContent = resumeScreen.querySelector('.resume-content');
+                                        if (resumeContent) {
+                                            resumeContent.scrollTop = 0;
+                                        }
+                                        // 使用 scrollIntoView 确保顶部可见
+                                        const firstElement = resumeScreen.querySelector('.resume-header');
+                                        if (firstElement) {
+                                            firstElement.scrollIntoView({ behavior: 'instant', block: 'start' });
                                                 console.log('📍 作者履历头部已滚动到可见区域');
-                                            }
+                                        }
                                             
                                             // 🔧 添加一个明显的提示确保用户知道作者履历已显示
                                             alert('🎉 恭喜达成100架击毁！神秘惊喜已解锁 - 请查看作者履历页面！');
-                                        }, 100);
-                                    }, 1000);
+                                    }, 100);
+                                }, 1000);
                                 }
                             }
                             break;
@@ -5545,6 +5907,9 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                         enemyPool.push(e);
                         gameState.health -= 20;
                         healthDisplay.textContent = gameState.health;
+                        
+                        // 🎵 播放玩家受伤音效
+                        ensureAudioAndPlay('hit');
                         
                         if (gameState.health <= 0) {
                             gameState.running = false;
@@ -5592,7 +5957,7 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                         healthDisplay.textContent = gameState.health;
                         
                         // 播放受伤音效
-                        playSound('explosion', 0.2);
+                        ensureAudioAndPlay('explosion', 0.2);
                         
                         // 显示伤害数字
                         showFloatingText(`-${damage}`, gameState.plane.x + gameState.plane.width/2, gameState.plane.y);
@@ -5643,7 +6008,7 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                             console.log(`🩺 拾取血包！恢复${actualHeal}点生命值`);
                             
                             // 播放治疗音效
-                            playSound('heal', 0.4);
+                            ensureAudioAndPlay('heal', 0.4);
                             
                             // 治疗特效
                             createHealingEffect(pack.x + pack.width/2, pack.y + pack.height/2);
@@ -5715,7 +6080,7 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                 gameState.bullets.push(bullet);
                 
                 // 🔫 播放射击音效
-                playSound('shoot', 0.3);
+                ensureAudioAndPlay('shoot', 0.3);
             }
             
             // 🎯 自动射击系统
@@ -5773,6 +6138,30 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
             startBtn.addEventListener('click', function() {
                 console.log('🎮 开始游戏按钮被点击！');
                 
+                // 🎵 确保音频系统启动
+                if (!audioContext) {
+                    console.log('🎵 音频系统未初始化，现在初始化...');
+                    initAudioSystem();
+                }
+                
+                if (audioContext && audioContext.state === 'suspended') {
+                    audioContext.resume().then(() => {
+                        console.log('🎵 音频上下文已通过用户交互启动');
+                        // 播放测试音效确认音频工作
+                        setTimeout(() => {
+                            console.log('🎵 播放测试音效确认系统正常');
+                            playSound('powerup');
+                        }, 200);
+                    });
+                } else if (audioContext) {
+                    console.log('🎵 音频上下文状态：', audioContext.state);
+                    // 如果音频上下文已经运行，直接播放测试音效
+                    setTimeout(() => {
+                        console.log('🎵 播放测试音效确认系统正常');
+                        playSound('powerup');
+                    }, 200);
+                }
+                
                 // 🔧 本地环境直接启动
                 if (window.location.protocol === 'file:') {
                     console.log('📁 本地文件环境，直接启动离线游戏');
@@ -5816,7 +6205,6 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                     }
                 }
             });
-            
             // 🔧 本地环境专用启动函数
             function startLocalGame() {
                 console.log('🎮 启动本地离线游戏模式');
@@ -5884,10 +6272,10 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                 
                 // 🎯 启动自动射击系统
                 startAutoShooting();
-                
-                // 启动游戏循环
-                console.log('🔄 启动本地游戏循环...');
-                gameLoop();
+                    
+                    // 启动游戏循环
+                    console.log('🔄 启动本地游戏循环...');
+                    gameLoop();
                     
                     // 启动敌机生成
                     if (gameState.enemyInterval) {
@@ -5932,6 +6320,30 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
             emergencyBtn.addEventListener('click', function() {
                 console.log('🚨 应急启动模式激活');
                 emergencyBtn.style.display = 'none';
+                
+                // 🎵 确保音频系统启动
+                if (!audioContext) {
+                    console.log('🎵 应急启动：音频系统未初始化，现在初始化...');
+                    initAudioSystem();
+                }
+                
+                if (audioContext && audioContext.state === 'suspended') {
+                    audioContext.resume().then(() => {
+                        console.log('🎵 应急启动：音频上下文已启动');
+                        // 播放测试音效确认音频工作
+                        setTimeout(() => {
+                            console.log('🎵 应急启动：播放测试音效确认系统正常');
+                            playSound('powerup');
+                        }, 200);
+                    });
+                } else if (audioContext) {
+                    console.log('🎵 应急启动：音频上下文状态：', audioContext.state);
+                    // 如果音频上下文已经运行，直接播放测试音效
+                    setTimeout(() => {
+                        console.log('🎵 应急启动：播放测试音效确认系统正常');
+                        playSound('powerup');
+                    }, 200);
+                }
                 
                 // 最基础的游戏启动，忽略所有3D和高级功能
                 gameState.running = true;
@@ -6090,24 +6502,7 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                 }
             });
             
-            // 音效开关
-            audioToggle.addEventListener('click', () => {
-                audioAssets.audioEnabled = !audioAssets.audioEnabled;
-                audioToggle.textContent = audioAssets.audioEnabled ? '🔊 音效开启' : '🔇 音效关闭';
-                audioToggle.style.opacity = audioAssets.audioEnabled ? '1' : '0.7';
-                
-                if (audioAssets.audioEnabled) {
-                    // 用户开启音效时初始化音频上下文
-                    initAudioContext().then(() => {
-                        console.log('🔊 音效系统已激活');
-                        if (gameState.running) {
-                            playBackgroundMusic();
-                        }
-                    }).catch(e => console.log('音频初始化失败'));
-                } else {
-                    stopBackgroundMusic();
-                }
-            });
+            // 音效开关已移除，音效会自动在游戏开始时启用
             
             backBtn.addEventListener('click', () => {
                 resumeScreen.style.display = 'none';
@@ -6239,8 +6634,8 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                     console.log('🔄 尝试重新加载Three.js...');
                     reloadThreeJS();
                     return;
-                } else if (e.code === 'KeyH') {
-                    // 🛩️ 强制加载hunyuan-fighter模型（按H键）
+                } else if (e.code === 'KeyF9') {
+                    // 🛩️ 强制加载hunyuan-fighter模型（按F9键，避免与游戏控制冲突）
                     console.log('🚀 强制加载用户的hunyuan-fighter模型...');
                     forceLoadHunyuanModel();
                     return;
@@ -6291,12 +6686,12 @@ rang'wo'm嗯cao'zuo了<!DOCTYPE html>
                         startScreen.style.display = 'flex';
                     } else {
                         // 正常退出游戏
-                        gameState.running = false;
-                        stopBackgroundMusic();
+                    gameState.running = false;
+                    stopBackgroundMusic();
                         stopAutoShooting(); // 停止自动射击
-                        startScreen.style.display = 'flex';
-                        clearInterval(gameState.enemyInterval);
-                        cancelAnimationFrame(gameState.gameLoopId);
+                    startScreen.style.display = 'flex';
+                    clearInterval(gameState.enemyInterval);
+                    cancelAnimationFrame(gameState.gameLoopId);
                     }
                 }
                 
