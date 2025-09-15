@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.aiminigame.platform" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <name>AI小游戏平台</name>
+    <description>集成多款经典小游戏的平台，包括打飞机、贪吃蛇、俄罗斯方块、2048等精彩游戏！</description>
+    <author email="your@email.com" href="https://github.com/yourusername">
+        AI小游戏平台
+    </author>
+    <content src="index.html" />
+    
+    <!-- 允许访问外部资源 -->
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+    <allow-navigation href="*" />
+    
+    <!-- 通用偏好设置 -->
+    <preference name="DisallowOverscroll" value="true" />
+    <preference name="HideKeyboardFormAccessoryBar" value="true" />
+    <preference name="KeyboardDisplayRequiresUserAction" value="false" />
+    
+    <!-- 平台特定配置 -->
+    <platform name="android">
+        <allow-intent href="market:*" />
+    </platform>
+</widget>

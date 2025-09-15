@@ -1,0 +1,2031 @@
+
+
+
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>AI 小游戏平台 - 创意无限的游戏世界</title>
+    
+    <!-- Cordova APP 优化 -->
+    <meta name="format-detection" content="telephone=no">
+    <meta name="msapplication-tap-highlight" content="no">
+    <meta http-equiv="Content-Security-Policy" content="default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: gap: content:">
+    
+    <!-- APP 专用样式 -->
+    <style>
+        /* APP环境适配 */
+        body {
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        /* 优化APP中的按钮点击效果 */
+        .btn, button {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+        }
+        
+        /* APP专用全屏优化 */
+        .game-container {
+            height: 100vh;
+            height: 100dvh; /* 动态视口高度 */
+        }
+    </style>
+    <meta name="description" content="探索由 AI 助力创造的精彩游戏世界，包含贪吃蛇、俄罗斯方块、创意简历游戏等多款精品小游戏，支持PC和移动端。">
+    <meta name="keywords" content="AI游戏,小游戏,贪吃蛇,俄罗斯方块,HTML5游戏,网页游戏,移动游戏">
+    <meta name="author" content="Lucius Wang">
+    
+    <!-- PWA 支持 -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#4ecdc4">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AI Games">
+    
+    <!-- 移动端优化 -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="msapplication-TileColor" content="#4ecdc4">
+    <meta name="msapplication-tap-highlight" content="no">
+    
+    <!-- 字体和图标 -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+SC:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- 移动端性能优化 -->
+    <script src="./mobile-optimize.js"></script>
+    <!-- 访客计数器 -->
+    <script src="./visitor-counter.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 25%, #16213e 50%, #0e3658 75%, #133e7c 100%);
+            color: #fff;
+            font-family: 'Noto Sans SC', sans-serif;
+            overflow-x: hidden;
+            min-height: 100vh;
+            /* 移动端滚动优化 */
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+        }
+
+        /* 动态背景 */
+        .background-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .floating-shape {
+            position: absolute;
+            background: linear-gradient(45deg, rgba(78, 205, 196, 0.1), rgba(255, 107, 107, 0.1));
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
+
+        /* 导航栏 */
+        .navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 20px 50px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .navbar.scrolled {
+            padding: 10px 50px;
+            background: rgba(0, 0, 0, 0.9);
+        }
+
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.8rem;
+            font-weight: 900;
+            background: linear-gradient(45deg, #4ecdc4, #ff6b6b);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 30px;
+        }
+
+        .nav-links a {
+            color: #fff;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .nav-links a:hover {
+            color: #4ecdc4;
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: -5px;
+            left: 0;
+            background: linear-gradient(45deg, #4ecdc4, #ff6b6b);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        /* 主标题区域 */
+        .hero {
+            padding: 120px 50px 80px;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero h1 {
+            font-family: 'Orbitron', monospace;
+            font-size: 4rem;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #4ecdc4, #ff6b6b, #45b7d1, #96ceb4);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: glow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { filter: drop-shadow(0 0 20px rgba(78, 205, 196, 0.7)); }
+            to { filter: drop-shadow(0 0 30px rgba(255, 107, 107, 0.7)); }
+        }
+
+        .hero .subtitle {
+            font-size: 1.5rem;
+            margin-bottom: 40px;
+            color: rgba(255, 255, 255, 0.8);
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            margin-top: 50px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 20px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-number {
+            font-family: 'Orbitron', monospace;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #4ecdc4;
+            display: block;
+        }
+
+        .stat-label {
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 5px;
+        }
+
+        /* 游戏展示区域 */
+        .games-section {
+            padding: 80px 50px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            text-align: center;
+            font-family: 'Orbitron', monospace;
+            font-size: 2.5rem;
+            margin-bottom: 60px;
+            background: linear-gradient(45deg, #4ecdc4, #ff6b6b);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 40px;
+            margin-top: 40px;
+        }
+
+        .game-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            border-color: rgba(78, 205, 196, 0.5);
+        }
+
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(78, 205, 196, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .game-card:hover::before {
+            left: 100%;
+        }
+
+        .game-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .snake-icon { color: #00ff00; }
+        .tetris-icon { color: #ff6b6b; }
+        .shooter-icon { color: #4ecdc4; }
+        .mahjong-icon { color: #ffd700; }
+        .game-2048-icon { color: #ff6b6b; }
+        .match3-icon { color: #ff69b4; }
+        .snake-multiplayer-icon { color: #00ff88; }
+
+        .game-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #fff;
+        }
+
+        .game-description {
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+
+        .game-features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 25px;
+        }
+
+        .feature-tag {
+            background: rgba(78, 205, 196, 0.2);
+            color: #4ecdc4;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            border: 1px solid rgba(78, 205, 196, 0.3);
+        }
+
+        .play-button {
+            background: linear-gradient(45deg, #4ecdc4, #45b7d1);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .play-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(78, 205, 196, 0.3);
+        }
+
+        .play-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #45b7d1, #4ecdc4);
+            transition: left 0.3s ease;
+            z-index: -1;
+        }
+
+        .play-button:hover::before {
+            left: 0;
+        }
+
+        /* 特色区域 */
+        .features-section {
+            padding: 80px 50px;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .feature-item {
+            text-align: center;
+            padding: 30px 20px;
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            color: #4ecdc4;
+            margin-bottom: 20px;
+        }
+
+        .feature-title {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: #fff;
+        }
+
+        .feature-text {
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.6;
+        }
+
+        /* 页脚 */
+        .footer {
+            padding: 50px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.5);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: #4ecdc4;
+        }
+
+        .copyright {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.9rem;
+        }
+
+        /* 移动端滚动优化 */
+        @media (max-width: 768px) {
+            html, body {
+                touch-action: pan-y;
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior: contain;
+            }
+            
+            /* 确保所有非游戏区域可以正常滚动 */
+            .container, .hero, .games-section, .features-section, .footer {
+                touch-action: pan-y;
+            }
+            
+            /* 游戏卡片内部禁止滚动 */
+            .game-card canvas {
+                touch-action: none;
+            }
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 15px 20px;
+            }
+
+            .nav-links {
+                gap: 20px;
+            }
+
+            .hero {
+                padding: 100px 20px 60px;
+            }
+
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero .subtitle {
+                font-size: 1.2rem;
+            }
+
+            .stats {
+                flex-direction: column;
+                gap: 20px;
+                align-items: center;
+            }
+
+            .games-section {
+                padding: 60px 20px;
+            }
+
+            .games-grid {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+
+            .footer-links {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+
+        /* 加载动画 */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s ease;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* 留言板样式 */
+        .feedback-board {
+            margin-top: 25px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 12px;
+            border: 1px solid rgba(78, 205, 196, 0.2);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .feedback-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: rgba(78, 205, 196, 0.1);
+            border-bottom: 1px solid rgba(78, 205, 196, 0.2);
+        }
+        
+        .feedback-header h4 {
+            margin: 0;
+            font-size: 1rem;
+            color: #4ecdc4;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .toggle-feedback {
+            background: none;
+            border: none;
+            color: #4ecdc4;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: transform 0.3s ease;
+        }
+        
+        .toggle-feedback:hover {
+            transform: scale(1.1);
+        }
+        
+        .toggle-feedback.expanded i {
+            transform: rotate(180deg);
+        }
+        
+        .feedback-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .feedback-content.expanded {
+            max-height: 600px;
+        }
+        
+        .feedback-messages {
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 15px;
+        }
+        
+        .feedback-message {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 3px solid #4ecdc4;
+            position: relative;
+        }
+        
+        /* 社区留言样式 */
+        .feedback-message.community-message {
+            border-left-color: #4ecdc4;
+            background: rgba(78, 205, 196, 0.08);
+        }
+        
+        .feedback-message.community-message::before {
+            content: "🌐";
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 12px;
+            opacity: 0.6;
+        }
+        
+        /* 用户留言样式 */
+        .feedback-message.user-message {
+            border-left-color: #f39c12;
+            background: rgba(243, 156, 18, 0.08);
+        }
+        
+        .feedback-message.user-message::before {
+            content: "👤";
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 12px;
+            opacity: 0.6;
+        }
+        
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .message-author {
+            font-weight: bold;
+            color: #4ecdc4;
+            font-size: 0.9rem;
+        }
+        
+        .message-time {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.8rem;
+        }
+        
+        .message-rating {
+            font-size: 0.8rem;
+            margin-bottom: 5px;
+        }
+        
+        .message-text {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        
+        .feedback-form {
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+        
+        .feedback-form input {
+            flex: 1;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 0.9rem;
+        }
+        
+        .feedback-form input:focus {
+            outline: none;
+            border-color: #4ecdc4;
+            box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.2);
+        }
+        
+        .rating-stars {
+            display: flex;
+            gap: 2px;
+        }
+        
+        .rating-stars .star {
+            cursor: pointer;
+            font-size: 1.2rem;
+            opacity: 0.3;
+            transition: all 0.2s ease;
+        }
+        
+        .rating-stars .star:hover,
+        .rating-stars .star.active {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+        
+        .feedback-form textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 0.9rem;
+            resize: vertical;
+            margin-bottom: 12px;
+            font-family: inherit;
+        }
+        
+        .feedback-form textarea:focus {
+            outline: none;
+            border-color: #4ecdc4;
+            box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.2);
+        }
+        
+        .submit-btn {
+            background: linear-gradient(45deg, #4ecdc4, #44a08d);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            margin: 0 auto;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
+        }
+        
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .no-messages {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            padding: 30px;
+            font-style: italic;
+        }
+        
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .form-row {
+                flex-direction: column;
+                gap: 10px;
+                align-items: stretch;
+            }
+            
+            .rating-stars {
+                justify-content: center;
+            }
+            
+            .feedback-form {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 动态背景 -->
+    <div class="background-animation"></div>
+
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="#" class="logo">🎮 AI GAMES</a>
+            <ul class="nav-links">
+                <li><a href="#home">首页</a></li>
+                <li><a href="#games">游戏</a></li>
+                <li><a href="#features">特色</a></li>
+                <li><a href="#about">关于</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- 主标题区域 -->
+    <section id="home" class="hero">
+        <h1>AI 小游戏平台</h1>
+        <p class="subtitle">
+            探索由 AI 助力创造的精彩游戏世界，每一个游戏都承载着创意与技术的完美融合。
+            在这里，经典游戏焕发新生，创新玩法层出不穷。
+        </p>
+        
+        <div class="stats">
+            <div class="stat-item fade-in">
+                <span class="stat-number">7</span>
+                <div class="stat-label">精品游戏</div>
+            </div>
+            <div class="stat-item fade-in">
+                <span class="stat-number">∞</span>
+                <div class="stat-label">创意无限</div>
+            </div>
+            <div class="stat-item fade-in">
+                <span class="stat-number">100%</span>
+                <div class="stat-label">免费畅玩</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 游戏展示区域 -->
+    <section id="games" class="games-section">
+        <h2 class="section-title">🎮 游戏大厅</h2>
+        
+        <div class="games-grid">
+            <!-- 贪吃蛇游戏 -->
+            <div class="game-card fade-in">
+                <i class="fas fa-snake snake-icon game-icon"></i>
+                <h3 class="game-title">🐍 贪吃蛇</h3>
+                <p class="game-description">
+                    经典贪吃蛇游戏的现代演绎，采用霓虹灯风格设计，
+                    支持等级递增、速度加快和本地高分记录。
+                </p>
+                <div class="game-features">
+                    <span class="feature-tag">霓虹风格</span>
+                    <span class="feature-tag">等级系统</span>
+                    <span class="feature-tag">高分记录</span>
+                    <span class="feature-tag">触屏支持</span>
+                </div>
+                <a href="./games/snake/index.html" class="play-button">
+                    <i class="fas fa-play"></i> 开始游戏
+                </a>
+            </div>
+
+            <!-- 俄罗斯方块游戏 -->
+            <div class="game-card fade-in">
+                <i class="fas fa-th-large tetris-icon game-icon"></i>
+                <h3 class="game-title">🧩 俄罗斯方块</h3>
+                <p class="game-description">
+                    全新设计的俄罗斯方块，包含7种经典方块形状，
+                    完整的行消除系统和渐进式难度设计。
+                </p>
+                <div class="game-features">
+                    <span class="feature-tag">经典玩法</span>
+                    <span class="feature-tag">渐进难度</span>
+                    <span class="feature-tag">行消除</span>
+                    <span class="feature-tag">方块预览</span>
+                </div>
+                <a href="./games/tetris/index.html" class="play-button">
+                    <i class="fas fa-play"></i> 开始游戏
+                </a>
+            </div>
+
+            <!-- 打飞机有惊喜游戏 -->
+            <div class="game-card fade-in">
+                <i class="fas fa-rocket shooter-icon game-icon"></i>
+                <h3 class="game-title">✈️ 打飞机有惊喜</h3>
+                <p class="game-description">
+                    经典空战射击游戏，驾驶BMW定制战斗机在蔚蓝海洋上空激烈对战。
+                    独特的BMW标识设计，豪华品牌战机体验。击毁足够多的敌机后将解锁神秘惊喜！
+                </p>
+                <div class="game-features">
+                    <span class="feature-tag">空中战斗</span>
+                    <span class="feature-tag">海洋背景</span>
+                    <span class="feature-tag">神秘惊喜</span>
+                    <span class="feature-tag">BMW定制</span>
+                </div>
+                <a href="./games/shooter/index.html" class="play-button">
+                    <i class="fas fa-play"></i> 开始游戏
+                </a>
+                
+                <!-- 留言板 -->
+                <div class="feedback-board" data-game="shooter">
+                    <div class="feedback-header">
+                        <h4><i class="fas fa-comments"></i> 玩家留言</h4>
+                        <button class="toggle-feedback" onclick="toggleFeedback('shooter')">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+                    <div class="feedback-content" id="feedback-shooter">
+                        <div class="feedback-messages" id="messages-shooter"></div>
+                        <div class="feedback-form">
+                            <div class="form-row">
+                                <input type="text" placeholder="您的昵称" id="name-shooter" maxlength="20">
+                                <div class="rating-stars" data-game="shooter">
+                                    <span class="star" data-rating="1">⭐</span>
+                                    <span class="star" data-rating="2">⭐</span>
+                                    <span class="star" data-rating="3">⭐</span>
+                                    <span class="star" data-rating="4">⭐</span>
+                                    <span class="star" data-rating="5">⭐</span>
+                                </div>
+                            </div>
+                            <textarea placeholder="分享您的游戏体验和建议..." id="message-shooter" maxlength="200"></textarea>
+                            <button onclick="submitFeedback('shooter')" class="submit-btn">
+                                <i class="fas fa-paper-plane"></i> 发表留言
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 上海麻将游戏 -->
+            <div class="game-card fade-in">
+                <i class="fas fa-dice mahjong-icon game-icon"></i>
+                <h3 class="game-title">🀄 上海麻将</h3>
+                <p class="game-description">
+                    正宗本帮麻将，与AI对战七对子玩法。
+                    包含完整的麻将牌组和传统游戏规则。
+                </p>
+                <div class="game-features">
+                    <span class="feature-tag">七对子</span>
+                    <span class="feature-tag">AI对战</span>
+                    <span class="feature-tag">传统麻将</span>
+                    <span class="feature-tag">上海风味</span>
+                </div>
+                <a href="./games/mahjong/index.html" class="play-button">
+                    <i class="fas fa-play"></i> 开始游戏
+                </a>
+            </div>
+
+            <!-- 2048数字游戏 -->
+            <div class="game-card fade-in">
+                <i class="fas fa-th game-2048-icon game-icon"></i>
+                <h3 class="game-title">🔢 2048</h3>
+                <p class="game-description">
+                    经典数字合成益智游戏，滑动合并相同数字，
+                    挑战达到2048的智慧极限。
+                </p>
+                <div class="game-features">
+                    <span class="feature-tag">数字合成</span>
+                    <span class="feature-tag">益智挑战</span>
+                    <span class="feature-tag">撤销功能</span>
+                    <span class="feature-tag">触屏支持</span>
+                </div>
+                <a href="./games/2048/index.html" class="play-button">
+                    <i class="fas fa-play"></i> 开始游戏
+                </a>
+            </div>
+
+            <!-- 消消乐游戏 -->
+            <div class="game-card fade-in">
+                <i class="fas fa-gem match3-icon game-icon"></i>
+                <h3 class="game-title">💎 消消乐</h3>
+                <p class="game-description">
+                    经典三消益智游戏，点击交换相邻宝石，
+                    消除三个或更多相同宝石获得高分。
+                </p>
+                <div class="game-features">
+                    <span class="feature-tag">三消消除</span>
+                    <span class="feature-tag">连击系统</span>
+                    <span class="feature-tag">关卡挑战</span>
+                    <span class="feature-tag">特效动画</span>
+                </div>
+                <a href="./games/match3/index.html" class="play-button">
+                    <i class="fas fa-play"></i> 开始游戏
+                </a>
+                
+                <!-- 留言板 -->
+                <div class="feedback-board" data-game="match3">
+                    <div class="feedback-header">
+                        <h4><i class="fas fa-comments"></i> 玩家留言</h4>
+                        <button class="toggle-feedback" onclick="toggleFeedback('match3')">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+                    <div class="feedback-content" id="feedback-match3">
+                        <div class="feedback-messages" id="messages-match3"></div>
+                        <div class="feedback-form">
+                            <div class="form-row">
+                                <input type="text" placeholder="您的昵称" id="name-match3" maxlength="20">
+                                <div class="rating-stars" data-game="match3">
+                                    <span class="star" data-rating="1">⭐</span>
+                                    <span class="star" data-rating="2">⭐</span>
+                                    <span class="star" data-rating="3">⭐</span>
+                                    <span class="star" data-rating="4">⭐</span>
+                                    <span class="star" data-rating="5">⭐</span>
+                                </div>
+                            </div>
+                            <textarea placeholder="分享您的游戏体验和建议..." id="message-match3" maxlength="200"></textarea>
+                            <button onclick="submitFeedback('match3')" class="submit-btn">
+                                <i class="fas fa-paper-plane"></i> 发表留言
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 多人贪吃蛇竞技游戏 -->
+            <div class="game-card fade-in">
+                <i class="fas fa-users-gear snake-multiplayer-icon game-icon"></i>
+                <h3 class="game-title">🐍 多人贪吃蛇竞技</h3>
+                <p class="game-description">
+                    实时多人竞技版贪吃蛇，最多4人同时在线对战。
+                    竞速模式、对战模式等多种玩法，挑战你的反应极限！
+                </p>
+                <div class="game-features">
+                    <span class="feature-tag">实时对战</span>
+                    <span class="feature-tag">多人竞技</span>
+                    <span class="feature-tag">竞速模式</span>
+                    <span class="feature-tag">在线匹配</span>
+                </div>
+                <a href="./games/snake-multiplayer/index.html" class="play-button">
+                    <i class="fas fa-play"></i> 立即挑战
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- 特色功能区域 -->
+    <section id="features" class="features-section">
+        <h2 class="section-title">✨ 平台特色</h2>
+        
+        <div class="features-grid">
+            <div class="feature-item fade-in">
+                <i class="fas fa-brain feature-icon"></i>
+                <h3 class="feature-title">AI 助力开发</h3>
+                <p class="feature-text">
+                    利用人工智能技术辅助游戏开发，让创意快速转化为现实，
+                    降低开发门槛，提升开发效率。
+                </p>
+            </div>
+
+            <div class="feature-item fade-in">
+                <i class="fas fa-mobile-alt feature-icon"></i>
+                <h3 class="feature-title">跨平台兼容</h3>
+                <p class="feature-text">
+                    支持桌面端和移动端，响应式设计确保在任何设备上
+                    都能获得最佳的游戏体验。
+                </p>
+            </div>
+
+            <div class="feature-item fade-in">
+                <i class="fas fa-palette feature-icon"></i>
+                <h3 class="feature-title">现代化设计</h3>
+                <p class="feature-text">
+                    采用现代化的UI设计理念，霓虹灯效果、动态背景
+                    和流畅动画，带来沉浸式的视觉体验。
+                </p>
+            </div>
+
+            <div class="feature-item fade-in">
+                <i class="fas fa-code feature-icon"></i>
+                <h3 class="feature-title">开源共享</h3>
+                <p class="feature-text">
+                    所有游戏代码开源共享，欢迎开发者贡献创意，
+                    共同构建更丰富的游戏生态。
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer id="about" class="footer">
+        <div class="footer-content">
+            <div class="footer-links">
+                <a href="https://github.com/Luciuswang/ai-mini-game-platform">
+                    <i class="fab fa-github"></i> GitHub
+                </a>
+                <a href="#contact">联系我们</a>
+                <a href="#privacy">隐私政策</a>
+                <a href="#terms">使用条款</a>
+            </div>
+            <div class="copyright">
+                © 2025 AI Mini Game Platform. Made with ❤️ by Lucius Wang.
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // 动态背景效果
+        function createFloatingShapes() {
+            const container = document.querySelector('.background-animation');
+            
+            for (let i = 0; i < 6; i++) {
+                const shape = document.createElement('div');
+                shape.className = 'floating-shape';
+                shape.style.width = Math.random() * 100 + 50 + 'px';
+                shape.style.height = shape.style.width;
+                shape.style.left = Math.random() * 100 + '%';
+                shape.style.top = Math.random() * 100 + '%';
+                shape.style.animationDelay = Math.random() * 6 + 's';
+                shape.style.animationDuration = (Math.random() * 4 + 4) + 's';
+                container.appendChild(shape);
+            }
+        }
+
+        // 导航栏滚动效果
+        window.addEventListener('scroll', () => {
+            const navbar = document.querySelector('.navbar');
+            if (window.scrollY > 50) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        });
+
+        // 滚动动画
+        function handleScrollAnimation() {
+            const elements = document.querySelectorAll('.fade-in');
+            
+            elements.forEach(element => {
+                const elementTop = element.getBoundingClientRect().top;
+                const elementVisible = 150;
+                
+                if (elementTop < window.innerHeight - elementVisible) {
+                    element.classList.add('visible');
+                }
+            });
+        }
+
+        // 平滑滚动
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // 统计数字动画
+        function animateNumbers() {
+            const statNumbers = document.querySelectorAll('.stat-number');
+            
+            statNumbers.forEach(number => {
+                if (number.textContent === '∞') return;
+                
+                const target = parseInt(number.textContent);
+                let current = 0;
+                const increment = target / 30;
+                
+                const timer = setInterval(() => {
+                    current += increment;
+                    if (current >= target) {
+                        current = target;
+                        clearInterval(timer);
+                    }
+                    number.textContent = Math.floor(current);
+                }, 50);
+            });
+        }
+
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', () => {
+            createFloatingShapes();
+            handleScrollAnimation();
+            
+            // 延迟执行数字动画
+            setTimeout(animateNumbers, 1000);
+        });
+
+        // 滚动时执行动画检查
+        window.addEventListener('scroll', handleScrollAnimation);
+
+        // 游戏卡片点击效果
+        document.querySelectorAll('.game-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.background = 'rgba(78, 205, 196, 0.1)';
+            });
+            
+            card.addEventListener('mouseleave', () => {
+                card.style.background = 'rgba(255, 255, 255, 0.05)';
+            });
+        });
+
+        // 添加键盘导航支持
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                // ESC键返回顶部
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        });
+
+        console.log('🎮 AI Mini Game Platform - Welcome!');
+        console.log('🚀 Powered by AI & Creative Coding');
+
+        // PWA 安装支持
+        let deferredPrompt;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // 显示安装提示
+            const installBanner = document.createElement('div');
+            installBanner.innerHTML = `
+                <div style="
+                    position: fixed; 
+                    bottom: 20px; 
+                    left: 50%; 
+                    transform: translateX(-50%);
+                    background: linear-gradient(45deg, #4ecdc4, #45b7d1);
+                    color: white;
+                    padding: 15px 20px;
+                    border-radius: 25px;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                    z-index: 2000;
+                    font-family: 'Noto Sans SC', sans-serif;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                " onclick="installPWA()" onmouseover="this.style.transform='translateX(-50%) translateY(-2px)'" onmouseout="this.style.transform='translateX(-50%)'">
+                    <i class="fas fa-download" style="margin-right: 8px;"></i>
+                    安装到手机桌面
+                </div>
+            `;
+            document.body.appendChild(installBanner);
+            
+            setTimeout(() => {
+                if (installBanner.parentNode) {
+                    installBanner.remove();
+                }
+            }, 8000);
+        });
+
+        window.installPWA = async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`User response to the install prompt: ${outcome}`);
+                deferredPrompt = null;
+            }
+        };
+
+        // 性能监控
+        window.addEventListener('load', () => {
+            console.log('🎯 页面加载完成');
+            
+            // 检查网络状态
+            if ('onLine' in navigator) {
+                console.log(`📶 网络状态: ${navigator.onLine ? '在线' : '离线'}`);
+            }
+        
+        // 留言板功能初始化
+        initFeedbackBoards();
+    });
+    
+    // 留言板功能
+    let currentRatings = { shooter: 0, match3: 0 }; // 当前选择的评分
+    
+    // 真正的云存储配置 (使用JSONStorage.net)
+    const CLOUD_CONFIG = {
+        API_URL: 'https://jsonstorage.net/api/items',
+        // 为每个游戏创建独立的数据存储ID
+        STORAGE_IDS: {
+            shooter: 'ai-game-feedback-shooter-2025',
+            match3: 'ai-game-feedback-match3-2025'
+        },
+        ENABLED: true
+    };
+    
+    // 真正的云存储API (使用JSONStorage.net)
+    async function saveToCloud(gameId, feedbacks) {
+        if (!CLOUD_CONFIG.ENABLED) {
+            console.log('⚠️ 云存储已禁用，使用本地存储');
+            const key = `feedback_${gameId}`;
+            localStorage.setItem(key, JSON.stringify(feedbacks));
+            return { success: true, local: true };
+        }
+        
+        try {
+            console.log(`☁️ 保存${gameId}游戏留言到真实云端:`, feedbacks.length, '条');
+            
+            const storageId = CLOUD_CONFIG.STORAGE_IDS[gameId];
+            const cloudData = {
+                feedbacks: feedbacks,
+                lastUpdated: Date.now(),
+                gameId: gameId,
+                version: '1.3.0'
+            };
+            
+            // 使用JSONStorage.net API
+            const response = await fetch(`${CLOUD_CONFIG.API_URL}/${storageId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(cloudData)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`云存储失败: ${response.status} ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            console.log(`✅ ${gameId}游戏留言已成功保存到云端!`, result);
+            
+            // 同时保存到本地作为备份
+            const localKey = `feedback_${gameId}`;
+            localStorage.setItem(localKey, JSON.stringify(feedbacks));
+            
+            return { success: true, cloudId: result.uri, cloud: true };
+            
+        } catch (error) {
+            console.error('☁️ 云存储失败，降级到本地存储:', error);
+            
+            // 降级到本地存储
+            const key = `feedback_${gameId}`;
+            localStorage.setItem(key, JSON.stringify(feedbacks));
+            
+            showToast(`网络异常，留言已保存到本地 💾`, 'warning');
+            return { success: true, local: true, error: error.message };
+        }
+    }
+    
+    async function loadFromCloud(gameId) {
+        if (!CLOUD_CONFIG.ENABLED) {
+            console.log('⚠️ 云存储已禁用，使用本地存储');
+            const key = `feedback_${gameId}`;
+            return JSON.parse(localStorage.getItem(key) || '[]');
+        }
+        
+        try {
+            console.log(`☁️ 从真实云端加载${gameId}游戏留言...`);
+            
+            const storageId = CLOUD_CONFIG.STORAGE_IDS[gameId];
+            
+            // 从JSONStorage.net加载数据
+            const response = await fetch(`${CLOUD_CONFIG.API_URL}/${storageId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            if (!response.ok) {
+                if (response.status === 404) {
+                    console.log(`ℹ️ ${gameId}游戏暂无云端数据，返回空数组`);
+                    return [];
+                }
+                throw new Error(`云加载失败: ${response.status} ${response.statusText}`);
+            }
+            
+            const cloudData = await response.json();
+            const feedbacks = cloudData.feedbacks || [];
+            
+            console.log(`✅ 成功从云端加载 ${feedbacks.length} 条留言, 最后更新: ${new Date(cloudData.lastUpdated).toLocaleString()}`);
+            
+            // 同时保存到本地作为缓存
+            const localKey = `feedback_${gameId}`;
+            localStorage.setItem(localKey, JSON.stringify(feedbacks));
+            
+            return feedbacks;
+            
+        } catch (error) {
+            console.error('☁️ 云加载失败，降级到本地存储:', error);
+            
+            // 降级到本地存储
+            const key = `feedback_${gameId}`;
+            const localData = JSON.parse(localStorage.getItem(key) || '[]');
+            console.log(`🔄 使用本地缓存，加载到 ${localData.length} 条留言`);
+            
+            if (localData.length === 0) {
+                showToast(`网络异常，暂时无法加载最新留言 🌐`, 'warning');
+            }
+            
+            return localData;
+        }
+    }
+    
+    // 手动同步功能：恢复用户的留言数据  
+    function manualRestoreUserFeedback() {
+        // 恢复用户"垃圾桶"的留言数据
+        console.log('🔄 手动恢复用户留言数据...');
+        
+        const userFeedback = {
+            id: Date.now() + 3000,
+            author: '垃圾桶',
+            message: '这个框框没对齐',
+            rating: 3,
+            timestamp: new Date().toISOString(),
+            game: 'match3'
+        };
+        
+        // 恢复到云存储
+        loadFromCloud('match3').then(existingFeedbacks => {
+            const updatedFeedbacks = [userFeedback, ...existingFeedbacks];
+            return saveToCloud('match3', updatedFeedbacks);
+        }).then(() => {
+            console.log('✅ 用户留言已恢复');
+            loadFeedbacks('match3');
+            showToast('您的留言已恢复："这个框框没对齐" ✨', 'success');
+        }).catch(error => {
+            console.error('恢复失败:', error);
+        });
+    }
+    
+    // 暴露给控制台
+    window.manualRestoreUserFeedback = manualRestoreUserFeedback;
+    
+    // 初始化留言板
+    function initFeedbackBoards() {
+        // 为每个游戏初始化留言板
+        ['shooter', 'match3'].forEach(game => {
+            loadFeedbacks(game);
+            initStarRating(game);
+        });
+        
+        console.log('🎯 留言板系统初始化完成');
+    }
+    
+    // 切换留言板显示状态
+    function toggleFeedback(gameId) {
+        const content = document.getElementById(`feedback-${gameId}`);
+        const toggleBtn = document.querySelector(`[onclick="toggleFeedback('${gameId}')"]`);
+        
+        if (content.classList.contains('expanded')) {
+            content.classList.remove('expanded');
+            toggleBtn.classList.remove('expanded');
+        } else {
+            content.classList.add('expanded');
+            toggleBtn.classList.add('expanded');
+        }
+    }
+    
+    // 初始化星级评分
+    function initStarRating(gameId) {
+        const stars = document.querySelectorAll(`[data-game="${gameId}"] .star`);
+        
+        stars.forEach(star => {
+            star.addEventListener('click', function() {
+                const rating = parseInt(this.dataset.rating);
+                currentRatings[gameId] = rating;
+                
+                // 更新星星显示状态
+                stars.forEach((s, index) => {
+                    if (index < rating) {
+                        s.classList.add('active');
+                    } else {
+                        s.classList.remove('active');
+                    }
+                });
+            });
+            
+            star.addEventListener('mouseenter', function() {
+                const rating = parseInt(this.dataset.rating);
+                stars.forEach((s, index) => {
+                    if (index < rating) {
+                        s.style.opacity = '1';
+                    } else {
+                        s.style.opacity = '0.3';
+                    }
+                });
+            });
+        });
+        
+        // 鼠标离开时恢复原状态
+        const ratingContainer = document.querySelector(`[data-game="${gameId}"].rating-stars`);
+        ratingContainer.addEventListener('mouseleave', function() {
+            stars.forEach((s, index) => {
+                if (index < currentRatings[gameId]) {
+                    s.style.opacity = '1';
+                } else {
+                    s.style.opacity = '0.3';
+                }
+            });
+        });
+    }
+    
+    // 提交反馈 (使用云存储)
+    async function submitFeedback(gameId) {
+        const nameInput = document.getElementById(`name-${gameId}`);
+        const messageInput = document.getElementById(`message-${gameId}`);
+        const submitBtn = document.querySelector(`[onclick="submitFeedback('${gameId}')"]`);
+        
+        const name = nameInput.value.trim() || '匿名玩家';
+        const message = messageInput.value.trim();
+        const rating = currentRatings[gameId];
+        
+        // 验证输入
+        if (!message) {
+            alert('请填写留言内容！');
+            return;
+        }
+        
+        if (rating === 0) {
+            alert('请选择评分！');
+            return;
+        }
+        
+        // 禁用按钮，防止重复提交
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 提交到云端...';
+        
+        try {
+            const feedback = {
+                id: Date.now() + 3000, // 确保用户留言ID大于社区留言ID
+                author: name,
+                message: message,
+                rating: rating,
+                timestamp: new Date().toISOString(),
+                game: gameId
+            };
+            
+            // 从云端加载现有留言
+            const existingFeedbacks = await loadFromCloud(gameId);
+            
+            // 添加新留言到开头
+            const updatedFeedbacks = [feedback, ...existingFeedbacks];
+            
+            // 限制留言数量 (最多50条)
+            if (updatedFeedbacks.length > 50) {
+                updatedFeedbacks.splice(50);
+            }
+            
+            // 保存到云端
+            await saveToCloud(gameId, updatedFeedbacks);
+            
+            // 重新加载留言列表
+            await loadFeedbacks(gameId);
+            
+            // 清空表单
+            nameInput.value = '';
+            messageInput.value = '';
+            currentRatings[gameId] = 0;
+            
+            // 重置星星状态
+            const stars = document.querySelectorAll(`[data-game="${gameId}"] .star`);
+            stars.forEach(star => star.classList.remove('active'));
+            
+            // 恢复按钮状态
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 发表留言';
+            
+            // 成功提示
+            showToast('留言发表成功！已同步到所有设备 🌐✨');
+            
+        } catch (error) {
+            console.error('提交留言失败:', error);
+            
+            // 恢复按钮状态
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 发表留言';
+            
+            // 错误提示
+            showToast('网络错误，留言已保存到本地 💾', 'error');
+        }
+    }
+    
+    // 保存反馈到本地存储
+    function saveFeedback(gameId, feedback) {
+        const key = `feedback_${gameId}`;
+        let feedbacks = JSON.parse(localStorage.getItem(key) || '[]');
+        feedbacks.unshift(feedback); // 新留言放在前面
+        
+        // 最多保存50条留言
+        if (feedbacks.length > 50) {
+            feedbacks = feedbacks.slice(0, 50);
+        }
+        
+        localStorage.setItem(key, JSON.stringify(feedbacks));
+    }
+    
+    // 加载留言列表 (从云端加载用户留言，混合社区留言)
+    async function loadFeedbacks(gameId) {
+        const container = document.getElementById(`messages-${gameId}`);
+        
+        // 显示加载状态
+        container.innerHTML = '<div style="text-align: center; padding: 20px; color: #4ecdc4;"><i class="fas fa-spinner fa-spin"></i> 加载留言中...</div>';
+        
+        try {
+            // 从云端加载用户留言
+            const cloudFeedbacks = await loadFromCloud(gameId);
+            const communityFeedbacks = getCommunityFeedbacks(gameId);
+            
+            // 合并社区留言和云端用户留言，按时间排序
+            const allFeedbacks = [...communityFeedbacks, ...cloudFeedbacks];
+            allFeedbacks.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            // 限制显示最多30条留言
+            const displayFeedbacks = allFeedbacks.slice(0, 30);
+            
+            container.innerHTML = '';
+            
+            if (displayFeedbacks.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 20px; color: #999;">暂无留言，快来发表第一条吧！</div>';
+                return;
+            }
+            
+            displayFeedbacks.forEach(feedback => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'feedback-message';
+                // 用户留言添加特殊标识
+                if (feedback.id < 3000) { // 社区留言的ID都小于3000
+                    messageDiv.classList.add('community-message');
+                } else {
+                    messageDiv.classList.add('user-message');
+                }
+                
+                const timeStr = formatTime(feedback.timestamp);
+            const stars = '⭐'.repeat(feedback.rating);
+            
+            messageDiv.innerHTML = `
+                <div class="message-header">
+                    <span class="message-author">${escapeHtml(feedback.author)}</span>
+                    <span class="message-time">${timeStr}</span>
+                </div>
+                <div class="message-rating">${stars} ${feedback.rating}/5</div>
+                <div class="message-text">${escapeHtml(feedback.message)}</div>
+            `;
+            
+            container.appendChild(messageDiv);
+        });
+        
+        } catch (error) {
+            console.error('加载留言失败:', error);
+            
+            // 显示错误状态，但仍尝试显示社区留言
+            const communityFeedbacks = getCommunityFeedbacks(gameId);
+            container.innerHTML = '';
+            
+            if (communityFeedbacks.length > 0) {
+                // 显示警告信息
+                const warningDiv = document.createElement('div');
+                warningDiv.style.cssText = 'text-align: center; padding: 10px; color: #f39c12; background: rgba(243, 156, 18, 0.1); border-radius: 5px; margin-bottom: 15px; font-size: 0.9rem;';
+                warningDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> 网络连接异常，仅显示社区留言';
+                container.appendChild(warningDiv);
+                
+                // 显示社区留言
+                communityFeedbacks.forEach(feedback => {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'feedback-message community-message';
+                    
+                    const timeStr = formatTime(feedback.timestamp);
+                    const stars = '⭐'.repeat(feedback.rating);
+                    
+                    messageDiv.innerHTML = `
+                        <div class="message-header">
+                            <span class="message-author">${escapeHtml(feedback.author)}</span>
+                            <span class="message-time">${timeStr}</span>
+                        </div>
+                        <div class="message-rating">${stars} ${feedback.rating}/5</div>
+                        <div class="message-text">${escapeHtml(feedback.message)}</div>
+                    `;
+                    
+                    container.appendChild(messageDiv);
+                });
+            } else {
+                container.innerHTML = '<div style="text-align: center; padding: 20px; color: #e74c3c;">网络错误，无法加载留言 😞</div>';
+            }
+        }
+    }
+    
+    // 获取社区留言 (包含大量预置留言模拟真实社区)
+    function getCommunityFeedbacks(gameId) {
+        const now = Date.now();
+        const samples = {
+            shooter: [
+                {
+                    id: 1001,
+                    author: '空战王者',
+                    message: 'BMW定制战斗机太酷了！音效和背景都很棒，简历彩蛋更是惊喜满满！',
+                    rating: 5,
+                    timestamp: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                },
+                {
+                    id: 1002,
+                    author: '游戏爱好者',
+                    message: '画面很流畅，海洋背景滚动效果很赞！建议增加更多敌机类型。',
+                    rating: 4,
+                    timestamp: new Date(now - 5 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                },
+                {
+                    id: 1003,
+                    author: 'BMW粉丝',
+                    message: '作为BMW粉，看到定制战机真的很激动！操作简单易上手，推荐！',
+                    rating: 5,
+                    timestamp: new Date(now - 8 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                },
+                {
+                    id: 1004,
+                    author: '空战指挥官',
+                    message: '爆炸特效和音效搭配得非常好！有种真正在驾驶战机的感觉！',
+                    rating: 5,
+                    timestamp: new Date(now - 12 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                },
+                {
+                    id: 1005,
+                    author: '手机玩家',
+                    message: '在手机上玩也很流畅，触摸操作很灵敏，上班路上的好伴侣！',
+                    rating: 4,
+                    timestamp: new Date(now - 18 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                },
+                {
+                    id: 1006,
+                    author: '音效控',
+                    message: '背景音乐很燃！射击音效很有冲击力，戴耳机玩更爽！',
+                    rating: 5,
+                    timestamp: new Date(now - 1 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                },
+                {
+                    id: 1007,
+                    author: '学生党',
+                    message: '课间休息玩几局，压力瞬间释放！希望能加个排行榜功能。',
+                    rating: 4,
+                    timestamp: new Date(now - 1.5 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                },
+                {
+                    id: 1008,
+                    author: '老司机',
+                    message: '这款游戏让我想起了小时候玩的雷电，但画面和音效更现代化！',
+                    rating: 5,
+                    timestamp: new Date(now - 2 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                },
+                {
+                    id: 1009,
+                    author: '上班族',
+                    message: '工作累了玩几分钟，很解压！海洋背景看着就很舒服。',
+                    rating: 4,
+                    timestamp: new Date(now - 2.5 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                },
+                {
+                    id: 1010,
+                    author: '游戏评测员',
+                    message: '整体体验很棒！画面、音效、操作都很到位，五星推荐！',
+                    rating: 5,
+                    timestamp: new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                },
+                {
+                    id: 1011,
+                    author: '夜猫子',
+                    message: '深夜玩这个特别爽，音效开小声也很有感觉，不会吵到别人。',
+                    rating: 4,
+                    timestamp: new Date(now - 4 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                },
+                {
+                    id: 1012,
+                    author: '技术宅',
+                    message: '代码写累了来放松一下，这个游戏真的很治愈！',
+                    rating: 5,
+                    timestamp: new Date(now - 5 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'shooter'
+                }
+            ],
+            match3: [
+                {
+                    id: 2001,
+                    author: '消消乐达人',
+                    message: 'babo图案太可爱了！游戏难度适中，特效很精美，停不下来！',
+                    rating: 5,
+                    timestamp: new Date(now - 3 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 2002,
+                    author: '益智游戏玩家',
+                    message: '三消游戏做得不错，连击系统很有趣，希望增加更多关卡。',
+                    rating: 4,
+                    timestamp: new Date(now - 6 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 2003,
+                    author: 'babo爱好者',
+                    message: '终于有用babo做元素的消消乐了！每个图案都很精致，爱不释手～',
+                    rating: 5,
+                    timestamp: new Date(now - 9 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 2004,
+                    author: '音效发烧友',
+                    message: '新加的音效太棒了！每次消除都有清脆的音效，很有成就感！',
+                    rating: 5,
+                    timestamp: new Date(now - 11 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 2005,
+                    author: '宝妈一枚',
+                    message: '带娃累了玩几局放松，babo表情很治愈，孩子也喜欢看！',
+                    rating: 5,
+                    timestamp: new Date(now - 15 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 2006,
+                    author: '连击高手',
+                    message: '连击音效设计得很用心！10连击的时候音效特别爽！',
+                    rating: 5,
+                    timestamp: new Date(now - 20 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 2007,
+                    author: '手机党',
+                    message: '在手机上玩很顺滑，触摸反馈很好，公交车上打发时间神器！',
+                    rating: 4,
+                    timestamp: new Date(now - 1.2 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 2008,
+                    author: '设计师',
+                    message: '从设计角度看，babo元素的配色和造型都很棒，视觉效果一流！',
+                    rating: 5,
+                    timestamp: new Date(now - 1.8 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 2009,
+                    author: '办公室白领',
+                    message: '午休时间玩几局，既能放松又能锻炼思维，很不错的选择！',
+                    rating: 4,
+                    timestamp: new Date(now - 2.2 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 2010,
+                    author: '三消老玩家',
+                    message: '玩过很多三消游戏，这个的音效和视觉反馈是最棒的之一！',
+                    rating: 5,
+                    timestamp: new Date(now - 2.7 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 2011,
+                    author: '大学生',
+                    message: '考试压力大的时候玩这个，看着可爱的babo心情都好了！',
+                    rating: 4,
+                    timestamp: new Date(now - 3.5 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 2012,
+                    author: '视觉控',
+                    message: '每个babo表情都不一样，细节做得很用心，看着就想一直玩下去！',
+                    rating: 5,
+                    timestamp: new Date(now - 4 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                },
+                {
+                    id: 2013,
+                    author: '晚睡星人',
+                    message: '睡前玩几局很放松，音效可以关掉不影响室友，贴心！',
+                    rating: 4,
+                    timestamp: new Date(now - 4.8 * 24 * 60 * 60 * 1000).toISOString(),
+                    game: 'match3'
+                }
+            ]
+        };
+        
+        return samples[gameId] || [];
+    }
+    
+    // 格式化时间
+    function formatTime(timestamp) {
+        const now = new Date();
+        const time = new Date(timestamp);
+        const diff = now - time;
+        
+        if (diff < 60 * 1000) {
+            return '刚刚';
+        } else if (diff < 60 * 60 * 1000) {
+            return Math.floor(diff / (60 * 1000)) + '分钟前';
+        } else if (diff < 24 * 60 * 60 * 1000) {
+            return Math.floor(diff / (60 * 60 * 1000)) + '小时前';
+        } else {
+            return time.toLocaleDateString('zh-CN');
+        }
+    }
+    
+    // HTML转义
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // 简单的提示函数 (支持不同类型)
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        
+        const colors = {
+            success: 'rgba(78, 205, 196, 0.95)',
+            error: 'rgba(231, 76, 60, 0.95)',
+            warning: 'rgba(243, 156, 18, 0.95)',
+            info: 'rgba(52, 152, 219, 0.95)'
+        };
+        
+        toast.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: ${colors[type] || colors.success};
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            z-index: 10000;
+            font-size: 1rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        `;
+        toast.textContent = message;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translate(-50%, -50%) scale(0.8)';
+            setTimeout(() => {
+                if (document.body.contains(toast)) {
+                    document.body.removeChild(toast);
+                }
+            }, 300);
+        }, type === 'error' ? 3000 : 2000); // 错误提示显示更久
+    }
+    
+    // 调试功能：检查当前存储的留言数据
+    function debugFeedbackStorage() {
+        console.log('🔍 调试留言存储数据:');
+        
+        ['shooter', 'match3'].forEach(gameId => {
+            console.log(`\n📝 ${gameId}游戏留言数据:`);
+            
+            // 检查本地存储数据
+            const localKey = `feedback_${gameId}`;
+            const localData = localStorage.getItem(localKey);
+            if (localData) {
+                const parsed = JSON.parse(localData);
+                console.log(`💾 本地存储: ${parsed.length}条留言`);
+                
+                // 特别查找用户"垃圾桶"的留言
+                const userMessages = parsed.filter(msg => msg.author === '垃圾桶');
+                if (userMessages.length > 0) {
+                    console.log('🎯 找到用户"垃圾桶"的留言:', userMessages);
+                } else {
+                    console.log('❌ 未找到用户"垃圾桶"的留言');
+                }
+                
+                console.log('所有留言详情:', parsed);
+            } else {
+                console.log('💾 本地存储: 无数据');
+            }
+        });
+        
+        console.log('\n📊 所有localStorage键值:');
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.includes('feedback')) {
+                console.log(`${key}: ${localStorage.getItem(key).length}字符`);
+            }
+        }
+        
+        console.log('\n🔧 可用的修复命令:');
+        console.log('- manualRestoreUserFeedback() // 恢复用户"垃圾桶"的留言');
+        console.log('- testCloudStorage() // 测试云存储连接');
+    }
+    
+    // 测试云存储连接
+    async function testCloudStorage() {
+        console.log('🧪 测试云存储连接...');
+        
+        try {
+            // 测试保存
+            const testFeedback = {
+                id: Date.now(),
+                author: '测试用户',
+                message: '云存储连接测试',
+                rating: 5,
+                timestamp: new Date().toISOString(),
+                game: 'match3'
+            };
+            
+            const result = await saveToCloud('match3', [testFeedback]);
+            console.log('✅ 云存储测试成功:', result);
+            
+            // 测试加载
+            const loaded = await loadFromCloud('match3');
+            console.log('✅ 云加载测试成功:', loaded);
+            
+            showToast('云存储连接正常 ✅', 'success');
+            
+        } catch (error) {
+            console.error('❌ 云存储测试失败:', error);
+            showToast('云存储连接失败，使用本地存储 ⚠️', 'warning');
+        }
+    }
+    
+    // 在控制台提供调试功能
+    window.debugFeedbacks = debugFeedbackStorage;
+    window.testCloudStorage = testCloudStorage;
+    
+    // APP环境检测
+    if (typeof cordova !== 'undefined') {
+        console.log('🤖 运行在Cordova APP环境中');
+        
+        // APP特有功能
+        document.addEventListener('deviceready', function() {
+            console.log('📱 Cordova设备就绪');
+            
+            // 隐藏系统状态栏（如果有插件）
+            if (window.StatusBar) {
+                StatusBar.hide();
+            }
+            
+            // 防止Android返回键退出APP
+            document.addEventListener('backbutton', function(e) {
+                e.preventDefault();
+                // 可以添加确认退出对话框
+                console.log('🔙 检测到返回键');
+            }, false);
+        }, false);
+    } else {
+        console.log('🌐 运行在浏览器环境中');
+    }
+    </script>
+    
+    <!-- Cordova JavaScript -->
+    <script type="text/javascript" src="cordova.js"></script>
+</body>
+</html> 

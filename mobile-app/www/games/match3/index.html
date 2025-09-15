@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>立体消消乐 - AI游戏平台</title>
+    <meta name="description" content="精美立体三消游戏，消除相同几何形状获得高分">
+    
+    <!-- 移动端优化 -->
+    <meta name="theme-color" content="#2d3748">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="立体消消乐">
+    
+    <!-- 字体和图标 -->
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700;800;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- 访客统计 -->
+    <script src="../../visitor-counter.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* 现代深色主题配色 */
+            --bg-primary: #0f0f23;
+            --bg-secondary: #1a1a2e;
+            --bg-tertiary: #16213e;
+            --accent-primary: #ff6b9d;
+            --accent-secondary: #4fc3f7;
+            --accent-tertiary: #81c784;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b3c7;
+            --shadow-glow: 0 0 30px rgba(255, 107, 157, 0.3);
+            --shadow-deep: 0 20px 60px rgba(0, 0, 0, 0.5);
+            
+            /* 立体几何形状颜色 */
+            --shape-red: #ff5555;
+            --shape-blue: #55aaff;
+            --shape-green: #55ff55;
+            --shape-yellow: #ffdd55;
+            --shape-purple: #aa55ff;
+            --shape-orange: #ff9955;
+        }
+
+        body {
+            font-family: 'Exo 2', sans-serif;
+            background: radial-gradient(ellipse at center, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            touch-action: manipulation;
+            -webkit-user-select: none;
+            user-select: none;
+            overflow-x: hidden;
+        }
+
+        /* 背景动效 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(255, 107, 157, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(79, 195, 247, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(129, 199, 132, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .game-container {
+            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            border-radius: 30px;
+            padding: 35px;
+            box-shadow: 
+                var(--shadow-deep),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            max-width: 550px;
+            width: 100%;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .game-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary), var(--accent-tertiary));
+            border-radius: 30px 30px 0 0;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .title {
+            font-family: 'Orbitron', monospace;
+            font-size: 2.8rem;
+            font-weight: 900;
+            background: linear-gradient(45deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+            text-shadow: var(--shadow-glow);
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-bottom: 20px;
+            font-weight: 400;
+        }
+
+        .game-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .stat-box {
+            background: linear-gradient(145deg, var(--bg-secondary), var(--bg-primary));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 20px 15px;
+            text-align: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .stat-box:hover::before {
+            left: 100%;
+        }
+
+        .stat-box:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            border-color: var(--accent-primary);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .progress-bar {
+            background: var(--bg-primary);
+            border-radius: 15px;
+            height: 10px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            height: 100%;
+            border-radius: 15px;
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            box-shadow: 0 0 20px rgba(255, 107, 157, 0.5);
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 25px;
+        }
+
+        .control-btn {
+            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            color: var(--text-primary);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 12px 20px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .control-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, var(--accent-primary), var(--accent-secondary));
+            transition: left 0.3s ease;
+            z-index: -1;
+        }
+
+        .control-btn:hover::before {
+            left: 0;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            border-color: var(--accent-primary);
+        }
+
+        .control-btn:active {
+            transform: translateY(0);
+        }
+
+        .game-board {
+            background: linear-gradient(145deg, var(--bg-primary), var(--bg-secondary));
+            border-radius: 25px;
+            padding: 20px;
+            position: relative;
+            aspect-ratio: 1;
+            margin: 0 auto;
+            max-width: 420px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            box-shadow: inset 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .grid-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 形状容器覆盖在网格上，确保绝对定位使用像素对齐 */
+        #shapesContainer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* 点击事件仍由每个shape处理 */
+        }
+
+        .grid-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .grid-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .grid-cell {
+            flex: 1;
+            aspect-ratio: 1;
+            background: linear-gradient(145deg, var(--bg-secondary), var(--bg-primary));
+            border-radius: 12px;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.2s ease;
+        }
+
+        .grid-cell:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 15px rgba(255, 107, 157, 0.2);
+        }
+
+        .shape {
+            position: absolute;
+            /* 尺寸由JS按像素设置，避免变形与重叠 */
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: center;
+            z-index: 2;
+            cursor: pointer;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 
+                0 8px 25px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+
+        .shape::before {
+            content: '';
+            position: absolute;
+            width: 70%;
+            height: 70%;
+            border-radius: inherit;
+            background: inherit;
+            transform: translateZ(0);
+        }
+
+        .shape.shape-new {
+            animation: shapeAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .shape.shape-matched {
+            animation: shapeExplode 0.6s ease-out forwards;
+        }
+
+        .shape.selected {
+            transform: scale(1.1) translateZ(10px);
+            box-shadow: 
+                0 0 30px currentColor,
+                0 12px 35px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.5);
+            z-index: 10;
+            border-color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* babo图片样式 - 使用3x3精灵图（3列×3行） */
+        .shape-red, .shape-blue, .shape-green, .shape-yellow, .shape-purple, .shape-orange {
+            background-image: url('./assets/babo.png');
+            background-size: 300% 300%; /* 精灵图按3列×3行切分 */
+            background-repeat: no-repeat;
+            padding: 0; /* 移除内边距，恢复正常大小 */
+            box-sizing: border-box;
+        }
+
+        /* 3x3网格位置定位：x: 0/50/100%, y: 0/50/100% */
+        .shape-red { 
+            background-position: 0% 0%; /* 第1列 第1行 */
+            color: var(--shape-red);
+        }
+        .shape-blue { 
+            background-position: 50% 0%; /* 第2列 第1行 */
+            color: var(--shape-blue);
+        }
+        .shape-green { 
+            background-position: 100% 0%; /* 第3列 第1行 */
+            color: var(--shape-green);
+        }
+        .shape-yellow { 
+            background-position: 0% 50%; /* 第1列 第2行 */
+            color: var(--shape-yellow);
+        }
+        .shape-purple { 
+            background-position: 50% 50%; /* 第2列 第2行 */
+            color: var(--shape-purple);
+        }
+        .shape-orange { 
+            background-position: 100% 50%; /* 第3列 第2行 */
+            color: var(--shape-orange);
+        }
+
+        /* 隐藏几何形状图标，使用babo图片 */
+        .shape-red::after, .shape-blue::after, .shape-green::after, 
+        .shape-yellow::after, .shape-purple::after, .shape-orange::after { 
+            display: none; 
+        }
+
+        /* 后备几何形状图标（当图片加载失败时显示） */
+        .fallback-icons .shape-red::after { content: '●'; font-size: 1.2em; font-weight: 900; display: flex; align-items: center; justify-content: center; color: white; }
+        .fallback-icons .shape-blue::after { content: '▲'; font-size: 1.1em; font-weight: 900; display: flex; align-items: center; justify-content: center; color: white; }
+        .fallback-icons .shape-green::after { content: '■'; font-size: 1em; font-weight: 900; display: flex; align-items: center; justify-content: center; color: white; }
+        .fallback-icons .shape-yellow::after { content: '⬟'; font-size: 1.1em; font-weight: 900; display: flex; align-items: center; justify-content: center; color: white; }
+        .fallback-icons .shape-purple::after { content: '♦'; font-size: 1.1em; font-weight: 900; display: flex; align-items: center; justify-content: center; color: white; }
+        .fallback-icons .shape-orange::after { content: '⬢'; font-size: 1em; font-weight: 900; display: flex; align-items: center; justify-content: center; color: white; }
+        
+        /* 当图片加载失败时，显示渐变背景 */
+        .fallback-icons .shape-red { background: linear-gradient(145deg, var(--shape-red), #cc4444) !important; }
+        .fallback-icons .shape-blue { background: linear-gradient(145deg, var(--shape-blue), #4488cc) !important; }
+        .fallback-icons .shape-green { background: linear-gradient(145deg, var(--shape-green), #44cc44) !important; }
+        .fallback-icons .shape-yellow { background: linear-gradient(145deg, var(--shape-yellow), #ccaa44) !important; }
+        .fallback-icons .shape-purple { background: linear-gradient(145deg, var(--shape-purple), #8844cc) !important; }
+        .fallback-icons .shape-orange { background: linear-gradient(145deg, var(--shape-orange), #cc7744) !important; }
+
+        .combo-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(45deg, var(--accent-primary), var(--accent-secondary));
+            color: white;
+            padding: 20px 30px;
+            border-radius: 25px;
+            font-family: 'Orbitron', monospace;
+            font-size: 1.8rem;
+            font-weight: 900;
+            box-shadow: 
+                0 15px 40px rgba(0, 0, 0, 0.4),
+                0 0 50px var(--accent-primary);
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            letter-spacing: 2px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .combo-display.show {
+            animation: comboShow 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            color: var(--text-secondary);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .back-btn:hover {
+            background: linear-gradient(145deg, var(--accent-primary), var(--accent-secondary));
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 游戏结束覆盖层 */
+        .game-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 15, 35, 0.95);
+            backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 30px;
+            z-index: 200;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.4s ease;
+        }
+
+        .game-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .overlay-content {
+            text-align: center;
+            color: white;
+            transform: translateY(30px);
+            transition: transform 0.4s ease;
+        }
+
+        .game-overlay.show .overlay-content {
+            transform: translateY(0);
+        }
+
+        .overlay-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 3rem;
+            font-weight: 900;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .overlay-message {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+
+        /* 动画 */
+        @keyframes shapeAppear {
+            0% {
+                opacity: 0;
+                transform: scale(0.3) rotateY(180deg);
+            }
+            50% {
+                opacity: 0.8;
+                transform: scale(1.2) rotateY(90deg);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) rotateY(0deg);
+            }
+        }
+
+        @keyframes shapeExplode {
+            0% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.3) rotate(180deg);
+                opacity: 0.7;
+            }
+            100% {
+                transform: scale(0) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        @keyframes comboShow {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.5) rotateY(180deg);
+            }
+            50% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.2) rotateY(90deg);
+            }
+            80% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.1) rotateY(0deg);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(1) rotateY(0deg);
+            }
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .game-container {
+                padding: 25px;
+                margin: 10px;
+            }
+
+            .title {
+                font-size: 2.2rem;
+            }
+
+            .game-stats {
+                gap: 10px;
+            }
+
+            .stat-box {
+                padding: 15px 10px;
+            }
+
+            .stat-value {
+                font-size: 1.4rem;
+            }
+
+            .controls {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .control-btn {
+                padding: 10px 16px;
+                font-size: 0.85rem;
+            }
+
+            .game-board {
+                padding: 15px;
+            }
+
+            .grid-row {
+                gap: 4px;
+                margin-bottom: 4px;
+            }
+
+            .shape {
+                width: calc(25% - 4px);
+                font-size: 0.9rem;
+            }
+
+            .overlay-title {
+                font-size: 2.5rem;
+            }
+
+            .overlay-message {
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+
+            .game-container {
+                padding: 20px;
+            }
+
+            .title {
+                font-size: 2rem;
+            }
+
+            .shape {
+                font-size: 0.8rem;
+            }
+
+            .game-board {
+                padding: 12px;
+            }
+        }
+
+        /* 高分动画 */
+        .score-animation {
+            position: absolute;
+            color: var(--accent-primary);
+            font-weight: 900;
+            font-size: 1.5rem;
+            pointer-events: none;
+            animation: scoreRise 1.5s ease-out forwards;
+            z-index: 50;
+        }
+
+        @keyframes scoreRise {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-60px) scale(1.5);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <a href="../../index.html" class="back-btn" title="返回主页">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+
+        <div class="header">
+            <h1 class="title">立体消消乐</h1>
+            <p class="subtitle">🔮 消除立体几何形状，挑战你的空间思维</p>
+        </div>
+
+        <div class="game-stats">
+            <div class="stat-box">
+                <div class="stat-label">分数</div>
+                <div class="stat-value" id="score">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">移动</div>
+                <div class="stat-value" id="moves">30</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">目标</div>
+                <div class="stat-value" id="target">1000</div>
+            </div>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressBar" style="width: 0%"></div>
+        </div>
+
+        <div class="controls">
+            <button class="control-btn" onclick="game.restart()">
+                <i class="fas fa-redo"></i> 重新开始
+            </button>
+            <button class="control-btn" onclick="game.hint()" id="hintBtn">
+                <i class="fas fa-lightbulb"></i> 提示
+            </button>
+            <button class="control-btn" onclick="game.shuffle()" id="shuffleBtn">
+                <i class="fas fa-random"></i> 重排
+            </button>
+        </div>
+
+        <div class="game-board">
+            <div class="grid-container" id="gridContainer">
+                <!-- 背景网格 -->
+                <div class="grid-row">
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                </div>
+                <div class="grid-row">
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                </div>
+                <div class="grid-row">
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                </div>
+                <div class="grid-row">
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                </div>
+                <div class="grid-row">
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                </div>
+                <div class="grid-row">
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                </div>
+                <div class="grid-row">
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                </div>
+                <div class="grid-row">
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                    <div class="grid-cell"></div>
+                </div>
+                <!-- 立体形状容器 -->
+                <div id="shapesContainer"></div>
+            </div>
+        </div>
+
+        <!-- 连击显示 -->
+        <div class="combo-display" id="comboDisplay">COMBO x2</div>
+
+        <!-- 游戏结束覆盖层 -->
+        <div class="game-overlay" id="gameOverlay">
+            <div class="overlay-content">
+                <h2 class="overlay-title" id="overlayTitle">游戏结束</h2>
+                <p class="overlay-message" id="overlayMessage">很遗憾，移动次数用完了！</p>
+                <button class="control-btn" onclick="game.restart()">
+                    <i class="fas fa-play"></i> 再来一局
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 访客统计显示 -->
+    <div id="visitor-counter" style="position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.7); color: white; padding: 8px 15px; border-radius: 20px; font-size: 0.9rem; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); z-index: 1000;">
+      <i class="fas fa-eye" style="margin-right: 8px; color: #4fc3f7;"></i>
+      <span id="visitor-count">加载中...</span>
+    </div>
+
+    <script>
+        class Match3Game {
+            constructor() {
+                this.size = 8;
+                this.grid = [];
+                this.score = 0;
+                this.moves = 30;
+                this.target = 1000;
+                this.level = 1;
+                this.combo = 0;
+                this.gameOver = false;
+                this.selectedShape = null;
+                this.hints = 3;
+                this.shuffles = 2;
+                
+                this.shapeTypes = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
+                this.shapeIcons = {
+                    'red': '●',
+                    'blue': '▲',
+                    'green': '■',
+                    'yellow': '⬟',
+                    'purple': '♦',
+                    'orange': '⬢'
+                };
+                
+                this.scoreElement = document.getElementById('score');
+                this.movesElement = document.getElementById('moves');
+                this.targetElement = document.getElementById('target');
+                this.progressBar = document.getElementById('progressBar');
+                this.gameGrid = document.getElementById('gridContainer');
+                this.shapesContainer = document.getElementById('shapesContainer');
+                this.comboDisplay = document.getElementById('comboDisplay');
+                
+                this.init();
+                this.setupEventListeners();
+            }
+
+            init() {
+                this.score = 0;
+                this.moves = 30;
+                this.target = 1000 + (this.level - 1) * 500;
+                this.combo = 0;
+                this.gameOver = false;
+                this.selectedShape = null;
+                
+                this.generateGrid();
+                this.renderGrid();
+                this.updateDisplay();
+                
+                // 确保初始状态有可消除的组合
+                while (!this.hasValidMoves()) {
+                    this.generateGrid();
+                    this.renderGrid();
+                }
+            }
+
+            generateGrid() {
+                this.grid = [];
+                for (let row = 0; row < this.size; row++) {
+                    this.grid[row] = [];
+                    for (let col = 0; col < this.size; col++) {
+                        let shape;
+                        do {
+                            shape = this.getRandomShape();
+                        } while (this.wouldCreateMatch(row, col, shape));
+                        
+                        this.grid[row][col] = {
+                            type: shape,
+                            row: row,
+                            col: col,
+                            id: `${row}-${col}`
+                        };
+                    }
+                }
+            }
+
+            getRandomShape() {
+                return this.shapeTypes[Math.floor(Math.random() * this.shapeTypes.length)];
+            }
+
+            wouldCreateMatch(row, col, shapeType) {
+                // 检查水平方向
+                let horizontalCount = 1;
+                
+                // 向左检查
+                for (let c = col - 1; c >= 0 && this.grid[row] && this.grid[row][c] && this.grid[row][c].type === shapeType; c--) {
+                    horizontalCount++;
+                }
+                
+                // 向右检查
+                for (let c = col + 1; c < this.size && this.grid[row] && this.grid[row][c] && this.grid[row][c].type === shapeType; c++) {
+                    horizontalCount++;
+                }
+                
+                if (horizontalCount >= 3) return true;
+                
+                // 检查垂直方向
+                let verticalCount = 1;
+                
+                // 向上检查
+                for (let r = row - 1; r >= 0 && this.grid[r] && this.grid[r][col] && this.grid[r][col].type === shapeType; r--) {
+                    verticalCount++;
+                }
+                
+                // 向下检查
+                for (let r = row + 1; r < this.size && this.grid[r] && this.grid[r][col] && this.grid[r][col].type === shapeType; r++) {
+                    verticalCount++;
+                }
+                
+                return verticalCount >= 3;
+            }
+
+            setupEventListeners() {
+                this.shapesContainer.addEventListener('click', (e) => {
+                    if (this.gameOver) return;
+                    
+                    const shape = e.target.closest('.shape');
+                    if (!shape) return;
+                    
+                    const row = parseInt(shape.dataset.row);
+                    const col = parseInt(shape.dataset.col);
+                    
+                    this.handleShapeClick(row, col);
+                });
+            }
+
+            handleShapeClick(row, col) {
+                if (!this.selectedShape) {
+                    this.selectShape(row, col);
+                } else {
+                    if (this.selectedShape.row === row && this.selectedShape.col === col) {
+                        this.deselectShape();
+                    } else if (this.isAdjacent(this.selectedShape, { row, col })) {
+                        this.attemptSwap(this.selectedShape, { row, col });
+                    } else {
+                        this.deselectShape();
+                        this.selectShape(row, col);
+                    }
+                }
+            }
+
+            selectShape(row, col) {
+                this.selectedShape = { row, col };
+                this.updateShapeDisplay();
+            }
+
+            deselectShape() {
+                this.selectedShape = null;
+                this.updateShapeDisplay();
+            }
+
+            isAdjacent(shape1, shape2) {
+                const rowDiff = Math.abs(shape1.row - shape2.row);
+                const colDiff = Math.abs(shape1.col - shape2.col);
+                return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+            }
+
+            async attemptSwap(shape1, shape2) {
+                // 交换形状
+                this.swapShapes(shape1, shape2);
+                this.renderGrid();
+                
+                // 检查是否有匹配
+                const matches = this.findMatches();
+                
+                if (matches.length > 0) {
+                    this.moves--;
+                    this.combo = 0;
+                    await this.processMatches();
+                    this.checkGameStatus();
+                } else {
+                    // 没有匹配，交换回来
+                    setTimeout(() => {
+                        this.swapShapes(shape1, shape2);
+                        this.renderGrid();
+                    }, 200);
+                }
+                
+                this.deselectShape();
+                this.updateDisplay();
+            }
+
+            swapShapes(shape1, shape2) {
+                const temp = this.grid[shape1.row][shape1.col];
+                this.grid[shape1.row][shape1.col] = this.grid[shape2.row][shape2.col];
+                this.grid[shape2.row][shape2.col] = temp;
+                
+                // 更新位置信息
+                this.grid[shape1.row][shape1.col].row = shape1.row;
+                this.grid[shape1.row][shape1.col].col = shape1.col;
+                this.grid[shape2.row][shape2.col].row = shape2.row;
+                this.grid[shape2.row][shape2.col].col = shape2.col;
+            }
+
+            async processMatches() {
+                let hasMatches = true;
+                
+                while (hasMatches) {
+                    const matches = this.findMatches();
+                    
+                    if (matches.length === 0) {
+                        hasMatches = false;
+                        break;
+                    }
+                    
+                    this.combo++;
+                    this.showCombo();
+                    
+                    // 计算分数
+                    const baseScore = matches.length * 10;
+                    const comboBonus = this.combo > 1 ? (this.combo - 1) * 5 : 0;
+                    const scoreGained = baseScore + comboBonus;
+                    this.score += scoreGained;
+                    
+                    // 显示分数动画
+                    if (matches.length > 0) {
+                        this.showScoreAnimation(scoreGained, matches[0]);
+                    }
+                    
+                    // 移除匹配的形状
+                    await this.removeMatches(matches);
+                    
+                    // 掉落形状
+                    await this.dropShapes();
+                    
+                    // 填充新形状
+                    this.fillEmptySpaces();
+                    this.renderGrid();
+                    
+                    await this.sleep(300);
+                }
+            }
+
+            findMatches() {
+                const matches = [];
+                const visited = new Set();
+                
+                // 查找水平匹配
+                for (let row = 0; row < this.size; row++) {
+                    let count = 1;
+                    let currentType = this.grid[row][0].type;
+                    
+                    for (let col = 1; col < this.size; col++) {
+                        if (this.grid[row][col].type === currentType) {
+                            count++;
+                        } else {
+                            if (count >= 3) {
+                                for (let i = col - count; i < col; i++) {
+                                    if (!visited.has(`${row}-${i}`)) {
+                                        matches.push({ row, col: i });
+                                        visited.add(`${row}-${i}`);
+                                    }
+                                }
+                            }
+                            count = 1;
+                            currentType = this.grid[row][col].type;
+                        }
+                    }
+                    
+                    if (count >= 3) {
+                        for (let i = this.size - count; i < this.size; i++) {
+                            if (!visited.has(`${row}-${i}`)) {
+                                matches.push({ row, col: i });
+                                visited.add(`${row}-${i}`);
+                            }
+                        }
+                    }
+                }
+                
+                // 查找垂直匹配
+                for (let col = 0; col < this.size; col++) {
+                    let count = 1;
+                    let currentType = this.grid[0][col].type;
+                    
+                    for (let row = 1; row < this.size; row++) {
+                        if (this.grid[row][col].type === currentType) {
+                            count++;
+                        } else {
+                            if (count >= 3) {
+                                for (let i = row - count; i < row; i++) {
+                                    if (!visited.has(`${i}-${col}`)) {
+                                        matches.push({ row: i, col });
+                                        visited.add(`${i}-${col}`);
+                                    }
+                                }
+                            }
+                            count = 1;
+                            currentType = this.grid[row][col].type;
+                        }
+                    }
+                    
+                    if (count >= 3) {
+                        for (let i = this.size - count; i < this.size; i++) {
+                            if (!visited.has(`${i}-${col}`)) {
+                                matches.push({ row: i, col });
+                                visited.add(`${i}-${col}`);
+                            }
+                        }
+                    }
+                }
+                
+                return matches;
+            }
+
+            async removeMatches(matches) {
+                matches.forEach(match => {
+                    const shape = document.querySelector(`[data-row="${match.row}"][data-col="${match.col}"]`);
+                    if (shape) {
+                        shape.classList.add('shape-matched');
+                    }
+                });
+                
+                await this.sleep(600);
+                
+                matches.forEach(match => {
+                    this.grid[match.row][match.col] = null;
+                });
+            }
+
+            async dropShapes() {
+                for (let col = 0; col < this.size; col++) {
+                    let writePos = this.size - 1;
+                    
+                    for (let row = this.size - 1; row >= 0; row--) {
+                        if (this.grid[row][col] !== null) {
+                            if (writePos !== row) {
+                                this.grid[writePos][col] = this.grid[row][col];
+                                this.grid[writePos][col].row = writePos;
+                                this.grid[row][col] = null;
+                            }
+                            writePos--;
+                        }
+                    }
+                }
+                
+                this.renderGrid();
+                await this.sleep(300);
+            }
+
+            fillEmptySpaces() {
+                for (let col = 0; col < this.size; col++) {
+                    for (let row = 0; row < this.size; row++) {
+                        if (this.grid[row][col] === null) {
+                            this.grid[row][col] = {
+                                type: this.getRandomShape(),
+                                row: row,
+                                col: col,
+                                id: `${row}-${col}`,
+                                isNew: true
+                            };
+                        }
+                    }
+                }
+            }
+
+            hasValidMoves() {
+                // 检查是否有可能的匹配
+                for (let row = 0; row < this.size; row++) {
+                    for (let col = 0; col < this.size; col++) {
+                        // 检查向右交换
+                        if (col < this.size - 1) {
+                            this.swapShapes({ row, col }, { row, col: col + 1 });
+                            const hasMatch = this.findMatches().length > 0;
+                            this.swapShapes({ row, col }, { row, col: col + 1 }); // 交换回来
+                            if (hasMatch) return true;
+                        }
+                        
+                        // 检查向下交换
+                        if (row < this.size - 1) {
+                            this.swapShapes({ row, col }, { row: row + 1, col });
+                            const hasMatch = this.findMatches().length > 0;
+                            this.swapShapes({ row, col }, { row: row + 1, col }); // 交换回来
+                            if (hasMatch) return true;
+                        }
+                    }
+                }
+                return false;
+            }
+
+            hint() {
+                if (this.hints <= 0) return;
+                
+                this.hints--;
+                
+                // 找到一个可能的移动
+                for (let row = 0; row < this.size; row++) {
+                    for (let col = 0; col < this.size; col++) {
+                        
+                        // 检查向右交换
+                        if (col < this.size - 1) {
+                            this.swapShapes({ row, col }, { row, col: col + 1 });
+                            const hasMatch = this.findMatches().length > 0;
+                            this.swapShapes({ row, col }, { row, col: col + 1 });
+                            
+                            if (hasMatch) {
+                                this.highlightHint(row, col, row, col + 1);
+                                return;
+                            }
+                        }
+                        
+                        // 检查向下交换
+                        if (row < this.size - 1) {
+                            this.swapShapes({ row, col }, { row: row + 1, col });
+                            const hasMatch = this.findMatches().length > 0;
+                            this.swapShapes({ row, col }, { row: row + 1, col });
+                            
+                            if (hasMatch) {
+                                this.highlightHint(row, col, row + 1, col);
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+
+            highlightHint(row1, col1, row2, col2) {
+                const shape1 = document.querySelector(`[data-row="${row1}"][data-col="${col1}"]`);
+                const shape2 = document.querySelector(`[data-row="${row2}"][data-col="${col2}"]`);
+                
+                [shape1, shape2].forEach(shape => {
+                    if (shape) {
+                        shape.style.animation = 'pulse 1s ease-in-out 3';
+                    }
+                });
+                
+                setTimeout(() => {
+                    [shape1, shape2].forEach(shape => {
+                        if (shape) {
+                            shape.style.animation = '';
+                        }
+                    });
+                }, 3000);
+            }
+
+            shuffle() {
+                if (this.shuffles <= 0) return;
+                
+                this.shuffles--;
+                
+                // 重新生成网格
+                this.generateGrid();
+                this.renderGrid();
+                
+                // 确保有可用移动
+                while (!this.hasValidMoves()) {
+                    this.generateGrid();
+                    this.renderGrid();
+                }
+            }
+
+            showCombo() {
+                if (this.combo > 1) {
+                    this.comboDisplay.textContent = `COMBO x${this.combo}!`;
+                    this.comboDisplay.classList.add('show');
+                    
+                    setTimeout(() => {
+                        this.comboDisplay.classList.remove('show');
+                    }, 1200);
+                }
+            }
+
+            showScoreAnimation(score, position) {
+                const scoreEl = document.createElement('div');
+                scoreEl.className = 'score-animation';
+                scoreEl.textContent = `+${score}`;
+                scoreEl.style.left = `${(position.col / this.size) * 100}%`;
+                scoreEl.style.top = `${(position.row / this.size) * 100}%`;
+                
+                this.gameGrid.appendChild(scoreEl);
+                
+                setTimeout(() => {
+                    scoreEl.remove();
+                }, 1500);
+            }
+
+            checkGameStatus() {
+                if (this.score >= this.target) {
+                    this.gameWin();
+                } else if (this.moves <= 0) {
+                    this.gameOver = true;
+                    this.showGameOver();
+                } else if (!this.hasValidMoves()) {
+                    if (this.shuffles > 0) {
+                        this.shuffle();
+                    } else {
+                        this.gameOver = true;
+                        this.showGameOver();
+                    }
+                }
+            }
+
+            gameWin() {
+                this.level++;
+                setTimeout(() => {
+                    this.showGameWin();
+                }, 500);
+            }
+
+            showGameWin() {
+                document.getElementById('overlayTitle').textContent = '🎉 恭喜过关！';
+                document.getElementById('overlayMessage').textContent = `太棒了！你达到了目标分数 ${this.target}！\n准备挑战第 ${this.level} 关吗？`;
+                document.getElementById('gameOverlay').classList.add('show');
+            }
+
+            showGameOver() {
+                document.getElementById('overlayTitle').textContent = '😔 游戏结束';
+                document.getElementById('overlayMessage').textContent = `最终分数：${this.score}\n目标分数：${this.target}`;
+                document.getElementById('gameOverlay').classList.add('show');
+            }
+
+            hideOverlay() {
+                document.getElementById('gameOverlay').classList.remove('show');
+            }
+
+            restart() {
+                this.hideOverlay();
+                this.hints = 3;
+                this.shuffles = 2;
+                this.init();
+            }
+
+            renderGrid() {
+                this.shapesContainer.innerHTML = '';
+
+                // 读取网格容器的像素大小，进行像素对齐
+                const boardRect = this.gameGrid.getBoundingClientRect();
+                const gapPx = 6; // 与CSS中grid-row/gap保持一致
+                const totalGapX = gapPx * (this.size - 1);
+                const totalGapY = gapPx * (this.size - 1);
+                const containerWidth = this.gameGrid.clientWidth;
+                const containerHeight = this.gameGrid.clientHeight;
+                const cellWidth = Math.floor((containerWidth - totalGapX) / this.size);
+                const cellHeight = Math.floor((containerHeight - totalGapY) / this.size);
+                const cellSizePx = Math.min(cellWidth, cellHeight);
+
+                for (let row = 0; row < this.size; row++) {
+                    for (let col = 0; col < this.size; col++) {
+                        const shape = this.grid[row][col];
+                        if (!shape) continue;
+
+                        const shapeElement = document.createElement('div');
+                        shapeElement.className = `shape shape-${shape.type}`;
+                        shapeElement.dataset.row = row;
+                        shapeElement.dataset.col = col;
+
+                        if (shape.isNew) {
+                            shapeElement.classList.add('shape-new');
+                            shape.isNew = false;
+                        }
+
+                        // 像素级定位，避免重叠与拉伸
+                        const leftPx = col * (cellSizePx + gapPx);
+                        const topPx = row * (cellSizePx + gapPx);
+                        shapeElement.style.left = leftPx + 'px';
+                        shapeElement.style.top = topPx + 'px';
+                        shapeElement.style.width = cellSizePx + 'px';
+                        shapeElement.style.height = cellSizePx + 'px';
+                        shapeElement.style.pointerEvents = 'auto';
+
+                        this.shapesContainer.appendChild(shapeElement);
+
+                        // 移除动画类
+                        setTimeout(() => {
+                            shapeElement.classList.remove('shape-new');
+                        }, 500);
+                    }
+                }
+
+                this.updateShapeDisplay();
+            }
+
+            updateShapeDisplay() {
+                // 清除所有选择状态
+                document.querySelectorAll('.shape.selected').forEach(shape => {
+                    shape.classList.remove('selected');
+                });
+                
+                // 高亮选中的形状
+                if (this.selectedShape) {
+                    const shape = document.querySelector(`[data-row="${this.selectedShape.row}"][data-col="${this.selectedShape.col}"]`);
+                    if (shape) {
+                        shape.classList.add('selected');
+                    }
+                }
+            }
+
+            updateDisplay() {
+                this.scoreElement.textContent = this.score.toLocaleString();
+                this.movesElement.textContent = this.moves;
+                this.targetElement.textContent = this.target.toLocaleString();
+                
+                const progress = Math.min((this.score / this.target) * 100, 100);
+                this.progressBar.style.width = `${progress}%`;
+                
+                // 更新按钮状态
+                document.getElementById('hintBtn').style.opacity = this.hints > 0 ? '1' : '0.5';
+                document.getElementById('shuffleBtn').style.opacity = this.shuffles > 0 ? '1' : '0.5';
+            }
+
+            sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+
+        // 初始化游戏
+        let game;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            game = new Match3Game();
+            
+            console.log('🎮 立体消消乐游戏加载完成！');
+            
+            // 防止页面滚动
+            document.body.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+            }, { passive: false });
+
+            // 监听窗口尺寸变化，重绘以保持对齐
+            window.addEventListener('resize', () => {
+                if (game) {
+                    game.renderGrid();
+                }
+            });
+        });
+
+        // 全局函数
+        function hideOverlay() {
+            game.hideOverlay();
+        }
+    </script>
+</body>
+</html>
