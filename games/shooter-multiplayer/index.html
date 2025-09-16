@@ -1,0 +1,1751 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>多人打飞机对战 · 实时联机射击</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Socket.IO客户端 -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Orbitron', 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #0a0f28 0%, #1a1f3a 50%, #2a2f4a 100%);
+            color: white;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* 游戏画布 */
+        #gameCanvas {
+            display: block;
+            margin: 0 auto;
+            background: linear-gradient(180deg, #001122 0%, #003366 100%);
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+        }
+
+        /* 开始界面 */
+        .screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+        }
+
+        .screen h1 {
+            font-size: 3rem;
+            margin-bottom: 2rem;
+            text-shadow: 0 0 20px #00ffff;
+            background: linear-gradient(45deg, #00ffff, #ff00ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .screen h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #00ffff;
+        }
+
+        /* 按钮样式 */
+        .btn {
+            padding: 15px 30px;
+            margin: 10px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(45deg, #00ffff, #0080ff);
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 255, 255, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 房间信息 */
+        .room-info {
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid #00ffff;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px;
+            min-width: 400px;
+        }
+
+        .players-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .player-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            border: 2px solid transparent;
+        }
+
+        .player-card.ready {
+            border-color: #00ff00;
+            background: rgba(0, 255, 0, 0.1);
+        }
+
+        .player-card.self {
+            border-color: #ffff00;
+            background: rgba(255, 255, 0, 0.1);
+        }
+
+        /* 顶部实时分数条 */
+        .top-score-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(26, 31, 58, 0.98) 100%);
+            backdrop-filter: blur(15px);
+            border-bottom: 3px solid #00ffff;
+            box-shadow: 0 3px 25px rgba(0, 255, 255, 0.4);
+            z-index: 200;
+            padding: 20px;
+            pointer-events: none;
+            min-height: 80px;
+        }
+
+        .score-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .competitive-scoreboard {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .player-score-top {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 30px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+            min-width: 150px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .player-score-top.leader {
+            background: linear-gradient(45deg, rgba(255, 215, 0, 0.3), rgba(255, 165, 0, 0.2));
+            border-color: gold;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+            animation: leaderGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes leaderGlow {
+            0% { box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); }
+            100% { box-shadow: 0 0 25px rgba(255, 215, 0, 0.6); }
+        }
+
+        .player-indicator-top {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+        }
+
+        .player-name-top {
+            font-size: 1rem;
+            font-weight: bold;
+            color: white;
+            min-width: 80px;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+        }
+
+        .player-name-top.bot {
+            color: #ffff00;
+        }
+
+        .score-value-top {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #00ffff;
+            margin-left: auto;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            min-width: 40px;
+            text-align: right;
+        }
+
+        .game-timer-top {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 10px 20px;
+            background: linear-gradient(45deg, rgba(0, 255, 255, 0.2), rgba(0, 150, 255, 0.2));
+            border-radius: 30px;
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+
+        .timer-text {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #00ffff;
+            font-family: 'Orbitron', monospace;
+            text-shadow: 0 0 10px #00ffff;
+        }
+
+        .timer-text.warning {
+            color: #ff4444;
+            animation: pulse 1s infinite;
+            text-shadow: 0 0 15px #ff4444;
+        }
+
+        .timer-label {
+            font-size: 0.9rem;
+            color: #00ffff;
+            font-weight: bold;
+        }
+
+        /* 游戏UI */
+        .game-ui {
+            position: fixed;
+            top: 100px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .ui-panel {
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #00ffff;
+            border-radius: 10px;
+            padding: 15px;
+            backdrop-filter: blur(5px);
+        }
+
+        .scoreboard {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .player-score {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 10px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .player-score.leader {
+            background: rgba(255, 215, 0, 0.3);
+            border: 1px solid gold;
+        }
+
+        .player-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .game-timer {
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+            color: #00ffff;
+            text-shadow: 0 0 10px #00ffff;
+        }
+
+        .game-timer.warning {
+            color: #ff4444;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* 连接状态 */
+        .connection-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            z-index: 1001;
+        }
+
+        .connection-status.connected {
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid #00ff00;
+            color: #00ff00;
+        }
+
+        .connection-status.disconnected {
+            background: rgba(255, 0, 0, 0.2);
+            border: 1px solid #ff0000;
+            color: #ff0000;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .screen h1 { font-size: 2rem; }
+            .room-info { min-width: 300px; margin: 10px; }
+            .game-ui { top: 10px; left: 10px; right: 10px; }
+            .ui-panel { padding: 10px; }
+            .game-timer { font-size: 1.5rem; }
+            
+            /* 移动端顶部分数条适配 */
+            .top-score-bar { padding: 10px 15px; }
+            .competitive-scoreboard { gap: 15px; flex-wrap: wrap; }
+            .player-score-top { 
+                min-width: 80px; 
+                padding: 6px 10px;
+                font-size: 0.8rem;
+            }
+            .score-value-top { font-size: 1rem; }
+            .game-timer-top { 
+                padding: 8px 15px;
+                order: -1; /* 计时器在移动端显示在最前面 */
+                margin-bottom: 10px;
+            }
+            .timer-text { font-size: 1.4rem; }
+            .player-name-top { min-width: 40px; }
+            .score-container { 
+                flex-direction: column; 
+                gap: 10px;
+                align-items: center;
+            }
+        }
+
+        /* 隐藏类 */
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <!-- 连接状态指示器 -->
+    <div id="connectionStatus" class="connection-status disconnected">
+        <i class="fas fa-wifi"></i> 连接中...
+    </div>
+
+    <!-- 调试信息面板 -->
+    <div id="debugPanel" style="position: fixed; top: 60px; right: 10px; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 5px; font-size: 12px; z-index: 1002; display: none;">
+        <div><strong>调试信息:</strong></div>
+        <div id="debugInfo">初始化中...</div>
+    </div>
+
+    <!-- 主菜单界面 -->
+    <div id="mainScreen" class="screen">
+        <h1><i class="fas fa-fighter-jet"></i> 多人打飞机对战</h1>
+        <p style="margin-bottom: 2rem; text-align: center; max-width: 600px;">
+            实时联机射击游戏！与好友一起在同一屏幕内竞技，看谁能在限定时间内获得最高分数！
+        </p>
+        
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+            <button id="joinRoomBtn" class="btn">
+                <i class="fas fa-users"></i> 加入房间
+            </button>
+            <button id="createRoomBtn" class="btn">
+                <i class="fas fa-plus"></i> 创建房间
+            </button>
+            <button id="backToHomeBtn" class="btn" style="background: linear-gradient(45deg, #666, #888);">
+                <i class="fas fa-home"></i> 返回主页
+            </button>
+        </div>
+    </div>
+
+    <!-- 房间等待界面 -->
+    <div id="roomScreen" class="screen hidden">
+        <h2><i class="fas fa-users"></i> 游戏房间</h2>
+        
+        <div class="room-info">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <span>房间ID: <strong id="roomId">-</strong></span>
+                <span>模式: <strong id="gameMode">经典模式</strong></span>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <span>游戏时长: <strong id="gameDuration">60秒</strong></span>
+                <span>玩家: <strong><span id="playerCount">0</span>/4</strong></span>
+            </div>
+            
+            <div class="players-list" id="playersList">
+                <!-- 玩家卡片将动态生成 -->
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 15px; margin-top: 20px;">
+            <button id="readyBtn" class="btn">
+                <i class="fas fa-check"></i> 准备
+            </button>
+            <button id="leaveRoomBtn" class="btn" style="background: linear-gradient(45deg, #ff4444, #cc0000);">
+                <i class="fas fa-door-open"></i> 离开房间
+            </button>
+        </div>
+
+        <div id="waitingMessage" style="margin-top: 20px; text-align: center; color: #ffff00;">
+            等待其他玩家准备...
+        </div>
+    </div>
+
+    <!-- 倒计时界面 -->
+    <div id="countdownScreen" class="screen hidden">
+        <h1 id="countdownNumber" style="font-size: 8rem; color: #00ffff;">3</h1>
+        <p style="font-size: 1.5rem; margin-top: 20px;">游戏即将开始...</p>
+    </div>
+
+    <!-- 游戏结束界面 -->
+    <div id="gameOverScreen" class="screen hidden">
+        <h1><i class="fas fa-trophy"></i> 游戏结束</h1>
+        
+        <div class="room-info">
+            <h2 style="text-align: center; margin-bottom: 20px;">最终排名</h2>
+            <div id="finalRanking">
+                <!-- 最终排名将动态生成 -->
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 15px; margin-top: 20px;">
+            <button id="playAgainBtn" class="btn">
+                <i class="fas fa-redo"></i> 再来一局
+            </button>
+            <button id="backToMenuBtn" class="btn" style="background: linear-gradient(45deg, #666, #888);">
+                <i class="fas fa-home"></i> 返回菜单
+            </button>
+        </div>
+    </div>
+
+    <!-- 游戏画布 -->
+    <canvas id="gameCanvas" width="800" height="600" class="hidden"></canvas>
+
+    <!-- 顶部实时分数条 -->
+    <div id="topScoreBar" class="top-score-bar hidden">
+        <div class="score-container">
+            <div id="competitiveScoreboard" class="competitive-scoreboard">
+                <!-- 竞技分数将动态更新 -->
+            </div>
+            <div class="game-timer-top">
+                <span id="gameTimerTop" class="timer-text">60</span>
+                <span class="timer-label">秒</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏UI -->
+    <div id="gameUI" class="game-ui hidden">
+        <!-- 左侧详细排名 -->
+        <div class="ui-panel">
+            <h3 style="margin-bottom: 10px; color: #00ffff;">详细排名</h3>
+            <div id="scoreboard" class="scoreboard">
+                <!-- 玩家分数将动态更新 -->
+            </div>
+        </div>
+
+        <!-- 右侧玩家信息 -->
+        <div class="ui-panel">
+            <div style="text-align: center;">
+                <div style="color: #00ffff; margin-bottom: 5px;">我的状态</div>
+                <div id="myScore" style="font-size: 1.5rem; font-weight: bold; color: #ffff00;">0</div>
+                <div style="color: #ff6b6b; margin-top: 10px;">❤️ 生命值</div>
+                <div id="myHealth" style="font-size: 1.2rem;">100</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let socket = null;
+        let gameState = null;
+        let currentRoom = null;
+        let myPlayerId = null;
+        let gameCanvas = null;
+        let ctx = null;
+        let gameRunning = false;
+        let animationId = null;
+        let offlineMode = false;
+        let localGameState = null;
+
+        // 玩家颜色配置
+        const PLAYER_COLORS = ['#ff4444', '#44ff44', '#4444ff', '#ffff44'];
+
+        // DOM元素
+        const elements = {
+            // 屏幕
+            mainScreen: document.getElementById('mainScreen'),
+            roomScreen: document.getElementById('roomScreen'),
+            countdownScreen: document.getElementById('countdownScreen'),
+            gameOverScreen: document.getElementById('gameOverScreen'),
+            
+            // 按钮
+            joinRoomBtn: document.getElementById('joinRoomBtn'),
+            createRoomBtn: document.getElementById('createRoomBtn'),
+            backToHomeBtn: document.getElementById('backToHomeBtn'),
+            readyBtn: document.getElementById('readyBtn'),
+            leaveRoomBtn: document.getElementById('leaveRoomBtn'),
+            playAgainBtn: document.getElementById('playAgainBtn'),
+            backToMenuBtn: document.getElementById('backToMenuBtn'),
+            
+            // 游戏元素
+            gameCanvas: document.getElementById('gameCanvas'),
+            gameUI: document.getElementById('gameUI'),
+            topScoreBar: document.getElementById('topScoreBar'),
+            connectionStatus: document.getElementById('connectionStatus'),
+            
+            // 房间信息
+            roomId: document.getElementById('roomId'),
+            gameMode: document.getElementById('gameMode'),
+            gameDuration: document.getElementById('gameDuration'),
+            playerCount: document.getElementById('playerCount'),
+            playersList: document.getElementById('playersList'),
+            waitingMessage: document.getElementById('waitingMessage'),
+            
+            // 游戏UI
+            scoreboard: document.getElementById('scoreboard'),
+            competitiveScoreboard: document.getElementById('competitiveScoreboard'),
+            gameTimer: document.getElementById('gameTimer'),
+            gameTimerTop: document.getElementById('gameTimerTop'),
+            myScore: document.getElementById('myScore'),
+            myHealth: document.getElementById('myHealth'),
+            
+            // 其他
+            countdownNumber: document.getElementById('countdownNumber'),
+            finalRanking: document.getElementById('finalRanking')
+        };
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            gameCanvas = elements.gameCanvas;
+            ctx = gameCanvas.getContext('2d');
+            
+            // 显示调试面板
+            const debugPanel = document.getElementById('debugPanel');
+            debugPanel.style.display = 'block';
+            
+            // 更新调试信息
+            updateDebugInfo('正在初始化...');
+            
+            initializeSocket();
+            setupEventListeners();
+            
+            console.log('🎮 多人射击游戏初始化完成');
+            updateDebugInfo('初始化完成，等待连接或启用离线模式');
+        });
+
+        // 更新调试信息
+        function updateDebugInfo(message) {
+            const debugInfo = document.getElementById('debugInfo');
+            if (debugInfo) {
+                const timestamp = new Date().toLocaleTimeString();
+                debugInfo.innerHTML = `${timestamp}: ${message}`;
+            }
+        }
+
+        // Socket.IO连接
+        function initializeSocket() {
+            // 检查是否为文件协议或Socket.IO库未加载
+            if (typeof io === 'undefined' || window.location.protocol === 'file:') {
+                console.log('🔧 检测到文件协议或Socket.IO库未加载，启用离线模式');
+                updateDebugInfo('检测到文件协议，启用离线模式');
+                enableOfflineMode();
+                return;
+            }
+            
+            // 根据环境选择服务器地址
+            const serverUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+                ? 'http://localhost:5000' 
+                : window.location.origin;
+            
+            console.log('🔗 尝试连接服务器:', serverUrl);
+            updateDebugInfo('尝试连接服务器: ' + serverUrl);
+            
+            socket = io(serverUrl, {
+                timeout: 3000,
+                transports: ['websocket', 'polling']
+            });
+            
+            socket.on('connect', () => {
+                console.log('🔗 WebSocket连接成功');
+                updateConnectionStatus(true);
+                updateDebugInfo('WebSocket连接成功');
+                
+                // 用户上线
+                socket.emit('user_online', {
+                    username: `玩家${Math.floor(Math.random() * 1000)}`
+                });
+            });
+
+            socket.on('disconnect', () => {
+                console.log('❌ WebSocket连接断开');
+                updateConnectionStatus(false);
+                updateDebugInfo('WebSocket连接断开');
+            });
+
+            socket.on('connect_error', (error) => {
+                console.log('❌ 连接服务器失败，启用离线模式:', error.message);
+                updateConnectionStatus(false);
+                updateDebugInfo('连接失败，启用离线模式');
+                setTimeout(() => {
+                    enableOfflineMode();
+                }, 1000);
+            });
+
+            socket.on('online_success', (data) => {
+                myPlayerId = data.userId;
+                console.log('👤 用户上线成功:', myPlayerId);
+                updateDebugInfo('用户上线成功: ' + myPlayerId);
+            });
+
+            // 房间相关事件
+            socket.on('room_joined', handleRoomJoined);
+            socket.on('room_updated', handleRoomUpdated);
+            socket.on('player_joined', handlePlayerJoined);
+            socket.on('player_left', handlePlayerLeft);
+            socket.on('game_countdown', handleGameCountdown);
+            socket.on('game_started', handleGameStarted);
+            socket.on('game_state_update', handleGameStateUpdate);
+            socket.on('game_finished', handleGameFinished);
+            socket.on('player_ready_changed', handlePlayerReadyChanged);
+
+            socket.on('error', (error) => {
+                console.error('❌ Socket错误:', error);
+                updateDebugInfo('Socket错误: ' + error.message);
+            });
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 主菜单按钮
+            elements.joinRoomBtn.addEventListener('click', joinRoom);
+            elements.createRoomBtn.addEventListener('click', createRoom);
+            elements.backToHomeBtn.addEventListener('click', () => {
+                window.location.href = '../../index.html';
+            });
+
+            // 房间按钮
+            elements.readyBtn.addEventListener('click', toggleReady);
+            elements.leaveRoomBtn.addEventListener('click', leaveRoom);
+
+            // 游戏结束按钮
+            elements.playAgainBtn.addEventListener('click', playAgain);
+            elements.backToMenuBtn.addEventListener('click', backToMenu);
+
+            // 游戏控制
+            setupGameControls();
+        }
+
+        // 游戏控制设置
+        function setupGameControls() {
+            // 鼠标控制
+            gameCanvas.addEventListener('mousemove', (e) => {
+                if (!gameRunning || !gameState) return;
+                
+                const rect = gameCanvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                if (offlineMode) {
+                    // 离线模式直接更新玩家位置
+                    const myPlayer = localGameState.players.find(p => p.id === myPlayerId);
+                    if (myPlayer && myPlayer.alive) {
+                        myPlayer.position.x = Math.max(20, Math.min(gameCanvas.width - 20, x));
+                        myPlayer.position.y = Math.max(50, Math.min(gameCanvas.height - 50, y));
+                    }
+                } else {
+                    // 在线模式发送玩家移动
+                    socket.emit('shooter_player_move', {
+                        roomId: currentRoom.id,
+                        position: { x, y }
+                    });
+                }
+            });
+
+            // 触摸控制
+            gameCanvas.addEventListener('touchmove', (e) => {
+                if (!gameRunning || !gameState) return;
+                e.preventDefault();
+                
+                const touch = e.touches[0];
+                const rect = gameCanvas.getBoundingClientRect();
+                const x = touch.clientX - rect.left;
+                const y = touch.clientY - rect.top;
+                
+                if (offlineMode) {
+                    // 离线模式直接更新玩家位置
+                    const myPlayer = localGameState.players.find(p => p.id === myPlayerId);
+                    if (myPlayer && myPlayer.alive) {
+                        myPlayer.position.x = Math.max(20, Math.min(gameCanvas.width - 20, x));
+                        myPlayer.position.y = Math.max(50, Math.min(gameCanvas.height - 50, y));
+                    }
+                } else {
+                    socket.emit('shooter_player_move', {
+                        roomId: currentRoom.id,
+                        position: { x, y }
+                    });
+                }
+            }, { passive: false });
+
+            // 键盘控制
+            document.addEventListener('keydown', (e) => {
+                if (!gameRunning) return;
+                
+                if (e.code === 'Escape') {
+                    leaveRoom();
+                }
+            });
+        }
+
+        // 更新连接状态
+        function updateConnectionStatus(connected) {
+            const status = elements.connectionStatus;
+            if (offlineMode) {
+                status.className = 'connection-status connected';
+                status.innerHTML = '<i class="fas fa-gamepad"></i> 离线模式';
+                status.style.background = 'rgba(255, 165, 0, 0.2)';
+                status.style.borderColor = '#ffa500';
+                status.style.color = '#ffa500';
+            } else if (connected) {
+                status.className = 'connection-status connected';
+                status.innerHTML = '<i class="fas fa-wifi"></i> 已连接';
+            } else {
+                status.className = 'connection-status disconnected';
+                status.innerHTML = '<i class="fas fa-wifi"></i> 连接断开';
+            }
+        }
+
+        // 启用离线模式
+        function enableOfflineMode() {
+            console.log('🔧 启用离线模式');
+            updateDebugInfo('启用离线模式');
+            offlineMode = true;
+            myPlayerId = 'player_' + Math.random().toString(36).substr(2, 9);
+            updateConnectionStatus(false);
+            
+            // 修改按钮文本
+            elements.joinRoomBtn.innerHTML = '<i class="fas fa-play"></i> 开始单人游戏';
+            elements.createRoomBtn.innerHTML = '<i class="fas fa-robot"></i> 挑战AI';
+            
+            console.log('🎮 离线模式已启用，玩家ID:', myPlayerId);
+            updateDebugInfo('离线模式已启用，可以开始游戏');
+        }
+
+        // 加入房间
+        function joinRoom() {
+            if (offlineMode) {
+                startOfflineGame(false); // 单人模式
+                return;
+            }
+            
+            if (!socket || !socket.connected) {
+                alert('请等待连接服务器...');
+                return;
+            }
+
+            socket.emit('join_shooter_room', {
+                gameType: 'shooter-multiplayer'
+            });
+        }
+
+        // 创建房间
+        function createRoom() {
+            if (offlineMode) {
+                startOfflineGame(true); // 挑战AI模式
+                return;
+            }
+            
+            if (!socket || !socket.connected) {
+                alert('请等待连接服务器...');
+                return;
+            }
+
+            socket.emit('create_shooter_room', {
+                gameType: 'shooter-multiplayer',
+                settings: {
+                    maxPlayers: 4,
+                    gameDuration: 60,
+                    difficulty: 'normal'
+                }
+            });
+        }
+
+        // 切换准备状态
+        function toggleReady() {
+            if (!currentRoom) return;
+            
+            const player = currentRoom.players.find(p => p.id === myPlayerId);
+            const newReadyState = !player.ready;
+            
+            socket.emit('shooter_toggle_ready', {
+                roomId: currentRoom.id,
+                ready: newReadyState
+            });
+        }
+
+        // 离开房间
+        function leaveRoom() {
+            if (currentRoom) {
+                socket.emit('leave_shooter_room', {
+                    roomId: currentRoom.id
+                });
+            }
+            
+            // 重置状态
+            currentRoom = null;
+            gameRunning = false;
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+            
+            showScreen('mainScreen');
+        }
+
+        // 再来一局
+        function playAgain() {
+            if (currentRoom) {
+                socket.emit('toggle_ready', {
+                    roomId: currentRoom.id,
+                    ready: true
+                });
+                showScreen('roomScreen');
+            }
+        }
+
+        // 返回菜单
+        function backToMenu() {
+            leaveRoom();
+        }
+
+        // 显示指定屏幕
+        function showScreen(screenName) {
+            // 隐藏所有屏幕
+            Object.keys(elements).forEach(key => {
+                if (key.endsWith('Screen')) {
+                    elements[key].classList.add('hidden');
+                }
+            });
+            
+            // 隐藏游戏相关元素
+            elements.gameCanvas.classList.add('hidden');
+            elements.gameUI.classList.add('hidden');
+            elements.topScoreBar.classList.add('hidden');
+            
+            // 显示指定屏幕
+            if (elements[screenName]) {
+                elements[screenName].classList.remove('hidden');
+            }
+        }
+
+        // Socket事件处理函数
+        function handleRoomJoined(data) {
+            console.log('🏠 加入房间成功:', data);
+            currentRoom = data.room;
+            updateRoomDisplay();
+            showScreen('roomScreen');
+        }
+
+        function handleRoomUpdated(data) {
+            console.log('🔄 房间更新:', data);
+            currentRoom = data.room;
+            updateRoomDisplay();
+        }
+
+        function handlePlayerJoined(data) {
+            console.log('👤 玩家加入:', data);
+            currentRoom = data.room;
+            updateRoomDisplay();
+        }
+
+        function handlePlayerLeft(data) {
+            console.log('👋 玩家离开:', data);
+            currentRoom = data.room;
+            updateRoomDisplay();
+        }
+
+        function handlePlayerReadyChanged(data) {
+            console.log('✅ 玩家准备状态变更:', data);
+            currentRoom = data.room;
+            updateRoomDisplay();
+        }
+
+        function handleGameCountdown(data) {
+            console.log('⏰ 游戏倒计时:', data);
+            showScreen('countdownScreen');
+            elements.countdownNumber.textContent = data.count;
+            
+            if (data.count === 0) {
+                elements.countdownNumber.textContent = 'GO!';
+            }
+        }
+
+        function handleGameStarted(data) {
+            console.log('🎮 游戏开始:', data);
+            console.log('🎮 初始游戏状态:', data.gameState);
+            gameState = data.gameState;
+            
+            // 确保游戏状态有效
+            if (!gameState || !gameState.players) {
+                console.error('❌ 游戏状态无效:', gameState);
+                return;
+            }
+            
+            console.log('🎮 玩家列表:', gameState.players.map(p => `${p.username}(${p.position.x},${p.position.y})`));
+            startGame();
+        }
+
+        function handleGameStateUpdate(data) {
+            if (gameRunning) {
+                gameState = data;
+                console.log('🎮 游戏状态更新:', data);
+                console.log('🎮 玩家数据:', data.players);
+                console.log('🎮 子弹数据:', data.bullets);
+                console.log('🎮 敌机数据:', data.enemies);
+                updateGameUI();
+            }
+        }
+
+        function handleGameFinished(data) {
+            console.log('🏁 游戏结束:', data);
+            gameRunning = false;
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+            
+            showGameResults(data);
+        }
+
+        // 更新房间显示
+        function updateRoomDisplay() {
+            if (!currentRoom) return;
+            
+            elements.roomId.textContent = currentRoom.id.substring(0, 8);
+            elements.playerCount.textContent = currentRoom.players.length;
+            
+            // 更新玩家列表
+            const playersList = elements.playersList;
+            playersList.innerHTML = '';
+            
+            // 创建4个玩家位置
+            for (let i = 0; i < 4; i++) {
+                const playerCard = document.createElement('div');
+                playerCard.className = 'player-card';
+                
+                if (i < currentRoom.players.length) {
+                    const player = currentRoom.players[i];
+                    const botIcon = player.isBot ? ' 🤖' : '';
+                    playerCard.innerHTML = `
+                        <div style="display: flex; align-items: center; justify-content: center;">
+                            <div class="player-indicator" style="background-color: ${PLAYER_COLORS[i]}"></div>
+                            <span>${player.username}${botIcon}</span>
+                        </div>
+                        <div style="font-size: 0.8rem; margin-top: 5px;">
+                            ${player.ready ? '✅ 已准备' : '⏳ 未准备'}
+                        </div>
+                    `;
+                    
+                    if (player.ready) {
+                        playerCard.classList.add('ready');
+                    }
+                    
+                    if (player.id === myPlayerId) {
+                        playerCard.classList.add('self');
+                    }
+                } else {
+                    playerCard.innerHTML = `
+                        <div style="color: #666;">
+                            <i class="fas fa-user-plus"></i>
+                            <div>等待玩家加入</div>
+                        </div>
+                    `;
+                }
+                
+                playersList.appendChild(playerCard);
+            }
+            
+            // 更新准备按钮
+            const myPlayer = currentRoom.players.find(p => p.id === myPlayerId);
+            if (myPlayer) {
+                elements.readyBtn.innerHTML = myPlayer.ready 
+                    ? '<i class="fas fa-times"></i> 取消准备' 
+                    : '<i class="fas fa-check"></i> 准备';
+            }
+            
+            // 检查是否所有玩家都准备好了
+            const allReady = currentRoom.players.length >= 2 && 
+                           currentRoom.players.every(p => p.ready);
+            
+            elements.waitingMessage.style.display = allReady ? 'none' : 'block';
+        }
+
+        // 开始游戏
+        function startGame() {
+            gameRunning = true;
+            showScreen('');
+            elements.gameCanvas.classList.remove('hidden');
+            elements.gameUI.classList.remove('hidden');
+            elements.topScoreBar.classList.remove('hidden');
+            
+            // 初始化游戏状态
+            initializeGameState();
+            
+            // 如果没有游戏状态，创建测试状态
+            if (!gameState) {
+                gameState = {
+                    players: [
+                        {
+                            id: 'test_player',
+                            username: '测试玩家',
+                            position: { x: 400, y: 500 },
+                            health: 100,
+                            score: 0,
+                            alive: true,
+                            color: '#ff4444'
+                        }
+                    ],
+                    bullets: [],
+                    enemies: [],
+                    particles: [],
+                    timeLeft: 60
+                };
+                console.log('🎮 创建测试游戏状态');
+            }
+            
+            console.log('🚀 游戏开始，当前游戏状态:', gameState);
+            
+            // 开始游戏循环
+            gameLoop();
+        }
+
+        // 初始化游戏状态
+        function initializeGameState() {
+            // 游戏状态将通过WebSocket同步
+            updateGameUI();
+        }
+
+        // 游戏主循环
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            // 离线模式更新游戏状态
+            if (offlineMode) {
+                updateOfflineGameState();
+            }
+            
+            // 清空画布
+            ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+            
+            // 绘制游戏元素
+            if (gameState) {
+                drawBackground();
+                drawPlayers();
+                drawBullets();
+                drawEnemies();
+                drawPowerups();
+                drawParticles();
+                
+                // 自动射击
+                autoShoot();
+            } else {
+                // 如果没有游戏状态，绘制调试信息
+                ctx.fillStyle = 'white';
+                ctx.font = '20px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('等待游戏状态...', gameCanvas.width/2, gameCanvas.height/2);
+                console.log('⚠️ 游戏循环中没有游戏状态');
+            }
+            
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        // 自动射击
+        let lastShootTime = 0;
+        function autoShoot() {
+            const now = Date.now();
+            if (now - lastShootTime > 200) { // 每200ms射击一次
+                lastShootTime = now;
+                
+                if (offlineMode) {
+                    // 离线模式直接添加子弹
+                    const myPlayer = localGameState.players.find(p => p.id === myPlayerId);
+                    if (myPlayer && myPlayer.alive) {
+                        localGameState.bullets.push({
+                            x: myPlayer.position.x,
+                            y: myPlayer.position.y - 20,
+                            speedY: -8,
+                            size: 3,
+                            color: myPlayer.color || '#00ffff',
+                            playerId: myPlayer.id
+                        });
+                    }
+                } else {
+                    socket.emit('shooter_player_shoot', {
+                        roomId: currentRoom.id
+                    });
+                }
+            }
+        }
+
+        // 绘制背景
+        function drawBackground() {
+            const gradient = ctx.createLinearGradient(0, 0, 0, gameCanvas.height);
+            gradient.addColorStop(0, '#001122');
+            gradient.addColorStop(1, '#003366');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
+            
+            // 绘制星星背景
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            for (let i = 0; i < 50; i++) {
+                const x = (i * 37) % gameCanvas.width;
+                const y = (i * 73) % gameCanvas.height;
+                ctx.fillRect(x, y, 1, 1);
+            }
+        }
+
+        // 绘制玩家
+        function drawPlayers() {
+            if (!gameState || !gameState.players) {
+                console.log('⚠️ 没有玩家数据:', gameState);
+                return;
+            }
+            
+            console.log('🎨 绘制玩家:', gameState.players.length, '个玩家', gameState.players.map(p => p.username));
+            gameState.players.forEach((player, index) => {
+                if (!player.alive || !player.position) {
+                    console.log('⚠️ 玩家数据不完整:', player);
+                    return;
+                }
+                
+                const color = player.color || PLAYER_COLORS[index] || '#ffffff';
+                
+                console.log(`绘制玩家 ${player.username} 在位置 (${player.position.x}, ${player.position.y})`);
+                
+                // 绘制玩家飞机
+                ctx.save();
+                ctx.translate(player.position.x, player.position.y);
+                
+                // 飞机主体 - 更大更明显
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.moveTo(0, -25);
+                ctx.lineTo(-20, 20);
+                ctx.lineTo(-8, 15);
+                ctx.lineTo(0, 20);
+                ctx.lineTo(8, 15);
+                ctx.lineTo(20, 20);
+                ctx.closePath();
+                ctx.fill();
+                
+                // 飞机边框
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // AI机器人标识
+                if (player.isBot) {
+                    ctx.fillStyle = '#ffff00';
+                    ctx.font = 'bold 12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('🤖', 0, -40);
+                }
+                
+                // 玩家名称
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 2;
+                ctx.strokeText(player.username, 0, -30);
+                ctx.fillText(player.username, 0, -30);
+                
+                // 生命值条
+                const barWidth = 40;
+                const barHeight = 6;
+                const healthPercent = player.health / 100;
+                
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(-barWidth/2, 25, barWidth, barHeight);
+                
+                ctx.fillStyle = healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000';
+                ctx.fillRect(-barWidth/2, 25, barWidth * healthPercent, barHeight);
+                
+                ctx.restore();
+            });
+        }
+
+        // 绘制子弹
+        function drawBullets() {
+            if (!gameState || !gameState.bullets) return;
+            
+            console.log('🔫 绘制子弹:', gameState.bullets.length, '发');
+            gameState.bullets.forEach(bullet => {
+                ctx.fillStyle = bullet.color || '#00ffff';
+                ctx.shadowColor = bullet.color || '#00ffff';
+                ctx.shadowBlur = 5;
+                ctx.beginPath();
+                ctx.arc(bullet.x, bullet.y, bullet.size || 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            });
+        }
+
+        // 绘制敌机
+        function drawEnemies() {
+            if (!gameState || !gameState.enemies) return;
+            
+            console.log('👾 绘制敌机:', gameState.enemies.length, '个');
+            gameState.enemies.forEach(enemy => {
+                const isBoss = enemy.type === 'boss';
+                ctx.fillStyle = isBoss ? '#ff0000' : '#ff4444';
+                ctx.save();
+                ctx.translate(enemy.x, enemy.y);
+                
+                const size = isBoss ? (enemy.size || 40) : 20;
+                
+                // 敌机形状 - Boss更大
+                ctx.beginPath();
+                ctx.moveTo(0, size * 0.5);
+                ctx.lineTo(-size * 0.75, -size * 0.75);
+                ctx.lineTo(0, -size * 0.4);
+                ctx.lineTo(size * 0.75, -size * 0.75);
+                ctx.closePath();
+                ctx.fill();
+                
+                // 敌机边框
+                ctx.strokeStyle = isBoss ? '#ffff00' : '#ffffff';
+                ctx.lineWidth = isBoss ? 3 : 1;
+                ctx.stroke();
+                
+                // Boss标识
+                if (isBoss) {
+                    ctx.fillStyle = '#ffff00';
+                    ctx.font = 'bold 10px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('BOSS', 0, -size);
+                }
+                
+                ctx.restore();
+            });
+        }
+
+        // 绘制宝箱道具
+        function drawPowerups() {
+            if (!gameState || !gameState.powerups) return;
+            
+            gameState.powerups.forEach(powerup => {
+                ctx.save();
+                ctx.translate(powerup.x, powerup.y);
+                
+                // 宝箱背景
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.8)';
+                ctx.fillRect(-15, -15, 30, 30);
+                
+                // 宝箱边框
+                ctx.strokeStyle = '#ffff00';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-15, -15, 30, 30);
+                
+                // 根据类型显示不同图标
+                ctx.fillStyle = '#000000';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                
+                const icons = {
+                    health: '💚',
+                    score: '💰',
+                    speed: '⚡',
+                    weapon: '🔫'
+                };
+                
+                ctx.fillText(icons[powerup.type] || '🎁', 0, 5);
+                
+                ctx.restore();
+            });
+        }
+
+        // 绘制粒子效果
+        function drawParticles() {
+            if (!gameState || !gameState.particles) return;
+            
+            gameState.particles.forEach(particle => {
+                ctx.save();
+                ctx.globalAlpha = particle.alpha || 1;
+                ctx.fillStyle = particle.color || '#ffffff';
+                ctx.beginPath();
+                ctx.arc(particle.x, particle.y, particle.size || 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+
+        // 更新游戏UI
+        function updateGameUI() {
+            if (!gameState) return;
+            
+            // 更新计时器
+            const timeLeft = Math.max(0, Math.ceil(gameState.timeLeft || 0));
+            elements.gameTimer.textContent = timeLeft;
+            elements.gameTimerTop.textContent = timeLeft;
+            
+            if (timeLeft <= 10) {
+                elements.gameTimer.classList.add('warning');
+                elements.gameTimerTop.classList.add('warning');
+            } else {
+                elements.gameTimer.classList.remove('warning');
+                elements.gameTimerTop.classList.remove('warning');
+            }
+            
+            // 更新我的分数和生命值
+            const myPlayer = gameState.players?.find(p => p.id === myPlayerId);
+            if (myPlayer) {
+                elements.myScore.textContent = myPlayer.score || 0;
+                elements.myHealth.textContent = myPlayer.health || 100;
+            }
+            
+            // 更新排行榜
+            updateScoreboard();
+            updateCompetitiveScoreboard();
+        }
+
+        // 更新排行榜
+        function updateScoreboard() {
+            if (!gameState || !gameState.players) return;
+            
+            const sortedPlayers = [...gameState.players].sort((a, b) => (b.score || 0) - (a.score || 0));
+            
+            elements.scoreboard.innerHTML = '';
+            
+            sortedPlayers.forEach((player, index) => {
+                const playerScore = document.createElement('div');
+                playerScore.className = 'player-score';
+                
+                if (index === 0 && sortedPlayers.length > 1) {
+                    playerScore.classList.add('leader');
+                }
+                
+                const playerColor = player.color || PLAYER_COLORS[index] || '#ffffff';
+                const botIcon = player.isBot ? ' 🤖' : '';
+                
+                playerScore.innerHTML = `
+                    <div style="display: flex; align-items: center;">
+                        <div class="player-indicator" style="background-color: ${playerColor}"></div>
+                        <span>${player.username}${botIcon}</span>
+                    </div>
+                    <span style="font-weight: bold;">${player.score || 0}</span>
+                `;
+                
+                elements.scoreboard.appendChild(playerScore);
+            });
+        }
+
+        // 更新竞技分数板（顶部）
+        function updateCompetitiveScoreboard() {
+            if (!gameState || !gameState.players) return;
+            
+            const sortedPlayers = [...gameState.players].sort((a, b) => (b.score || 0) - (a.score || 0));
+            
+            elements.competitiveScoreboard.innerHTML = '';
+            
+            // 只显示前4名
+            sortedPlayers.slice(0, 4).forEach((player, index) => {
+                const playerScoreTop = document.createElement('div');
+                playerScoreTop.className = 'player-score-top';
+                
+                if (index === 0 && sortedPlayers.length > 1 && player.score > 0) {
+                    playerScoreTop.classList.add('leader');
+                }
+                
+                const playerColor = player.color || PLAYER_COLORS[index] || '#ffffff';
+                
+                playerScoreTop.innerHTML = `
+                    <div class="player-indicator-top" style="background-color: ${playerColor}"></div>
+                    <span class="player-name-top ${player.isBot ? 'bot' : ''}">${player.username}</span>
+                    <span class="score-value-top">${player.score || 0}</span>
+                `;
+                
+                elements.competitiveScoreboard.appendChild(playerScoreTop);
+            });
+        }
+
+        // 显示游戏结果
+        function showGameResults(data) {
+            elements.finalRanking.innerHTML = '';
+            
+            data.finalRanking.forEach((player, index) => {
+                const rankItem = document.createElement('div');
+                rankItem.className = 'player-score';
+                
+                if (index === 0) {
+                    rankItem.classList.add('leader');
+                }
+                
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
+                const playerColor = player.color || PLAYER_COLORS[index] || '#ffffff';
+                const botIcon = player.isBot ? ' 🤖' : '';
+                
+                rankItem.innerHTML = `
+                    <div style="display: flex; align-items: center;">
+                        <span style="margin-right: 10px; font-size: 1.2rem;">${medal}</span>
+                        <div class="player-indicator" style="background-color: ${playerColor}"></div>
+                        <span>${player.username}${botIcon}</span>
+                    </div>
+                    <span style="font-weight: bold;">${player.score}</span>
+                `;
+                
+                elements.finalRanking.appendChild(rankItem);
+            });
+            
+            showScreen('gameOverScreen');
+        }
+
+        // 离线游戏功能
+        function startOfflineGame(withAI) {
+            console.log('🎮 开始离线游戏，AI模式:', withAI);
+            
+            // 创建离线房间
+            currentRoom = {
+                id: 'offline_room',
+                players: [
+                    {
+                        id: myPlayerId,
+                        username: '你',
+                        ready: true,
+                        color: PLAYER_COLORS[0]
+                    }
+                ]
+            };
+            
+            if (withAI) {
+                // 添加AI玩家
+                for (let i = 1; i <= 3; i++) {
+                    currentRoom.players.push({
+                        id: 'ai_' + i,
+                        username: 'AI机器人' + i,
+                        ready: true,
+                        isBot: true,
+                        color: PLAYER_COLORS[i]
+                    });
+                }
+            }
+            
+            // 显示房间界面
+            updateRoomDisplay();
+            showScreen('roomScreen');
+            
+            // 自动开始游戏倒计时
+            setTimeout(() => {
+                startOfflineGameCountdown();
+            }, 1000);
+        }
+
+        function startOfflineGameCountdown() {
+            let count = 3;
+            showScreen('countdownScreen');
+            
+            const countdown = setInterval(() => {
+                elements.countdownNumber.textContent = count > 0 ? count : 'GO!';
+                
+                if (count <= 0) {
+                    clearInterval(countdown);
+                    setTimeout(() => {
+                        initializeOfflineGameState();
+                        startGame();
+                    }, 500);
+                }
+                count--;
+            }, 1000);
+        }
+
+        function initializeOfflineGameState() {
+            console.log('🎮 初始化离线游戏状态');
+            
+            // 初始化玩家位置
+            const players = currentRoom.players.map((player, index) => ({
+                ...player,
+                position: { 
+                    x: 100 + index * 150, 
+                    y: gameCanvas.height - 50 
+                },
+                health: 100,
+                score: 0,
+                alive: true,
+                lastShot: 0
+            }));
+            
+            localGameState = {
+                players: players,
+                bullets: [],
+                enemies: [],
+                particles: [],
+                timeLeft: 60,
+                gameStartTime: Date.now()
+            };
+            
+            // 开始生成敌机
+            startEnemySpawning();
+        }
+
+        let enemySpawnInterval;
+        function startEnemySpawning() {
+            enemySpawnInterval = setInterval(() => {
+                if (!gameRunning || !localGameState) return;
+                
+                // 随机生成敌机
+                const enemy = {
+                    id: 'enemy_' + Date.now(),
+                    x: Math.random() * (gameCanvas.width - 40) + 20,
+                    y: -30,
+                    speed: 2 + Math.random() * 3,
+                    health: 20,
+                    lastShot: 0
+                };
+                
+                localGameState.enemies.push(enemy);
+            }, 2000 + Math.random() * 3000);
+        }
+
+        function updateOfflineGameState() {
+            if (!localGameState || !gameRunning) return;
+            
+            const now = Date.now();
+            const deltaTime = 16; // 约60FPS
+            
+            // 更新计时器
+            localGameState.timeLeft = Math.max(0, 60 - (now - localGameState.gameStartTime) / 1000);
+            
+            if (localGameState.timeLeft <= 0) {
+                endOfflineGame();
+                return;
+            }
+            
+            // 更新子弹
+            localGameState.bullets = localGameState.bullets.filter(bullet => {
+                bullet.y += bullet.speedY;
+                bullet.x += bullet.speedX || 0;
+                
+                return bullet.y > -10 && bullet.y < gameCanvas.height + 10 && 
+                       bullet.x > -10 && bullet.x < gameCanvas.width + 10;
+            });
+            
+            // 更新敌机
+            localGameState.enemies = localGameState.enemies.filter(enemy => {
+                enemy.y += enemy.speed;
+                
+                // 敌机AI射击
+                if (now - enemy.lastShot > 1500 && enemy.y > 50) {
+                    enemy.lastShot = now;
+                    localGameState.bullets.push({
+                        x: enemy.x,
+                        y: enemy.y + 15,
+                        speedY: 5,
+                        size: 4,
+                        color: '#ff4444',
+                        enemy: true
+                    });
+                }
+                
+                return enemy.y < gameCanvas.height + 50 && enemy.health > 0;
+            });
+            
+            // 更新AI玩家
+            localGameState.players.forEach(player => {
+                if (player.isBot && player.alive) {
+                    updateAIPlayer(player, now);
+                }
+            });
+            
+            // 碰撞检测
+            checkCollisions();
+            
+            // 更新粒子
+            localGameState.particles = localGameState.particles.filter(particle => {
+                particle.x += particle.speedX || 0;
+                particle.y += particle.speedY || 0;
+                particle.alpha -= 0.02;
+                particle.size *= 0.98;
+                return particle.alpha > 0 && particle.size > 0.5;
+            });
+            
+            gameState = localGameState; // 同步给渲染系统
+        }
+
+        function updateAIPlayer(player, now) {
+            // AI移动逻辑
+            if (!player.aiTarget || Math.random() < 0.01) {
+                player.aiTarget = {
+                    x: Math.random() * (gameCanvas.width - 100) + 50,
+                    y: gameCanvas.height - 100 - Math.random() * 100
+                };
+            }
+            
+            // 向目标移动
+            const dx = player.aiTarget.x - player.position.x;
+            const dy = player.aiTarget.y - player.position.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > 5) {
+                player.position.x += (dx / distance) * 2;
+                player.position.y += (dy / distance) * 2;
+            }
+            
+            // AI射击
+            if (now - player.lastShot > 250) {
+                player.lastShot = now;
+                localGameState.bullets.push({
+                    x: player.position.x,
+                    y: player.position.y - 20,
+                    speedY: -8,
+                    size: 3,
+                    color: player.color || '#00ffff',
+                    playerId: player.id
+                });
+            }
+        }
+
+        function checkCollisions() {
+            // 子弹打击敌机
+            localGameState.bullets.forEach((bullet, bulletIndex) => {
+                if (bullet.enemy) return; // 敌机子弹不打击敌机
+                
+                localGameState.enemies.forEach((enemy, enemyIndex) => {
+                    const dx = bullet.x - enemy.x;
+                    const dy = bullet.y - enemy.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 20) {
+                        // 命中
+                        enemy.health -= 10;
+                        localGameState.bullets.splice(bulletIndex, 1);
+                        
+                        // 创建爆炸粒子
+                        createExplosion(enemy.x, enemy.y, '#ffaa00');
+                        
+                        if (enemy.health <= 0) {
+                            // 敌机被摧毁，给射击的玩家加分
+                            const shooter = localGameState.players.find(p => p.id === bullet.playerId);
+                            if (shooter) {
+                                shooter.score += 10;
+                            }
+                            localGameState.enemies.splice(enemyIndex, 1);
+                            createExplosion(enemy.x, enemy.y, '#ff0000');
+                        }
+                    }
+                });
+            });
+            
+            // 敌机子弹打击玩家
+            localGameState.bullets.forEach((bullet, bulletIndex) => {
+                if (!bullet.enemy) return; // 玩家子弹不打击玩家
+                
+                localGameState.players.forEach(player => {
+                    if (!player.alive) return;
+                    
+                    const dx = bullet.x - player.position.x;
+                    const dy = bullet.y - player.position.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 25) {
+                        // 命中玩家
+                        player.health -= 20;
+                        localGameState.bullets.splice(bulletIndex, 1);
+                        
+                        createExplosion(player.position.x, player.position.y, '#ff6666');
+                        
+                        if (player.health <= 0) {
+                            player.alive = false;
+                            player.health = 0;
+                        }
+                    }
+                });
+            });
+        }
+
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 8; i++) {
+                localGameState.particles.push({
+                    x: x,
+                    y: y,
+                    speedX: (Math.random() - 0.5) * 8,
+                    speedY: (Math.random() - 0.5) * 8,
+                    size: 3 + Math.random() * 4,
+                    color: color,
+                    alpha: 1
+                });
+            }
+        }
+
+        function endOfflineGame() {
+            gameRunning = false;
+            clearInterval(enemySpawnInterval);
+            
+            // 计算最终排名
+            const finalRanking = [...localGameState.players]
+                .sort((a, b) => b.score - a.score);
+            
+            showGameResults({ finalRanking });
+        }
+
+        // 错误处理
+        window.addEventListener('error', (e) => {
+            console.error('🚨 JavaScript错误:', e.error);
+        });
+
+        // 页面卸载时清理
+        window.addEventListener('beforeunload', () => {
+            if (socket) {
+                socket.disconnect();
+            }
+        });
+    </script>
+</body>
+</html>

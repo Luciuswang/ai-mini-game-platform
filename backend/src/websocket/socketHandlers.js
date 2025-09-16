@@ -9,6 +9,9 @@ const leaderboardSubscribers = new Set()
 const snakeRooms = new Map()
 const waitingPlayers = new Map()
 
+// 射击游戏房间管理
+const shooterRooms = new Map()
+
 // 实时排行榜数据
 let realtimeLeaderboard = []
 
@@ -367,6 +370,200 @@ module.exports = (io) => {
         removePlayerFromSnakeRoom(user, socket, io)
       } catch (error) {
         console.error('离开房间错误:', error)
+      }
+    })
+
+    // 射击游戏事件
+    socket.on('join_shooter_room', (data) => {
+      try {
+        const user = onlineUsers.get(socket.id)
+        if (!user) return
+
+        // 寻找可用房间或创建新房间
+        let room = findAvailableShooterRoom(data.gameType)
+        if (!room) {
+          room = createShooterRoom(data.gameType)
+        }
+
+        // 将玩家加入房间
+        const player = {
+          id: user.id,
+          username: user.username,
+          socketId: socket.id,
+          ready: false,
+          score: 0,
+          health: 100,
+          position: { x: 100 + room.players.length * 150, y: 500 },
+          alive: true,
+          color: getPlayerColor(room.players.length)
+        }
+
+        room.players.push(player)
+        user.currentRoom = room.id
+        socket.join(`shooter_room_${room.id}`)
+
+        // 发送房间信息
+        socket.emit('room_joined', {
+          room: formatShooterRoomData(room),
+          player: player
+        })
+
+        // 通知房间其他玩家
+        socket.to(`shooter_room_${room.id}`).emit('player_joined', {
+          player: player,
+          room: formatShooterRoomData(room)
+        })
+
+        console.log(`🛩️ 玩家 ${user.username} 加入射击房间 ${room.id}`)
+      } catch (error) {
+        console.error('加入射击房间错误:', error)
+        socket.emit('error', { message: '加入房间失败' })
+      }
+    })
+
+    socket.on('create_shooter_room', (data) => {
+      try {
+        const user = onlineUsers.get(socket.id)
+        if (!user) return
+
+        const room = createShooterRoom(data.gameType, data.settings)
+        
+        // 创建者自动加入房间
+        const player = {
+          id: user.id,
+          username: user.username,
+          socketId: socket.id,
+          ready: false,
+          score: 0,
+          health: 100,
+          position: { x: 100, y: 500 },
+          alive: true,
+          color: getPlayerColor(0)
+        }
+
+        room.players.push(player)
+        user.currentRoom = room.id
+        socket.join(`shooter_room_${room.id}`)
+
+        socket.emit('room_joined', {
+          room: formatShooterRoomData(room),
+          player: player
+        })
+
+        console.log(`🛩️ 玩家 ${user.username} 创建射击房间 ${room.id}`)
+      } catch (error) {
+        console.error('创建射击房间错误:', error)
+        socket.emit('error', { message: '创建房间失败' })
+      }
+    })
+
+    socket.on('shooter_toggle_ready', (data) => {
+      try {
+        const user = onlineUsers.get(socket.id)
+        if (!user || !user.currentRoom) return
+
+        const room = shooterRooms.get(user.currentRoom)
+        if (!room || room.status !== 'waiting') return
+
+        const player = room.players.find(p => p.id === user.id)
+        if (!player) return
+
+        player.ready = data.ready
+
+        // 通知房间所有玩家
+        io.to(`shooter_room_${room.id}`).emit('player_ready_changed', {
+          playerId: player.id,
+          ready: player.ready,
+          room: formatShooterRoomData(room)
+        })
+
+        // 检查是否所有玩家都准备好了
+        const allReady = room.players.every(p => p.ready)
+        const minPlayers = 1 // 改为1人即可开始（会自动添加AI）
+        
+        if (allReady && room.players.length >= minPlayers) {
+          // 如果只有一个玩家且启用了AI，添加AI机器人
+          if (room.players.length === 1 && room.settings.enableBots) {
+            addAIBots(room)
+          }
+          startShooterGame(room, io)
+        }
+
+        console.log(`🛩️ 玩家 ${user.username} ${data.ready ? '准备' : '取消准备'}`)
+      } catch (error) {
+        console.error('切换准备状态错误:', error)
+      }
+    })
+
+    socket.on('shooter_player_move', (data) => {
+      try {
+        const user = onlineUsers.get(socket.id)
+        if (!user || !user.currentRoom) return
+
+        const room = shooterRooms.get(user.currentRoom)
+        if (!room || room.status !== 'playing') return
+
+        const player = room.players.find(p => p.id === user.id)
+        if (!player || !player.alive) return
+
+        // 更新玩家位置
+        player.position = data.position
+        player.lastMoveTime = Date.now()
+
+        // 广播玩家移动
+        socket.to(`shooter_room_${room.id}`).emit('player_moved', {
+          playerId: player.id,
+          position: player.position
+        })
+      } catch (error) {
+        console.error('玩家移动错误:', error)
+      }
+    })
+
+    socket.on('shooter_player_shoot', (data) => {
+      try {
+        const user = onlineUsers.get(socket.id)
+        if (!user || !user.currentRoom) return
+
+        const room = shooterRooms.get(user.currentRoom)
+        if (!room || room.status !== 'playing') return
+
+        const player = room.players.find(p => p.id === user.id)
+        if (!player || !player.alive) return
+
+        // 创建子弹
+        const bullet = {
+          id: uuidv4(),
+          playerId: player.id,
+          x: player.position.x,
+          y: player.position.y - 20,
+          vx: 0,
+          vy: -8,
+          color: player.color,
+          size: 3,
+          createdAt: Date.now()
+        }
+
+        room.gameState.bullets.push(bullet)
+
+        // 广播射击事件
+        io.to(`shooter_room_${room.id}`).emit('player_shot', {
+          playerId: player.id,
+          bullet: bullet
+        })
+      } catch (error) {
+        console.error('玩家射击错误:', error)
+      }
+    })
+
+    socket.on('leave_shooter_room', () => {
+      try {
+        const user = onlineUsers.get(socket.id)
+        if (!user || !user.currentRoom) return
+
+        removePlayerFromShooterRoom(user, socket, io)
+      } catch (error) {
+        console.error('离开射击房间错误:', error)
       }
     })
 
@@ -799,6 +996,562 @@ module.exports = (io) => {
     return true
   }
 
+  // 射击游戏辅助函数
+  function findAvailableShooterRoom(gameType) {
+    for (const room of shooterRooms.values()) {
+      if (room.gameType === gameType && 
+          room.status === 'waiting' && 
+          room.players.length < 4) {
+        return room
+      }
+    }
+    return null
+  }
+
+  function createShooterRoom(gameType, settings = {}) {
+    const room = {
+      id: uuidv4(),
+      gameType: gameType,
+      status: 'waiting', // waiting, countdown, playing, finished
+      players: [],
+      bots: [], // AI机器人数组
+      gameState: {
+        enemies: [],
+        bullets: [],
+        particles: [],
+        powerups: [],
+        timeLeft: settings.gameDuration || 60,
+        gameSpeed: 1.0
+      },
+      settings: {
+        maxPlayers: settings.maxPlayers || 4,
+        gameDuration: settings.gameDuration || 60,
+        difficulty: settings.difficulty || 'normal',
+        enableBots: settings.enableBots !== false // 默认启用AI机器人
+      },
+      createdAt: Date.now(),
+      gameStartTime: null,
+      gameLoop: null,
+      botUpdateInterval: null
+    }
+
+    shooterRooms.set(room.id, room)
+    console.log(`🛩️ 创建新的射击房间: ${room.id} (类型: ${gameType})`)
+    return room
+  }
+
+  function formatShooterRoomData(room) {
+    // 合并真实玩家和AI机器人
+    const allPlayers = [
+      ...room.players.map(p => ({
+        id: p.id,
+        username: p.username,
+        ready: p.ready,
+        score: p.score,
+        health: p.health,
+        alive: p.alive,
+        color: p.color,
+        isBot: false
+      })),
+      ...room.bots.map(bot => ({
+        id: bot.id,
+        username: bot.username,
+        ready: true, // AI总是准备好的
+        score: bot.score,
+        health: bot.health,
+        alive: bot.alive,
+        color: bot.color,
+        isBot: true
+      }))
+    ]
+
+    return {
+      id: room.id,
+      gameType: room.gameType,
+      status: room.status,
+      players: allPlayers,
+      settings: room.settings
+    }
+  }
+
+  function getPlayerColor(index) {
+    const colors = ['#ff4444', '#44ff44', '#4444ff', '#ffff44']
+    return colors[index] || '#ffffff'
+  }
+
+  function removePlayerFromShooterRoom(user, socket, io) {
+    const room = shooterRooms.get(user.currentRoom)
+    if (!room) return
+
+    const playerIndex = room.players.findIndex(p => p.id === user.id)
+    if (playerIndex === -1) return
+
+    const player = room.players[playerIndex]
+    room.players.splice(playerIndex, 1)
+    user.currentRoom = null
+    socket.leave(`shooter_room_${room.id}`)
+
+    // 通知房间其他玩家
+    socket.to(`shooter_room_${room.id}`).emit('player_left', {
+      player: player,
+      room: formatShooterRoomData(room)
+    })
+
+    // 如果房间为空，删除房间
+    if (room.players.length === 0) {
+      if (room.gameLoop) {
+        clearInterval(room.gameLoop)
+      }
+      shooterRooms.delete(room.id)
+      console.log(`🛩️ 删除空的射击房间: ${room.id}`)
+    } else if (room.status === 'playing' && getAliveShooterPlayersCount(room) <= 1) {
+      // 如果游戏中只剩一个或没有玩家，结束游戏
+      endShooterGame(room, io)
+    }
+
+    console.log(`🛩️ 玩家 ${user.username} 离开射击房间 ${room.id}`)
+  }
+
+  function startShooterGame(room, io) {
+    room.status = 'countdown'
+    
+    // 倒计时
+    let countdown = 3
+    const countdownInterval = setInterval(() => {
+      io.to(`shooter_room_${room.id}`).emit('game_countdown', { count: countdown })
+      
+      if (countdown <= 0) {
+        clearInterval(countdownInterval)
+        
+        // 初始化游戏状态
+        initializeShooterGame(room)
+        
+        room.status = 'playing'
+        room.gameStartTime = Date.now()
+        
+        // 发送游戏开始事件
+        io.to(`shooter_room_${room.id}`).emit('game_started', {
+          gameState: {
+            players: room.players,
+            enemies: room.gameState.enemies,
+            bullets: room.gameState.bullets,
+            particles: room.gameState.particles,
+            timeLeft: room.gameState.timeLeft
+          }
+        })
+        
+        // 开始游戏循环
+        startShooterGameLoop(room, io)
+        
+        console.log(`🛩️ 射击游戏开始: 房间 ${room.id}, ${room.players.length} 玩家`)
+      }
+      
+      countdown--
+    }, 1000)
+  }
+
+  function initializeShooterGame(room) {
+    // 重置玩家状态
+    room.players.forEach((player, index) => {
+      player.score = 0
+      player.health = 100
+      player.alive = true
+      player.position = { x: 100 + index * 150, y: 500 }
+      player.lastMoveTime = Date.now()
+    })
+
+    // 重置AI机器人状态
+    room.bots.forEach((bot, index) => {
+      bot.score = 0
+      bot.health = 100
+      bot.alive = true
+      bot.position = { x: 100 + (room.players.length + index) * 150, y: 500 }
+      bot.targetX = bot.position.x
+      bot.targetY = bot.position.y
+      bot.lastMoveTime = Date.now()
+      bot.lastShootTime = Date.now()
+    })
+
+    // 重置游戏状态
+    room.gameState.enemies = []
+    room.gameState.bullets = []
+    room.gameState.particles = []
+    room.gameState.powerups = []
+    room.gameState.timeLeft = room.settings.gameDuration
+  }
+
+  function startShooterGameLoop(room, io) {
+    const GAME_SPEED = 50 // 游戏更新频率 (毫秒)
+    
+    room.gameLoop = setInterval(() => {
+      updateShooterGame(room, io)
+    }, GAME_SPEED)
+  }
+
+  function updateShooterGame(room, io) {
+    // 更新游戏时间
+    const now = Date.now()
+    const elapsed = (now - room.gameStartTime) / 1000
+    room.gameState.timeLeft = Math.max(0, room.settings.gameDuration - elapsed)
+
+    // 检查游戏结束条件
+    if (room.gameState.timeLeft <= 0) {
+      endShooterGame(room, io)
+      return
+    }
+
+    // 更新AI机器人
+    if (room.bots.length > 0) {
+      updateAIBots(room)
+    }
+
+    // 生成敌机
+    if (Math.random() < 0.02) { // 2% 概率生成敌机
+      generateEnemy(room)
+    }
+
+    // 更新子弹
+    updateBullets(room)
+
+    // 更新敌机
+    updateEnemies(room)
+
+    // 更新粒子效果
+    updateParticles(room)
+
+    // 碰撞检测
+    checkCollisions(room, io)
+
+    // 发送游戏状态更新
+    broadcastShooterGameState(room, io)
+  }
+
+  function generateEnemy(room) {
+    const enemy = {
+      id: uuidv4(),
+      x: Math.random() * 700 + 50,
+      y: -30,
+      vx: (Math.random() - 0.5) * 2,
+      vy: 1 + Math.random() * 2,
+      health: 1,
+      score: 10,
+      createdAt: Date.now()
+    }
+    
+    room.gameState.enemies.push(enemy)
+  }
+
+  function updateBullets(room) {
+    room.gameState.bullets = room.gameState.bullets.filter(bullet => {
+      bullet.x += bullet.vx
+      bullet.y += bullet.vy
+      
+      // 移除超出边界的子弹
+      return bullet.y > -10 && bullet.y < 610 && bullet.x > -10 && bullet.x < 810
+    })
+  }
+
+  function updateEnemies(room) {
+    room.gameState.enemies = room.gameState.enemies.filter(enemy => {
+      enemy.x += enemy.vx
+      enemy.y += enemy.vy
+      
+      // 移除超出边界的敌机
+      return enemy.y < 650
+    })
+  }
+
+  function updateParticles(room) {
+    room.gameState.particles = room.gameState.particles.filter(particle => {
+      particle.x += particle.vx || 0
+      particle.y += particle.vy || 0
+      particle.alpha = (particle.alpha || 1) - 0.02
+      
+      return particle.alpha > 0
+    })
+  }
+
+  function checkCollisions(room, io) {
+    // 子弹击中敌机
+    room.gameState.bullets.forEach((bullet, bulletIndex) => {
+      room.gameState.enemies.forEach((enemy, enemyIndex) => {
+        const dx = bullet.x - enemy.x
+        const dy = bullet.y - enemy.y
+        const distance = Math.sqrt(dx * dx + dy * dy)
+        
+        if (distance < 20) {
+          // 击中敌机
+          const player = room.players.find(p => p.id === bullet.playerId)
+          if (player) {
+            player.score += enemy.score
+          }
+          
+          // 创建爆炸粒子
+          createExplosionParticles(room, enemy.x, enemy.y)
+          
+          // 移除子弹和敌机
+          room.gameState.bullets.splice(bulletIndex, 1)
+          room.gameState.enemies.splice(enemyIndex, 1)
+        }
+      })
+    })
+
+    // 敌机撞击玩家（包括AI机器人）
+    const allPlayers = [...room.players, ...room.bots]
+    allPlayers.forEach(player => {
+      if (!player.alive) return
+      
+      room.gameState.enemies.forEach((enemy, enemyIndex) => {
+        const dx = player.position.x - enemy.x
+        const dy = player.position.y - enemy.y
+        const distance = Math.sqrt(dx * dx + dy * dy)
+        
+        if (distance < 30) {
+          // 玩家受伤
+          player.health -= 20
+          if (player.health <= 0) {
+            player.health = 0
+            player.alive = false
+          }
+          
+          // 创建碰撞粒子
+          createExplosionParticles(room, enemy.x, enemy.y)
+          
+          // 移除敌机
+          room.gameState.enemies.splice(enemyIndex, 1)
+          
+          // 通知玩家受伤（只对真实玩家发送）
+          if (!player.isBot) {
+            io.to(`shooter_room_${room.id}`).emit('player_hit', {
+              playerId: player.id,
+              health: player.health,
+              alive: player.alive
+            })
+          }
+        }
+      })
+    })
+  }
+
+  function createExplosionParticles(room, x, y) {
+    for (let i = 0; i < 8; i++) {
+      const particle = {
+        id: uuidv4(),
+        x: x,
+        y: y,
+        vx: (Math.random() - 0.5) * 10,
+        vy: (Math.random() - 0.5) * 10,
+        color: ['#ff4444', '#ffaa00', '#ffff44'][Math.floor(Math.random() * 3)],
+        size: Math.random() * 3 + 1,
+        alpha: 1,
+        createdAt: Date.now()
+      }
+      
+      room.gameState.particles.push(particle)
+    }
+  }
+
+  function broadcastShooterGameState(room, io) {
+    const gameState = {
+      players: [...room.players, ...room.bots], // 合并真实玩家和AI机器人
+      enemies: room.gameState.enemies,
+      bullets: room.gameState.bullets,
+      particles: room.gameState.particles,
+      timeLeft: room.gameState.timeLeft
+    }
+
+    io.to(`shooter_room_${room.id}`).emit('game_state_update', gameState)
+  }
+
+  function getAliveShooterPlayersCount(room) {
+    return room.players.filter(p => p.alive).length
+  }
+
+  function endShooterGame(room, io, winner = null) {
+    if (room.gameLoop) {
+      clearInterval(room.gameLoop)
+      room.gameLoop = null
+    }
+
+    room.status = 'finished'
+
+    // 生成最终排行榜（包含AI机器人）
+    const finalRanking = [...room.players, ...room.bots]
+      .sort((a, b) => {
+        // 先按分数排序
+        return b.score - a.score
+      })
+
+    // 确定获胜者
+    if (!winner && finalRanking.length > 0) {
+      winner = finalRanking[0]
+    }
+
+    // 发送游戏结束事件
+    io.to(`shooter_room_${room.id}`).emit('game_finished', {
+      winner: winner,
+      finalRanking: finalRanking.map(p => ({
+        id: p.id,
+        username: p.username,
+        score: p.score,
+        health: p.health,
+        alive: p.alive
+      })),
+      gameTime: room.gameStartTime ? Date.now() - room.gameStartTime : 0
+    })
+
+    // 更新排行榜
+    if (winner) {
+      updateRealtimeLeaderboard({
+        userId: winner.id,
+        username: winner.username,
+        gameId: 'shooter-multiplayer',
+        score: winner.score,
+        timestamp: new Date().toISOString()
+      })
+    }
+
+    console.log(`🛩️ 射击游戏结束: 房间 ${room.id}, 获胜者: ${winner ? winner.username : '无'}`)
+  }
+
+  // AI机器人相关函数
+  function addAIBots(room) {
+    const botNames = ['AI-战神', 'AI-飞鹰', 'AI-闪电']
+    const botsToAdd = Math.min(3, 4 - room.players.length) // 最多添加3个AI，总数不超过4
+    
+    for (let i = 0; i < botsToAdd; i++) {
+      const bot = {
+        id: `bot_${uuidv4()}`,
+        username: botNames[i] || `AI-机器人${i + 1}`,
+        ready: true,
+        score: 0,
+        health: 100,
+        position: { x: 100 + (room.players.length + i) * 150, y: 500 },
+        alive: true,
+        color: getPlayerColor(room.players.length + i),
+        isBot: true,
+        // AI行为参数
+        targetX: 100 + (room.players.length + i) * 150,
+        targetY: 500,
+        lastMoveTime: Date.now(),
+        lastShootTime: Date.now(),
+        difficulty: room.settings.difficulty || 'normal'
+      }
+      
+      room.bots.push(bot)
+    }
+    
+    console.log(`🤖 添加了 ${botsToAdd} 个AI机器人到房间 ${room.id}`)
+  }
+
+  function updateAIBots(room) {
+    const now = Date.now()
+    
+    room.bots.forEach(bot => {
+      if (!bot.alive) return
+      
+      // AI移动逻辑 - 每100ms更新一次位置
+      if (now - bot.lastMoveTime > 100) {
+        updateBotMovement(bot, room)
+        bot.lastMoveTime = now
+      }
+      
+      // AI射击逻辑 - 根据难度调整射击频率
+      const shootInterval = getBotShootInterval(bot.difficulty)
+      if (now - bot.lastShootTime > shootInterval) {
+        createBotBullet(bot, room)
+        bot.lastShootTime = now
+      }
+    })
+  }
+
+  function updateBotMovement(bot, room) {
+    // AI移动策略：
+    // 1. 避开敌机
+    // 2. 在屏幕范围内随机移动
+    // 3. 优先攻击位置
+    
+    const enemies = room.gameState.enemies
+    let dangerLevel = 0
+    let avoidX = 0
+    let avoidY = 0
+    
+    // 检测附近的敌机威胁
+    enemies.forEach(enemy => {
+      const distance = Math.sqrt(
+        Math.pow(enemy.x - bot.position.x, 2) + 
+        Math.pow(enemy.y - bot.position.y, 2)
+      )
+      
+      if (distance < 100) { // 100像素内视为威胁
+        dangerLevel++
+        avoidX += (bot.position.x - enemy.x) / distance * 50
+        avoidY += (bot.position.y - enemy.y) / distance * 50
+      }
+    })
+    
+    if (dangerLevel > 0) {
+      // 有威胁时，向安全方向移动
+      bot.targetX = Math.max(50, Math.min(750, bot.position.x + avoidX))
+      bot.targetY = Math.max(100, Math.min(550, bot.position.y + avoidY))
+    } else {
+      // 无威胁时，随机移动或寻找最佳攻击位置
+      if (Math.random() < 0.1) { // 10%概率改变目标
+        bot.targetX = Math.random() * 700 + 50
+        bot.targetY = Math.random() * 400 + 100
+      }
+    }
+    
+    // 平滑移动到目标位置
+    const moveSpeed = getBotMoveSpeed(bot.difficulty)
+    const dx = bot.targetX - bot.position.x
+    const dy = bot.targetY - bot.position.y
+    const distance = Math.sqrt(dx * dx + dy * dy)
+    
+    if (distance > 5) {
+      bot.position.x += (dx / distance) * moveSpeed
+      bot.position.y += (dy / distance) * moveSpeed
+    }
+    
+    // 确保在边界内
+    bot.position.x = Math.max(25, Math.min(775, bot.position.x))
+    bot.position.y = Math.max(50, Math.min(550, bot.position.y))
+  }
+
+  function createBotBullet(bot, room) {
+    const bullet = {
+      id: uuidv4(),
+      playerId: bot.id,
+      x: bot.position.x,
+      y: bot.position.y - 20,
+      vx: 0,
+      vy: -8,
+      color: bot.color,
+      size: 3,
+      createdAt: Date.now()
+    }
+    
+    room.gameState.bullets.push(bullet)
+  }
+
+  function getBotShootInterval(difficulty) {
+    switch (difficulty) {
+      case 'easy': return 300 // 每300ms射击一次
+      case 'normal': return 200 // 每200ms射击一次
+      case 'hard': return 150 // 每150ms射击一次
+      default: return 200
+    }
+  }
+
+  function getBotMoveSpeed(difficulty) {
+    switch (difficulty) {
+      case 'easy': return 2 // 慢速移动
+      case 'normal': return 3 // 中速移动
+      case 'hard': return 4 // 快速移动
+      default: return 3
+    }
+  }
+
   // 定期清理过期数据
   setInterval(() => {
     const now = Date.now()
@@ -820,6 +1573,17 @@ module.exports = (io) => {
           clearInterval(room.gameLoop)
         }
         snakeRooms.delete(roomId)
+      }
+    }
+
+    // 清理长时间未开始的射击游戏房间
+    for (const [roomId, room] of shooterRooms) {
+      if (room.status === 'waiting' && now - room.createdAt > timeout) {
+        console.log(`🧹 清理过期射击房间: ${roomId}`)
+        if (room.gameLoop) {
+          clearInterval(room.gameLoop)
+        }
+        shooterRooms.delete(roomId)
       }
     }
   }, 5 * 60 * 1000) // 每5分钟检查一次

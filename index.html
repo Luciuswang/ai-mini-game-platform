@@ -271,6 +271,7 @@
         .snake-icon { color: #00ff00; }
         .tetris-icon { color: #ff6b6b; }
         .shooter-icon { color: #4ecdc4; }
+        .multiplayer-shooter-icon { color: #ff8c00; }
         .mahjong-icon { color: #ffd700; }
         .game-2048-icon { color: #ff6b6b; }
         .match3-icon { color: #ff69b4; }
@@ -868,6 +869,39 @@
                                 <i class="fas fa-paper-plane"></i> 发表留言
                             </button>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 多人打飞机对战 -->
+            <div class="game-card fade-in">
+                <i class="fas fa-users-gear multiplayer-shooter-icon game-icon"></i>
+                <h3 class="game-title">🚀 多人打飞机对战</h3>
+                <p class="game-description">
+                    实时联机射击游戏！与好友在同一屏幕内竞技对战，
+                    看谁能在限定时间内获得最高分数。支持2-4人同时游戏。
+                </p>
+                <div class="game-features">
+                    <span class="feature-tag">实时联机</span>
+                    <span class="feature-tag">多人竞技</span>
+                    <span class="feature-tag">限时对战</span>
+                    <span class="feature-tag">排行榜</span>
+                </div>
+                <a href="./games/shooter-multiplayer/index.html" class="play-button">
+                    <i class="fas fa-play"></i> 开始游戏
+                </a>
+                
+                <!-- 留言板 -->
+                <div class="feedback-board" data-game="shooter-multiplayer">
+                    <div class="feedback-header">
+                        <i class="fas fa-comments"></i>
+                        <span>玩家留言</span>
+                        <button class="add-feedback-btn" onclick="showFeedbackModal('shooter-multiplayer')">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <div class="feedback-list" id="feedback-shooter-multiplayer">
+                        <!-- 留言将通过JavaScript动态加载 -->
                     </div>
                 </div>
             </div>

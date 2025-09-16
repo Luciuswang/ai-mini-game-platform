@@ -11,7 +11,7 @@ const app = express()
 const server = createServer(app)
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: process.env.FRONTEND_URL || ['http://localhost:3000', 'http://localhost:8080'],
     credentials: true
   }
 })
@@ -21,7 +21,7 @@ const PORT = process.env.PORT || 5000
 // 中间件配置
 app.use(helmet()) // 安全头
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: process.env.FRONTEND_URL || ['http://localhost:3000', 'http://localhost:8080'],
   credentials: true
 }))
 app.use(morgan('combined')) // 日志

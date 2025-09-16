@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 多人射击游戏</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .description {
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .play-button {
+            display: inline-block;
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            color: white;
+            text-decoration: none;
+            font-size: 1.5em;
+            padding: 15px 30px;
+            border-radius: 50px;
+            margin: 10px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+        }
+        
+        .play-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 40px 0;
+        }
+        
+        .feature {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .feature-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+            
+            .play-button {
+                font-size: 1.3em;
+                padding: 12px 25px;
+            }
+            
+            .features {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 多人射击游戏</h1>
+        
+        <div class="description">
+            <p>与好友一起体验刺激的多人在线射击游戏！</p>
+            <p>最多4人同时竞技，智能AI填充，即时开始游戏！</p>
+        </div>
+        
+        <a href="index.html" class="play-button">🎮 开始游戏</a>
+        
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">✈️</div>
+                <h3>多人对战</h3>
+                <p>最多4个玩家同时游戏，实时竞技</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">🤖</div>
+                <h3>AI机器人</h3>
+                <p>智能AI自动填充，无需等待其他玩家</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">🎁</div>
+                <h3>宝箱系统</h3>
+                <p>收集各种宝箱获得生命、分数和强化</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">👹</div>
+                <h3>Boss挑战</h3>
+                <p>击败强大的Boss敌机获得高分奖励</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">🏆</div>
+                <h3>实时排行</h3>
+                <p>游戏顶部显示实时积分排行榜</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">📱</div>
+                <h3>移动优化</h3>
+                <p>完美支持手机和平板设备</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>🎯 移动设备：触摸屏幕移动飞机，自动射击</p>
+            <p>🖱️ 桌面设备：鼠标移动飞机，自动射击</p>
+        </div>
+    </div>
+</body>
+</html>
