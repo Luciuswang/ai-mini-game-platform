@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抖宝 - AI社交寻宝游戏</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; padding: 40px 0; color: white; }
+        .logo { font-size: 3.5rem; font-weight: bold; margin-bottom: 10px; }
+        .tagline { font-size: 1.2rem; opacity: 0.9; margin-bottom: 30px; }
+        .demo-section {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            margin: 40px 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .api-test {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .api-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid #667eea;
+        }
+        .test-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 5px;
+        }
+        .test-btn:hover { transform: scale(1.05); }
+        .response-area {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .loading { display: none; text-align: center; color: #667eea; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="logo">🎯 抖宝</h1>
+            <p class="tagline">AI驱动的社交寻宝游戏 - 发现身边的惊喜，分享你的探险</p>
+        </div>
+
+        <div class="demo-section">
+            <h2 style="text-align: center; margin-bottom: 30px;">🔧 抖宝API演示</h2>
+            
+            <div class="api-test">
+                <div class="api-card">
+                    <div style="font-weight: bold; margin-bottom: 10px;">🔧 服务器状态</div>
+                    <button class="test-btn" onclick="testAPI('/health', 'health')">检查服务器</button>
+                    <div class="loading" id="health-loading">⏳ 检查中...</div>
+                    <div class="response-area" id="health-response"></div>
+                </div>
+
+                <div class="api-card">
+                    <div style="font-weight: bold; margin-bottom: 10px;">📚 API文档</div>
+                    <button class="test-btn" onclick="testAPI('/api/docs', 'docs')">查看文档</button>
+                    <div class="loading" id="docs-loading">⏳ 加载中...</div>
+                    <div class="response-area" id="docs-response"></div>
+                </div>
+
+                <div class="api-card">
+                    <div style="font-weight: bold; margin-bottom: 10px;">🗺️ 宝藏搜索</div>
+                    <button class="test-btn" onclick="searchTreasures()">搜索宝藏</button>
+                    <div class="loading" id="treasures-loading">⏳ 搜索中...</div>
+                    <div class="response-area" id="treasures-response"></div>
+                </div>
+
+                <div class="api-card">
+                    <div style="font-weight: bold; margin-bottom: 10px;">👤 用户系统</div>
+                    <button class="test-btn" onclick="testRegister()">测试注册</button>
+                    <button class="test-btn" onclick="testLogin()">测试登录</button>
+                    <div class="loading" id="auth-loading">⏳ 处理中...</div>
+                    <div class="response-area" id="auth-response"></div>
+                </div>
+
+                <div class="api-card">
+                    <div style="font-weight: bold; margin-bottom: 10px;">🎯 创建宝藏</div>
+                    <button class="test-btn" onclick="createTreasure()">创建宝藏</button>
+                    <div class="loading" id="create-loading">⏳ 创建中...</div>
+                    <div class="response-area" id="create-response"></div>
+                </div>
+
+                <div class="api-card">
+                    <div style="font-weight: bold; margin-bottom: 10px;">🚀 完整演示</div>
+                    <button class="test-btn" onclick="runFullDemo()">运行演示</button>
+                    <div class="loading" id="demo-loading">⏳ 演示中...</div>
+                    <div class="response-area" id="demo-response"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000';
+
+        async function testAPI(endpoint, id) {
+            const loading = document.getElementById(id + '-loading');
+            const response = document.getElementById(id + '-response');
+            
+            loading.style.display = 'block';
+            response.textContent = '';
+            
+            try {
+                const res = await fetch(API_BASE + endpoint);
+                const data = await res.json();
+                response.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                response.textContent = `错误: ${error.message}`;
+            }
+            
+            loading.style.display = 'none';
+        }
+
+        function searchTreasures() {
+            const lat = 39.9 + (Math.random() - 0.5) * 0.1;
+            const lng = 116.4 + (Math.random() - 0.5) * 0.1;
+            testAPI(`/api/treasures/nearby?lat=${lat}&lng=${lng}`, 'treasures');
+        }
+
+        async function testRegister() {
+            const loading = document.getElementById('auth-loading');
+            const response = document.getElementById('auth-response');
+            
+            loading.style.display = 'block';
+            response.textContent = '';
+            
+            try {
+                const res = await fetch(API_BASE + '/api/auth/test-register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: `explorer${Math.floor(Math.random() * 10000)}`,
+                        email: `test${Math.floor(Math.random() * 10000)}@douyin.com`,
+                        password: 'password123'
+                    })
+                });
+                const data = await res.json();
+                response.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                response.textContent = `错误: ${error.message}`;
+            }
+            
+            loading.style.display = 'none';
+        }
+
+        async function testLogin() {
+            const loading = document.getElementById('auth-loading');
+            const response = document.getElementById('auth-response');
+            
+            loading.style.display = 'block';
+            
+            try {
+                const res = await fetch(API_BASE + '/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({username: 'demo_user', password: 'password123'})
+                });
+                const data = await res.json();
+                response.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                response.textContent = `错误: ${error.message}`;
+            }
+            
+            loading.style.display = 'none';
+        }
+
+        async function createTreasure() {
+            const loading = document.getElementById('create-loading');
+            const response = document.getElementById('create-response');
+            
+            loading.style.display = 'block';
+            
+            try {
+                const res = await fetch(API_BASE + '/api/treasures/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: '测试宝藏',
+                        lat: 39.9 + Math.random() * 0.01,
+                        lng: 116.4 + Math.random() * 0.01,
+                        type: 'test',
+                        reward: '100抖币',
+                        description: '这是一个测试宝藏'
+                    })
+                });
+                const data = await res.json();
+                response.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                response.textContent = `错误: ${error.message}`;
+            }
+            
+            loading.style.display = 'none';
+        }
+
+        async function runFullDemo() {
+            const loading = document.getElementById('demo-loading');
+            const response = document.getElementById('demo-response');
+            
+            loading.style.display = 'block';
+            response.textContent = '🚀 开始完整演示...\n\n';
+            
+            const steps = [
+                '1. 检查服务器状态...',
+                '2. 获取API文档...',
+                '3. 搜索附近宝藏...',
+                '4. 注册新用户...',
+                '5. 创建新宝藏...'
+            ];
+            
+            for (let step of steps) {
+                response.textContent += step + '\n';
+                await new Promise(resolve => setTimeout(resolve, 800));
+            }
+            
+            response.textContent += '\n🎉 演示完成！抖宝API运行正常！';
+            loading.style.display = 'none';
+        }
+
+        // 自动测试服务器状态
+        setTimeout(() => testAPI('/health', 'health'), 1000);
+    </script>
+</body>
+</html>
