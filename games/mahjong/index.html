@@ -1064,23 +1064,29 @@
             }
         }
         
-        // 不同玩家的音调配置（你是女声，AI是男声）
+        // 不同玩家的音调配置（更自然的声音）
         const PLAYER_VOICE = {
-            0: { pitch: 1.5, rate: 0.85 },  // 玩家：柔和女声，语速慢
-            1: { pitch: 0.6, rate: 0.95 },  // 东家AI：低沉男声
-            2: { pitch: 0.8, rate: 1.0 },   // 南家AI：中音男声
-            3: { pitch: 0.5, rate: 0.9 }    // 北家AI：浑厚男声
+            0: { pitch: 1.15, rate: 0.9 },  // 玩家：自然女声
+            1: { pitch: 0.85, rate: 0.95 }, // 东家：自然男声1
+            2: { pitch: 0.95, rate: 1.0 },  // 南家：自然男声2
+            3: { pitch: 0.75, rate: 0.9 }   // 北家：稍低男声
         };
         
-        // 语音播报
+        // 优先使用的高质量语音名称
+        const PREFERRED_VOICES = [
+            'Microsoft Xiaoxiao', 'Microsoft Yunxi', // Windows 神经网络语音
+            'Tingting', 'Meijia',  // iOS/macOS 高质量语音
+            'Google 普通话', 'Google Mandarin',
+            'zh-CN-XiaoxiaoNeural', 'zh-CN-YunxiNeural' // Azure神经网络语音
+        ];
+        
+        // 语音播报（优化：选择最自然的声音）
         function speak(text, rate = 1.0, pitch = 1.0) {
             if (!speechEnabled) {
-                console.log('语音已禁用');
                 return;
             }
             
             if (!window.speechSynthesis) {
-                console.log('浏览器不支持语音合成');
                 return;
             }
             
@@ -1094,18 +1100,36 @@
                 utterance.pitch = pitch;
                 utterance.volume = 1.0;
                 
-                // 尝试使用中文语音
+                // 选择最自然的中文语音
                 if (voiceList.length > 0) {
-                    const chineseVoice = voiceList.find(v => 
-                        v.lang.includes('zh') || v.lang.includes('CN') || v.lang.includes('Chinese')
-                    );
-                    if (chineseVoice) {
-                        utterance.voice = chineseVoice;
+                    // 优先找高质量神经网络语音
+                    let bestVoice = null;
+                    
+                    // 1. 先找优先列表中的语音
+                    for (const prefName of PREFERRED_VOICES) {
+                        bestVoice = voiceList.find(v => v.name.includes(prefName));
+                        if (bestVoice) break;
+                    }
+                    
+                    // 2. 找带 Neural 或 Natural 的语音
+                    if (!bestVoice) {
+                        bestVoice = voiceList.find(v => 
+                            (v.lang.includes('zh') || v.lang.includes('CN')) &&
+                            (v.name.includes('Neural') || v.name.includes('Natural') || v.name.includes('Premium'))
+                        );
+                    }
+                    
+                    // 3. 找任意中文语音
+                    if (!bestVoice) {
+                        bestVoice = voiceList.find(v => 
+                            v.lang.includes('zh') || v.lang.includes('CN') || v.lang.includes('Chinese')
+                        );
+                    }
+                    
+                    if (bestVoice) {
+                        utterance.voice = bestVoice;
                     }
                 }
-                
-                utterance.onstart = () => console.log('播报:', text);
-                utterance.onerror = (e) => console.log('语音错误:', e);
                 
                 window.speechSynthesis.speak(utterance);
                 speechReady = true;
@@ -1246,12 +1270,24 @@
             // 加载语音列表
             function loadVoices() {
                 voiceList = window.speechSynthesis.getVoices();
-                console.log('可用语音数量:', voiceList.length);
+                
                 if (voiceList.length > 0) {
+                    // 找最佳中文语音
                     const chineseVoices = voiceList.filter(v => 
                         v.lang.includes('zh') || v.lang.includes('CN')
                     );
-                    console.log('中文语音:', chineseVoices.map(v => v.name + '(' + v.lang + ')'));
+                    
+                    // 找高质量语音
+                    const neuralVoices = chineseVoices.filter(v =>
+                        v.name.includes('Neural') || v.name.includes('Natural') || 
+                        v.name.includes('Xiaoxiao') || v.name.includes('Tingting')
+                    );
+                    
+                    if (neuralVoices.length > 0) {
+                        console.log('🎤 使用高质量语音:', neuralVoices[0].name);
+                    } else if (chineseVoices.length > 0) {
+                        console.log('🎤 使用中文语音:', chineseVoices[0].name);
+                    }
                 }
             }
             
