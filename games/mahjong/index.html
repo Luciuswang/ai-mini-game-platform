@@ -1023,6 +1023,7 @@
         }
         
         // 获取精灵图背景位置（8列×6行网格，512x512）
+        // 使用百分比确保在任何尺寸下都正确显示
         function getSpritePosition(tile, small = false) {
             let key;
             
@@ -1041,23 +1042,17 @@
                 return '';
             }
             
-            // 目标牌的显示尺寸
-            const tileWidth = small ? 32 : 50;
-            const tileHeight = small ? 45 : 70;
-            
-            // 原图是8列×6行网格（512x512）
+            // 8列×6行网格
             const cols = 8;
             const rows = 6;
             
-            // 计算背景尺寸（缩放后）
-            const bgWidth = tileWidth * cols;
-            const bgHeight = tileHeight * rows;
+            // 使用百分比定位，确保在任何尺寸下都正确
+            // background-size: 800% 600% 表示原图放大到8倍宽、6倍高（每格占100%/8, 100%/6）
+            // background-position: 百分比公式 = col/(cols-1)*100%, row/(rows-1)*100%
+            const posX = pos[1] === 0 ? 0 : (pos[1] / (cols - 1)) * 100;
+            const posY = pos[0] === 0 ? 0 : (pos[0] / (rows - 1)) * 100;
             
-            // 计算背景位置
-            const bgX = -pos[1] * tileWidth;
-            const bgY = -pos[0] * tileHeight;
-            
-            return `background-size: ${bgWidth}px ${bgHeight}px; background-position: ${bgX}px ${bgY}px;`;
+            return `background-size: ${cols * 100}% ${rows * 100}%; background-position: ${posX}% ${posY}%;`;
         }
 
         // ==================== 游戏初始化 ====================
