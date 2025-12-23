@@ -2457,18 +2457,28 @@
             const keys = Object.keys(counts);
             if (keys.length === 0) return true;
             
+            // 排序：确保数字牌按顺序处理（从小到大），这对顺子检测很重要
+            keys.sort((a, b) => {
+                // 提取花色和数字
+                const partsA = a.match(/^(wan|tong|tiao)(\d)$/);
+                const partsB = b.match(/^(wan|tong|tiao)(\d)$/);
+                
+                if (partsA && partsB) {
+                    // 都是数字牌，先按花色排序，再按数字排序
+                    if (partsA[1] !== partsB[1]) {
+                        return partsA[1].localeCompare(partsB[1]);
+                    }
+                    return parseInt(partsA[2]) - parseInt(partsB[2]);
+                }
+                if (partsA) return -1; // 数字牌在前
+                if (partsB) return 1;
+                return a.localeCompare(b); // 字牌按字母排序
+            });
+            
             const key = keys[0];
             const count = counts[key];
             
-            // 尝试组成刻子
-            if (count >= 3) {
-                const newCounts = { ...counts };
-                newCounts[key] -= 3;
-                if (newCounts[key] === 0) delete newCounts[key];
-                if (canFormMelds(newCounts)) return true;
-            }
-            
-            // 尝试组成顺子（仅限数字牌）
+            // 尝试组成顺子（仅限数字牌，优先尝试顺子）
             const parts = key.match(/^(wan|tong|tiao)(\d)$/);
             if (parts) {
                 const suit = parts[1];
@@ -2491,6 +2501,14 @@
                         if (canFormMelds(newCounts)) return true;
                     }
                 }
+            }
+            
+            // 尝试组成刻子
+            if (count >= 3) {
+                const newCounts = { ...counts };
+                newCounts[key] -= 3;
+                if (newCounts[key] === 0) delete newCounts[key];
+                if (canFormMelds(newCounts)) return true;
             }
             
             return false;
