@@ -1257,6 +1257,24 @@
                 }
             }
             
+            // 渲染玩家副露区（碰/杠）
+            const playerMelds = document.getElementById('playerMelds');
+            playerMelds.innerHTML = gameState.players[0].melds.map(meld => {
+                const tilesHtml = meld.tiles.map(tile => renderTile(tile, { small: true })).join('');
+                return `<div class="meld-group ${meld.type}">${tilesHtml}</div>`;
+            }).join('');
+            
+            // 渲染AI副露区
+            for (let i = 1; i <= 3; i++) {
+                const aiMelds = document.getElementById(`opponent${i}Melds`);
+                if (aiMelds) {
+                    aiMelds.innerHTML = gameState.players[i].melds.map(meld => {
+                        const tilesHtml = meld.tiles.map(tile => renderTile(tile, { small: true })).join('');
+                        return `<div class="meld-group ${meld.type}">${tilesHtml}</div>`;
+                    }).join('');
+                }
+            }
+            
             // 更新按钮状态
             updateButtons();
             
@@ -1425,7 +1443,17 @@
         function nextPlayer() {
             if (gameState.gameOver) return;
             
-            // 轮到下一个玩家
+            // 如果有人刚打出牌，先检查玩家是否可以碰/杠/胡
+            if (gameState.lastDiscard && gameState.lastDiscardPlayer !== 0) {
+                // AI打出的牌，检查玩家是否可以操作
+                if (showActionHints()) {
+                    // 有可操作的，等待玩家选择
+                    console.log('等待玩家选择碰/杠/胡/过');
+                    return;
+                }
+            }
+            
+            // 没有可操作的，继续正常流程
             gameState.currentPlayer = (gameState.currentPlayer + 1) % 4;
             gameState.hasDrawn = false;
             
@@ -1512,9 +1540,171 @@
             nextPlayer();
         }
 
-        function checkOthersPeng() {
-            // 简化版：暂不实现吃碰杠提示
-            return false;
+        // ==================== 碰牌检测 ====================
+        
+        // 检查玩家是否可以碰刚打出的牌
+        function checkPlayerCanPeng() {
+            if (!gameState.lastDiscard || gameState.lastDiscardPlayer === 0) {
+                return false;
+            }
+            
+            const playerHand = gameState.players[0].hand;
+            const discardKey = tileKey(gameState.lastDiscard);
+            
+            // 数有几张相同的牌
+            let count = 0;
+            playerHand.forEach(tile => {
+                if (tileKey(tile) === discardKey) count++;
+            });
+            
+            return count >= 2; // 有2张以上可以碰
+        }
+        
+        // 检查玩家是否可以杠刚打出的牌
+        function checkPlayerCanGang() {
+            if (!gameState.lastDiscard || gameState.lastDiscardPlayer === 0) {
+                return false;
+            }
+            
+            const playerHand = gameState.players[0].hand;
+            const discardKey = tileKey(gameState.lastDiscard);
+            
+            let count = 0;
+            playerHand.forEach(tile => {
+                if (tileKey(tile) === discardKey) count++;
+            });
+            
+            return count >= 3; // 有3张可以杠
+        }
+        
+        // 检查玩家是否可以胡这张牌（点炮）
+        function checkPlayerCanHu() {
+            if (!gameState.lastDiscard || gameState.lastDiscardPlayer === 0) {
+                return false;
+            }
+            
+            const testHand = [...gameState.players[0].hand, gameState.lastDiscard];
+            return canHu(testHand);
+        }
+        
+        // 显示碰牌操作提示
+        function showActionHints() {
+            const canPeng = checkPlayerCanPeng();
+            const canGang = checkPlayerCanGang();
+            const canHuNow = checkPlayerCanHu();
+            
+            if (!canPeng && !canGang && !canHuNow) {
+                return false; // 没有可操作的
+            }
+            
+            const actionHints = document.getElementById('actionHints');
+            const pengBtn = document.getElementById('pengBtn');
+            const gangBtn = document.getElementById('gangBtn');
+            const huBtn2 = document.getElementById('huBtn2');
+            const passBtn = document.getElementById('passBtn');
+            
+            pengBtn.style.display = canPeng ? 'inline-block' : 'none';
+            gangBtn.style.display = canGang ? 'inline-block' : 'none';
+            huBtn2.style.display = canHuNow ? 'inline-block' : 'none';
+            passBtn.style.display = 'inline-block';
+            
+            actionHints.style.display = 'flex';
+            
+            // 显示被打出的牌
+            const display = getTileDisplay(gameState.lastDiscard);
+            showToast(`${['玩家','AI-东','AI-南','AI-北'][gameState.lastDiscardPlayer]}打出 ${display.value}${display.suit}`);
+            
+            return true;
+        }
+        
+        // 执行碰牌
+        function doPeng() {
+            const player = gameState.players[0];
+            const discardTile = gameState.lastDiscard;
+            const discardKey = tileKey(discardTile);
+            
+            // 从手牌中移除2张相同的牌
+            let removed = 0;
+            player.hand = player.hand.filter(tile => {
+                if (removed < 2 && tileKey(tile) === discardKey) {
+                    removed++;
+                    return false;
+                }
+                return true;
+            });
+            
+            // 添加到副露区（明刻）
+            player.melds.push({
+                type: 'peng',
+                tiles: [discardTile, discardTile, discardTile],
+                from: gameState.lastDiscardPlayer
+            });
+            
+            // 从出牌玩家的弃牌堆移除（因为被碰了）
+            const discardPlayer = gameState.players[gameState.lastDiscardPlayer];
+            discardPlayer.discards.pop();
+            
+            gameState.lastDiscard = null;
+            gameState.currentPlayer = 0;
+            gameState.hasDrawn = true; // 碰牌后直接出牌，不用摸牌
+            
+            const display = getTileDisplay(discardTile);
+            showToast(`碰！${display.value}${display.suit}`);
+            
+            updateUI();
+        }
+        
+        // 执行杠牌（明杠）
+        function doGang() {
+            const player = gameState.players[0];
+            const discardTile = gameState.lastDiscard;
+            const discardKey = tileKey(discardTile);
+            
+            // 从手牌中移除3张相同的牌
+            let removed = 0;
+            player.hand = player.hand.filter(tile => {
+                if (removed < 3 && tileKey(tile) === discardKey) {
+                    removed++;
+                    return false;
+                }
+                return true;
+            });
+            
+            // 添加到副露区（明杠）
+            player.melds.push({
+                type: 'gang',
+                tiles: [discardTile, discardTile, discardTile, discardTile],
+                from: gameState.lastDiscardPlayer
+            });
+            
+            // 从出牌玩家的弃牌堆移除
+            const discardPlayer = gameState.players[gameState.lastDiscardPlayer];
+            discardPlayer.discards.pop();
+            
+            gameState.lastDiscard = null;
+            gameState.currentPlayer = 0;
+            
+            const display = getTileDisplay(discardTile);
+            showToast(`杠！${display.value}${display.suit} 补牌中...`);
+            
+            updateUI();
+            
+            // 杠后要补一张牌
+            setTimeout(() => playerAutoDrawTile(), 500);
+        }
+        
+        // 点炮胡牌
+        function doDianPaoHu() {
+            const discardTile = gameState.lastDiscard;
+            const testHand = [...gameState.players[0].hand, discardTile];
+            
+            if (canHu(testHand)) {
+                const flowerCount = gameState.players[0].flowers.length;
+                const flowerBonus = flowerCount * FLOWER_SCORE;
+                const fromPlayer = ['玩家','AI-东','AI-南','AI-北'][gameState.lastDiscardPlayer];
+                
+                endGame('🎊 胡牌！', `${fromPlayer}点炮！\n花牌: ${flowerCount}个 (+${flowerBonus}分)`);
+            }
         }
         
         // ==================== 听牌检测 ====================
@@ -2049,10 +2239,33 @@
             document.getElementById('actionHints').style.display = 'none';
             
             if (action === 'pass') {
-                // 过
-                nextPlayer();
+                // 过 - 继续下一个玩家
+                continueToNextPlayer();
+            } else if (action === 'peng') {
+                // 碰
+                doPeng();
+            } else if (action === 'gang') {
+                // 杠
+                doGang();
+            } else if (action === 'hu') {
+                // 点炮胡
+                doDianPaoHu();
             }
-            // 其他操作待实现
+        }
+        
+        // 继续到下一个玩家（玩家选择"过"后调用）
+        function continueToNextPlayer() {
+            if (gameState.gameOver) return;
+            
+            // 原本应该轮到的下一个玩家
+            gameState.currentPlayer = (gameState.lastDiscardPlayer + 1) % 4;
+            gameState.hasDrawn = false;
+            
+            if (gameState.currentPlayer === 0) {
+                playerAutoDrawTile();
+            } else {
+                setTimeout(() => aiTurn(), 600);
+            }
         }
 
         // ==================== 游戏结束 ====================
