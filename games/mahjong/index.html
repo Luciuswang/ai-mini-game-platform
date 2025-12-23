@@ -2701,55 +2701,105 @@
             updateUI();
         }
         
-        // 计算本局各家得分
+        // 计算本局各家得分并生成结算榜单
         function calculateRoundScores(result) {
-            const players = ['你', 'AI-东', 'AI-南', 'AI-北'];
+            const players = ['👩 你', '🧔 东家', '🧔 南家', '🧔 北家'];
             const scores = [0, 0, 0, 0];
             const flowers = gameState.players.map(p => p.flowers.length);
+            let winnerIndex = -1;
+            let loserIndex = -1;
+            let isZiMo = false;
             
             if (result.includes('胡牌') || result.includes('自摸')) {
                 // 玩家胡牌
-                const baseScore = result.includes('自摸') ? 3 : 1; // 自摸三家付
+                winnerIndex = 0;
+                isZiMo = result.includes('自摸');
+                const baseScore = isZiMo ? 3 : 1;
                 const flowerBonus = flowers[0];
                 const isMenQing = gameState.players[0].melds.length === 0;
                 const menQingBonus = isMenQing ? 1 : 0;
                 
-                const winScore = (baseScore + flowerBonus + menQingBonus) * (result.includes('自摸') ? 3 : 1);
+                const winScore = (baseScore + flowerBonus + menQingBonus) * (isZiMo ? 3 : 1);
                 
-                if (result.includes('自摸')) {
-                    // 自摸：其他三家各扣分
+                if (isZiMo) {
                     scores[0] = winScore;
                     scores[1] = scores[2] = scores[3] = -Math.ceil(winScore / 3);
                 } else {
-                    // 点炮：放炮者扣分
                     scores[0] = winScore;
-                    scores[gameState.lastDiscardPlayer] = -winScore;
+                    loserIndex = gameState.lastDiscardPlayer;
+                    scores[loserIndex] = -winScore;
                 }
             } else if (result.includes('AI胡牌')) {
                 // AI胡牌
-                const winnerIndex = gameState.currentPlayer || 1;
+                winnerIndex = gameState.currentPlayer || 1;
                 const baseScore = 3;
                 scores[winnerIndex] = baseScore + flowers[winnerIndex];
                 
                 if (gameState.lastDiscardPlayer === 0) {
-                    // 玩家放炮
+                    loserIndex = 0;
                     scores[0] = -(baseScore + flowers[winnerIndex]);
-                } else {
-                    // AI自摸
+                } else if (gameState.lastDiscardPlayer === winnerIndex) {
+                    isZiMo = true;
                     for (let i = 0; i < 4; i++) {
                         if (i !== winnerIndex) {
                             scores[i] = -Math.ceil(scores[winnerIndex] / 3);
                         }
                     }
+                } else {
+                    loserIndex = gameState.lastDiscardPlayer;
+                    scores[loserIndex] = -scores[winnerIndex];
                 }
             }
-            // 流局各家0分
             
-            let text = '📊 本局积分：\n';
-            for (let i = 0; i < 4; i++) {
-                const sign = scores[i] > 0 ? '+' : '';
-                const flower = flowers[i] > 0 ? ` 🌸×${flowers[i]}` : '';
-                text += `${players[i]}: ${sign}${scores[i]}${flower}\n`;
+            // 生成结算榜单
+            let text = '━━━━━━━━━━━━━━━━━━\n';
+            text += '🏆 本局结算榜单 🏆\n';
+            text += '━━━━━━━━━━━━━━━━━━\n\n';
+            
+            // 按积分排序显示
+            const rankings = players.map((name, i) => ({
+                name, 
+                score: scores[i], 
+                flowers: flowers[i],
+                index: i
+            }));
+            rankings.sort((a, b) => b.score - a.score);
+            
+            for (let rank = 0; rank < 4; rank++) {
+                const p = rankings[rank];
+                const medal = rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : '  ';
+                const sign = p.score > 0 ? '+' : '';
+                const flower = p.flowers > 0 ? ` 🌸×${p.flowers}` : '';
+                
+                // 添加称号
+                let title = '';
+                if (p.index === winnerIndex) {
+                    title = isZiMo ? ' 【自摸王】' : ' 【大赢家】';
+                } else if (p.index === loserIndex && !isZiMo) {
+                    title = ' 【最佳炮手💥】';
+                }
+                
+                text += `${medal} ${p.name}: ${sign}${p.score}分${flower}${title}\n`;
+            }
+            
+            text += '\n━━━━━━━━━━━━━━━━━━\n';
+            
+            // 添加特殊成就
+            const achievements = [];
+            if (winnerIndex === 0) {
+                if (isZiMo) achievements.push('🎯 自摸胡牌！三家付！');
+                if (gameState.players[0].melds.length === 0) achievements.push('🚪 门清加番！');
+                if (flowers[0] >= 4) achievements.push('🌸 花牌大师！');
+            }
+            if (loserIndex === 0 && !isZiMo) {
+                achievements.push('💥 不小心放炮了...');
+            }
+            if (result.includes('流局')) {
+                achievements.push('🤝 本局流局，下局再战！');
+            }
+            
+            if (achievements.length > 0) {
+                text += achievements.join('\n') + '\n';
             }
             
             return text;
