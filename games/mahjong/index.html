@@ -800,6 +800,9 @@
                 <button class="action-btn secondary" onclick="showTips()">
                     <i class="fas fa-lightbulb"></i> 提示
                 </button>
+                <button class="action-btn secondary" id="soundBtn" onclick="toggleSound()">
+                    <i class="fas fa-volume-up"></i> 声音
+                </button>
             </div>
         </div>
     </div>
@@ -994,6 +997,109 @@
                     suit: '',
                     class: 'feng'
                 };
+            }
+        }
+        
+        // ==================== 语音播报 ====================
+        const NUM_TO_CHINESE = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+        const SUIT_TO_CHINESE = { wan: '万', tong: '筒', tiao: '条' };
+        const HONOR_TO_CHINESE = {
+            dong: '东风', nan: '南风', xi: '西风', bei: '北风',
+            zhong: '红中', fa: '发财', bai: '白板'
+        };
+        const FLOWER_TO_CHINESE = {
+            chun: '春', xia: '夏', qiu: '秋', dong2: '冬',
+            mei: '梅', lan: '兰', zhu: '竹', ju: '菊'
+        };
+        
+        let speechEnabled = true;
+        
+        // 获取牌的中文名称（用于语音）
+        function getTileSpeechName(tile) {
+            if (tile.type === 'number') {
+                return NUM_TO_CHINESE[tile.value] + SUIT_TO_CHINESE[tile.suit];
+            } else if (tile.type === 'flower') {
+                return FLOWER_TO_CHINESE[tile.value] || tile.value;
+            } else {
+                return HONOR_TO_CHINESE[tile.value] || tile.value;
+            }
+        }
+        
+        // 语音播报
+        function speak(text, rate = 1.2) {
+            if (!speechEnabled || !window.speechSynthesis) return;
+            
+            // 取消之前的语音
+            window.speechSynthesis.cancel();
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-CN';
+            utterance.rate = rate;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+            
+            // 尝试使用中文语音
+            const voices = window.speechSynthesis.getVoices();
+            const chineseVoice = voices.find(v => v.lang.includes('zh') || v.lang.includes('CN'));
+            if (chineseVoice) {
+                utterance.voice = chineseVoice;
+            }
+            
+            window.speechSynthesis.speak(utterance);
+        }
+        
+        // 播报打出的牌
+        function speakDiscard(tile, playerName = '') {
+            const tileName = getTileSpeechName(tile);
+            if (playerName) {
+                speak(`${playerName}打${tileName}`);
+            } else {
+                speak(tileName);
+            }
+        }
+        
+        // 播报碰牌
+        function speakPeng(tile) {
+            const tileName = getTileSpeechName(tile);
+            speak(`碰！${tileName}`);
+        }
+        
+        // 播报杠牌
+        function speakGang(tile) {
+            const tileName = getTileSpeechName(tile);
+            speak(`杠！${tileName}`);
+        }
+        
+        // 播报胡牌
+        function speakHu() {
+            speak('胡了！', 1.0);
+        }
+        
+        // 初始化语音
+        function initSpeech() {
+            if (window.speechSynthesis) {
+                // 预加载语音列表
+                window.speechSynthesis.getVoices();
+                window.speechSynthesis.onvoiceschanged = () => {
+                    window.speechSynthesis.getVoices();
+                };
+            }
+        }
+        
+        // 页面加载时初始化语音
+        initSpeech();
+        
+        // 切换声音开关
+        function toggleSound() {
+            speechEnabled = !speechEnabled;
+            const btn = document.getElementById('soundBtn');
+            if (speechEnabled) {
+                btn.innerHTML = '<i class="fas fa-volume-up"></i> 声音';
+                btn.style.opacity = '1';
+                speak('语音已开启');
+            } else {
+                btn.innerHTML = '<i class="fas fa-volume-mute"></i> 静音';
+                btn.style.opacity = '0.6';
             }
         }
 
@@ -1435,6 +1541,9 @@
             gameState.selectedTile = -1;
             gameState.hasDrawn = false;
             
+            // 语音播报打出的牌
+            speakDiscard(tile);
+            
             updateUI();
             
             // 打牌后检测听牌（13张牌时）
@@ -1654,6 +1763,9 @@
             gameState.currentPlayer = 0;
             gameState.hasDrawn = true; // 碰牌后直接出牌，不用摸牌
             
+            // 语音播报碰牌
+            speakPeng(discardTile);
+            
             const display = getTileDisplay(discardTile);
             showToast(`碰！${display.value}${display.suit}`);
             
@@ -1689,6 +1801,9 @@
             
             gameState.lastDiscard = null;
             gameState.currentPlayer = 0;
+            
+            // 语音播报杠牌
+            speakGang(discardTile);
             
             const display = getTileDisplay(discardTile);
             showToast(`杠！${display.value}${display.suit} 补牌中...`);
@@ -1868,6 +1983,10 @@
             player.discards.push(discardTile);
             gameState.lastDiscard = discardTile;
             gameState.lastDiscardPlayer = currentAI;
+            
+            // 语音播报AI打出的牌
+            const aiNames = ['', '东家', '南家', '北家'];
+            speakDiscard(discardTile, aiNames[currentAI]);
             
             updateUI();
             
@@ -2302,6 +2421,14 @@
         // ==================== 游戏结束 ====================
         function endGame(title, message) {
             gameState.gameOver = true;
+            
+            // 语音播报
+            if (title.includes('胡') || title.includes('自摸')) {
+                speakHu();
+            } else if (title.includes('流局')) {
+                speak('流局');
+            }
+            
             showMessage(title, message);
             updateUI();
         }
