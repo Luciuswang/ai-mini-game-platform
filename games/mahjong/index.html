@@ -1027,8 +1027,16 @@
             }
         }
         
+        // 不同玩家的音调配置（模拟不同声音）
+        const PLAYER_VOICE = {
+            0: { pitch: 1.0, rate: 1.1 },   // 玩家：正常女声
+            1: { pitch: 0.7, rate: 1.0 },   // 东家AI：低沉男声
+            2: { pitch: 1.3, rate: 1.2 },   // 南家AI：高音
+            3: { pitch: 0.5, rate: 0.9 }    // 北家AI：更低沉
+        };
+        
         // 语音播报
-        function speak(text, rate = 1.0) {
+        function speak(text, rate = 1.0, pitch = 1.0) {
             if (!speechEnabled) {
                 console.log('语音已禁用');
                 return;
@@ -1046,7 +1054,7 @@
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'zh-CN';
                 utterance.rate = rate;
-                utterance.pitch = 1.0;
+                utterance.pitch = pitch;
                 utterance.volume = 1.0;
                 
                 // 尝试使用中文语音
@@ -1059,8 +1067,7 @@
                     }
                 }
                 
-                utterance.onstart = () => console.log('开始播报:', text);
-                utterance.onend = () => console.log('播报结束:', text);
+                utterance.onstart = () => console.log('播报:', text);
                 utterance.onerror = (e) => console.log('语音错误:', e);
                 
                 window.speechSynthesis.speak(utterance);
@@ -1070,31 +1077,33 @@
             }
         }
         
-        // 播报打出的牌
-        function speakDiscard(tile, playerName = '') {
+        // 用指定玩家的声音播报
+        function speakAs(playerIndex, text) {
+            const voice = PLAYER_VOICE[playerIndex] || PLAYER_VOICE[0];
+            speak(text, voice.rate, voice.pitch);
+        }
+        
+        // 播报打出的牌（只报牌名，用不同音调区分玩家）
+        function speakDiscard(tile, playerIndex = 0) {
             const tileName = getTileSpeechName(tile);
-            if (playerName) {
-                speak(`${playerName}打${tileName}`);
-            } else {
-                speak(tileName);
-            }
+            speakAs(playerIndex, tileName);
         }
         
         // 播报碰牌
         function speakPeng(tile) {
             const tileName = getTileSpeechName(tile);
-            speak(`碰！${tileName}`);
+            speakAs(0, `碰，${tileName}`);
         }
         
         // 播报杠牌
         function speakGang(tile) {
             const tileName = getTileSpeechName(tile);
-            speak(`杠！${tileName}`);
+            speakAs(0, `杠，${tileName}`);
         }
         
         // 播报胡牌
         function speakHu() {
-            speak('胡了！', 1.0);
+            speakAs(0, '胡了');
         }
         
         // 初始化语音
@@ -1132,7 +1141,7 @@
             // 先尝试激活语音（解决浏览器自动播放限制）
             if (!speechReady && speechEnabled) {
                 // 第一次点击时测试语音
-                speak('麻将');
+                speak('麻将', 1.0, 1.0);
                 showToast('语音已激活！');
                 return;
             }
@@ -1142,7 +1151,7 @@
             if (speechEnabled) {
                 btn.innerHTML = '<i class="fas fa-volume-up"></i> 声音';
                 btn.style.opacity = '1';
-                speak('语音开');
+                speak('开', 1.0, 1.0);
             } else {
                 btn.innerHTML = '<i class="fas fa-volume-mute"></i> 静音';
                 btn.style.opacity = '0.6';
@@ -1150,12 +1159,17 @@
             }
         }
         
-        // 测试语音（调试用）
+        // 测试语音（调试用）- 演示不同玩家的声音
         function testSpeech() {
             console.log('测试语音...');
             console.log('speechSynthesis:', !!window.speechSynthesis);
             console.log('voiceList:', voiceList.length);
-            speak('测试，一万，二筒，三条');
+            
+            // 依次播放不同玩家的声音
+            setTimeout(() => speakAs(0, '三万'), 0);
+            setTimeout(() => speakAs(1, '五筒'), 1500);
+            setTimeout(() => speakAs(2, '七条'), 3000);
+            setTimeout(() => speakAs(3, '东风'), 4500);
         }
 
         function renderTile(tile, options = {}) {
@@ -1601,8 +1615,8 @@
             gameState.selectedTile = -1;
             gameState.hasDrawn = false;
             
-            // 语音播报打出的牌
-            speakDiscard(tile);
+            // 语音播报打出的牌（玩家音调）
+            speakDiscard(tile, 0);
             
             updateUI();
             
@@ -2044,9 +2058,8 @@
             gameState.lastDiscard = discardTile;
             gameState.lastDiscardPlayer = currentAI;
             
-            // 语音播报AI打出的牌
-            const aiNames = ['', '东家', '南家', '北家'];
-            speakDiscard(discardTile, aiNames[currentAI]);
+            // 语音播报AI打出的牌（用不同音调区分）
+            speakDiscard(discardTile, currentAI);
             
             updateUI();
             
