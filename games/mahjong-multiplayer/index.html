@@ -851,6 +851,29 @@
         </div>
     </div>
 
+    <!-- 服务器要求提示 -->
+    <div class="modal" id="serverRequiredModal">
+        <div class="modal-content" style="max-width: 600px;">
+            <h2 class="modal-title">🖥️ 需要启动服务器</h2>
+            <p class="modal-message" style="text-align: left; line-height: 1.8;">
+                多人联机需要运行 WebSocket 服务器，静态网页托管（如 GitHub Pages）无法支持。<br><br>
+                <strong>本地运行方法：</strong><br>
+                1. 下载项目代码<br>
+                2. 进入 <code style="background:#333;padding:2px 6px;border-radius:4px;">games/mahjong-multiplayer</code> 目录<br>
+                3. 运行 <code style="background:#333;padding:2px 6px;border-radius:4px;">npm install</code><br>
+                4. 运行 <code style="background:#333;padding:2px 6px;border-radius:4px;">npm start</code><br>
+                5. 访问 <code style="background:#333;padding:2px 6px;border-radius:4px;">http://localhost:3000</code><br><br>
+                <strong>或者：</strong>部署到 Render / Railway 等支持 Node.js 的云平台
+            </p>
+            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <button class="btn secondary" onclick="closeServerModal()">我知道了</button>
+                <button class="btn" onclick="window.location.href='../mahjong/index.html'">
+                    <i class="fas fa-robot"></i> 玩单人模式
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- 聊天区域 -->
     <div class="chat-area" id="chatArea" style="display: none;">
         <div class="chat-messages" id="chatMessages"></div>
@@ -877,22 +900,50 @@
         const WIND_NAMES = { east: '东', south: '南', west: '西', north: '北' };
 
         // 连接服务器
+        let isConnected = false;
+        let connectionAttempts = 0;
+        
         function connectServer() {
+            // 检测是否在 GitHub Pages 等静态托管上
+            const isStaticHost = window.location.hostname.includes('github.io') || 
+                                 window.location.hostname.includes('gitee.io') ||
+                                 window.location.hostname.includes('netlify.app') ||
+                                 window.location.hostname.includes('vercel.app');
+            
+            if (isStaticHost) {
+                // 静态托管无法运行 WebSocket 服务器，显示提示
+                showServerRequiredModal();
+                return;
+            }
+            
             // 自动检测服务器地址
             const serverUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                 ? `http://${window.location.hostname}:3000`
                 : window.location.origin;
             
-            socket = io(serverUrl);
+            socket = io(serverUrl, {
+                timeout: 5000,
+                reconnectionAttempts: 3
+            });
 
             socket.on('connect', () => {
                 console.log('已连接服务器');
                 myPlayerId = socket.id;
+                isConnected = true;
+                connectionAttempts = 0;
             });
 
             socket.on('disconnect', () => {
                 console.log('与服务器断开连接');
+                isConnected = false;
                 showToast('连接已断开');
+            });
+            
+            socket.on('connect_error', () => {
+                connectionAttempts++;
+                if (connectionAttempts >= 3) {
+                    showServerRequiredModal();
+                }
             });
 
             // 房间事件
@@ -967,14 +1018,31 @@
             });
         }
 
+        // 显示服务器要求提示
+        function showServerRequiredModal() {
+            document.getElementById('serverRequiredModal').classList.add('active');
+        }
+        
+        function closeServerModal() {
+            document.getElementById('serverRequiredModal').classList.remove('active');
+        }
+        
         // 创建房间
         function createRoom() {
+            if (!isConnected) {
+                showServerRequiredModal();
+                return;
+            }
             username = document.getElementById('usernameInput').value.trim() || '玩家' + Math.floor(Math.random() * 1000);
             socket.emit('create_room', { username, avatar: '👤' });
         }
 
         // 加入房间
         function joinRoom() {
+            if (!isConnected) {
+                showServerRequiredModal();
+                return;
+            }
             username = document.getElementById('usernameInput').value.trim() || '玩家' + Math.floor(Math.random() * 1000);
             const roomCode = document.getElementById('roomCodeInput').value.trim().toUpperCase();
             
