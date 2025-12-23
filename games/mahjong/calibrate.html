@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>麻将牌位置校准</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            padding: 20px;
+            margin: 0;
+        }
+        h1 { color: #d4af37; text-align: center; }
+        h2 { color: #f4d03f; margin-top: 30px; }
+        
+        .sprite-container {
+            position: relative;
+            width: 512px;
+            height: 512px;
+            margin: 20px auto;
+            border: 3px solid #d4af37;
+        }
+        
+        .sprite-container img {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        .grid-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            grid-template-rows: repeat(6, 1fr);
+        }
+        
+        .cell {
+            border: 1px solid rgba(255,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            color: yellow;
+            text-shadow: 1px 1px 2px black, -1px -1px 2px black;
+            background: rgba(0,0,0,0.3);
+        }
+        
+        .cell:hover {
+            background: rgba(255,255,0,0.4);
+        }
+        
+        .info {
+            max-width: 800px;
+            margin: 20px auto;
+            background: #2d2d4d;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        th, td {
+            border: 1px solid #444;
+            padding: 8px;
+            text-align: center;
+        }
+        
+        th {
+            background: #d4af37;
+            color: black;
+        }
+        
+        .highlight {
+            background: #4a4a6a;
+        }
+        
+        .note {
+            background: #ff6b6b;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🀄 麻将精灵图位置校准</h1>
+    
+    <div class="info">
+        <p>下面的图片上标注了每个格子的 <strong>[行,列]</strong> 编号（从0开始）</p>
+        <p>请对照你的精灵图，告诉我每张牌对应哪个编号！</p>
+    </div>
+    
+    <div class="sprite-container">
+        <img src="img/majiang.png" alt="麻将精灵图">
+        <div class="grid-overlay" id="grid"></div>
+    </div>
+    
+    <div class="info">
+        <div class="note">
+            <strong>📝 请告诉我正确的位置：</strong><br>
+            例如：一筒在 [0,0]、二筒在 [0,1]、一条在 [2,0] ...
+        </div>
+        
+        <h2>当前映射（可能不正确）</h2>
+        <table>
+            <tr>
+                <th colspan="9">筒子</th>
+            </tr>
+            <tr>
+                <td>一筒</td><td>二筒</td><td>三筒</td><td>四筒</td><td>五筒</td><td>六筒</td><td>七筒</td><td>八筒</td><td>九筒</td>
+            </tr>
+            <tr class="highlight">
+                <td>[0,0]</td><td>[0,1]</td><td>[0,2]</td><td>[0,3]</td><td>[0,4]</td><td>[0,5]</td><td>[0,6]</td><td>[1,0]</td><td>[1,1]</td>
+            </tr>
+        </table>
+        
+        <table>
+            <tr>
+                <th colspan="9">条子</th>
+            </tr>
+            <tr>
+                <td>一条</td><td>二条</td><td>三条</td><td>四条</td><td>五条</td><td>六条</td><td>七条</td><td>八条</td><td>九条</td>
+            </tr>
+            <tr class="highlight">
+                <td>[2,0]</td><td>[2,1]</td><td>[2,2]</td><td>[2,3]</td><td>[2,4]</td><td>[2,5]</td><td>[3,0]</td><td>[3,1]</td><td>[3,2]</td>
+            </tr>
+        </table>
+        
+        <table>
+            <tr>
+                <th colspan="9">万子</th>
+            </tr>
+            <tr>
+                <td>一万</td><td>二万</td><td>三万</td><td>四万</td><td>五万</td><td>六万</td><td>七万</td><td>八万</td><td>九万</td>
+            </tr>
+            <tr class="highlight">
+                <td>[5,0]</td><td>[5,1]</td><td>[5,2]</td><td>[5,3]</td><td>[5,4]</td><td>[5,5]</td><td>[5,6]</td><td>[5,7]</td><td>[4,6]</td>
+            </tr>
+        </table>
+        
+        <table>
+            <tr>
+                <th colspan="7">字牌</th>
+            </tr>
+            <tr>
+                <td>红中</td><td>发财</td><td>白板</td><td>东</td><td>南</td><td>西</td><td>北</td>
+            </tr>
+            <tr class="highlight">
+                <td>[4,0]</td><td>[4,1]</td><td>[3,3]</td><td>[4,2]</td><td>[4,3]</td><td>[4,4]</td><td>[4,5]</td>
+            </tr>
+        </table>
+        
+        <table>
+            <tr>
+                <th colspan="8">花牌</th>
+            </tr>
+            <tr>
+                <td>春</td><td>夏</td><td>秋</td><td>冬</td><td>梅</td><td>兰</td><td>竹</td><td>菊</td>
+            </tr>
+            <tr class="highlight">
+                <td>[2,8]</td><td>[3,8]</td><td>[0,7]</td><td>[2,7]</td><td>[1,8]</td><td>[0,8]</td><td>[1,7]</td><td>[3,7]</td>
+            </tr>
+        </table>
+    </div>
+    
+    <script>
+        const grid = document.getElementById('grid');
+        
+        for (let row = 0; row < 6; row++) {
+            for (let col = 0; col < 9; col++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.textContent = `[${row},${col}]`;
+                cell.title = `行${row} 列${col}`;
+                grid.appendChild(cell);
+            }
+        }
+    </script>
+</body>
+</html>
+

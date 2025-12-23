@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>麻将牌点击校准</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            padding: 20px;
+            margin: 0;
+        }
+        h1 { color: #d4af37; text-align: center; }
+        
+        .container {
+            display: flex;
+            gap: 30px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .left-panel {
+            flex: 1;
+        }
+        
+        .right-panel {
+            width: 400px;
+        }
+        
+        .image-container {
+            position: relative;
+            display: inline-block;
+            border: 3px solid #d4af37;
+            cursor: crosshair;
+        }
+        
+        .image-container img {
+            display: block;
+            width: 512px;
+            height: 512px;
+        }
+        
+        .click-marker {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: red;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        
+        .tile-box {
+            position: absolute;
+            border: 2px solid lime;
+            background: rgba(0,255,0,0.1);
+            pointer-events: none;
+        }
+        
+        .controls {
+            background: #2d2d4d;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+        
+        select, input, button {
+            padding: 8px 12px;
+            margin: 5px;
+            border-radius: 5px;
+            border: none;
+            font-size: 14px;
+        }
+        
+        button {
+            background: #d4af37;
+            color: black;
+            cursor: pointer;
+        }
+        
+        button:hover { background: #f4d03f; }
+        
+        .tile-list {
+            max-height: 500px;
+            overflow-y: auto;
+            background: #0a0a15;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .tile-item {
+            padding: 5px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .tile-item.done {
+            color: #2ecc71;
+        }
+        
+        .preview-tile {
+            width: 50px;
+            height: 70px;
+            background-image: url('img/majiang.png');
+            background-repeat: no-repeat;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            display: inline-block;
+            margin: 5px;
+        }
+        
+        .info {
+            background: #ff6b6b;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .coords {
+            font-size: 18px;
+            color: #f4d03f;
+            margin: 10px 0;
+        }
+        
+        #output {
+            background: #0a0a15;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🀄 麻将牌点击校准工具</h1>
+    
+    <div class="info">
+        <strong>操作步骤：</strong><br>
+        1. 从下拉菜单选择要校准的牌<br>
+        2. 在图片上点击该牌的<strong>左上角</strong><br>
+        3. 再点击该牌的<strong>右下角</strong><br>
+        4. 重复直到所有牌都校准完成
+    </div>
+    
+    <div class="container">
+        <div class="left-panel">
+            <div class="controls">
+                <label>选择牌：</label>
+                <select id="tileSelect"></select>
+                <button onclick="clearCurrent()">清除当前</button>
+                <button onclick="undoLast()">撤销上一张</button>
+                
+                <div class="coords">
+                    点击位置: <span id="clickPos">等待点击...</span>
+                </div>
+            </div>
+            
+            <div class="image-container" id="imageContainer">
+                <img src="img/majiang.png" alt="麻将牌" id="spriteImage">
+            </div>
+        </div>
+        
+        <div class="right-panel">
+            <h3>已校准的牌 (<span id="doneCount">0</span>/42)</h3>
+            <div class="tile-list" id="tileList"></div>
+            
+            <h3>预览</h3>
+            <div id="previewArea"></div>
+            
+            <button onclick="generateCode()">生成代码</button>
+            <button onclick="exportData()">导出数据</button>
+            <button onclick="clearAll()">清空全部</button>
+            
+            <div id="output"></div>
+        </div>
+    </div>
+
+    <script>
+        const allTiles = [
+            // 筒子
+            { key: 'tong1', name: '一筒' }, { key: 'tong2', name: '二筒' },
+            { key: 'tong3', name: '三筒' }, { key: 'tong4', name: '四筒' },
+            { key: 'tong5', name: '五筒' }, { key: 'tong6', name: '六筒' },
+            { key: 'tong7', name: '七筒' }, { key: 'tong8', name: '八筒' },
+            { key: 'tong9', name: '九筒' },
+            // 条子
+            { key: 'tiao1', name: '一条' }, { key: 'tiao2', name: '二条' },
+            { key: 'tiao3', name: '三条' }, { key: 'tiao4', name: '四条' },
+            { key: 'tiao5', name: '五条' }, { key: 'tiao6', name: '六条' },
+            { key: 'tiao7', name: '七条' }, { key: 'tiao8', name: '八条' },
+            { key: 'tiao9', name: '九条' },
+            // 万子
+            { key: 'wan1', name: '一万' }, { key: 'wan2', name: '二万' },
+            { key: 'wan3', name: '三万' }, { key: 'wan4', name: '四万' },
+            { key: 'wan5', name: '五万' }, { key: 'wan6', name: '六万' },
+            { key: 'wan7', name: '七万' }, { key: 'wan8', name: '八万' },
+            { key: 'wan9', name: '九万' },
+            // 字牌
+            { key: 'zhong', name: '红中' }, { key: 'fa', name: '发财' },
+            { key: 'bai', name: '白板' },
+            { key: 'dong', name: '东风' }, { key: 'nan', name: '南风' },
+            { key: 'xi', name: '西风' }, { key: 'bei', name: '北风' },
+            // 花牌
+            { key: 'chun', name: '春' }, { key: 'xia', name: '夏' },
+            { key: 'qiu', name: '秋' }, { key: 'dong_hua', name: '冬' },
+            { key: 'mei', name: '梅' }, { key: 'lan', name: '兰' },
+            { key: 'zhu', name: '竹' }, { key: 'ju', name: '菊' }
+        ];
+        
+        let calibratedTiles = {};
+        let currentClick = null; // 'first' or 'second'
+        let firstPoint = null;
+        let markers = [];
+        
+        // 初始化
+        function init() {
+            const select = document.getElementById('tileSelect');
+            allTiles.forEach(tile => {
+                const opt = document.createElement('option');
+                opt.value = tile.key;
+                opt.textContent = `${tile.name} (${tile.key})`;
+                select.appendChild(opt);
+            });
+            
+            // 加载保存的数据
+            const saved = localStorage.getItem('mahjongCalibration');
+            if (saved) {
+                calibratedTiles = JSON.parse(saved);
+                updateList();
+                updatePreview();
+            }
+            
+            // 图片点击事件
+            document.getElementById('imageContainer').addEventListener('click', handleClick);
+            
+            currentClick = 'first';
+        }
+        
+        function handleClick(e) {
+            const rect = e.target.getBoundingClientRect();
+            const x = Math.round(e.clientX - rect.left);
+            const y = Math.round(e.clientY - rect.top);
+            
+            document.getElementById('clickPos').textContent = `(${x}, ${y})`;
+            
+            // 添加标记点
+            addMarker(x, y);
+            
+            if (currentClick === 'first') {
+                firstPoint = { x, y };
+                currentClick = 'second';
+                document.getElementById('clickPos').textContent = `左上角(${x}, ${y}) - 请点击右下角`;
+            } else {
+                // 第二次点击，完成校准
+                const key = document.getElementById('tileSelect').value;
+                const tile = allTiles.find(t => t.key === key);
+                
+                calibratedTiles[key] = {
+                    x: firstPoint.x,
+                    y: firstPoint.y,
+                    w: x - firstPoint.x,
+                    h: y - firstPoint.y
+                };
+                
+                // 保存
+                localStorage.setItem('mahjongCalibration', JSON.stringify(calibratedTiles));
+                
+                // 显示区域框
+                showTileBox(firstPoint.x, firstPoint.y, x - firstPoint.x, y - firstPoint.y);
+                
+                // 移动到下一张牌
+                const select = document.getElementById('tileSelect');
+                const nextIndex = select.selectedIndex + 1;
+                if (nextIndex < select.options.length) {
+                    select.selectedIndex = nextIndex;
+                }
+                
+                currentClick = 'first';
+                firstPoint = null;
+                clearMarkers();
+                
+                updateList();
+                updatePreview();
+                
+                document.getElementById('clickPos').textContent = `${tile.name} 已校准！请选择下一张`;
+            }
+        }
+        
+        function addMarker(x, y) {
+            const container = document.getElementById('imageContainer');
+            const marker = document.createElement('div');
+            marker.className = 'click-marker';
+            marker.style.left = x + 'px';
+            marker.style.top = y + 'px';
+            container.appendChild(marker);
+            markers.push(marker);
+        }
+        
+        function clearMarkers() {
+            markers.forEach(m => m.remove());
+            markers = [];
+        }
+        
+        function showTileBox(x, y, w, h) {
+            const container = document.getElementById('imageContainer');
+            // 移除旧的框
+            container.querySelectorAll('.tile-box').forEach(b => b.remove());
+            
+            const box = document.createElement('div');
+            box.className = 'tile-box';
+            box.style.left = x + 'px';
+            box.style.top = y + 'px';
+            box.style.width = w + 'px';
+            box.style.height = h + 'px';
+            container.appendChild(box);
+        }
+        
+        function updateList() {
+            const list = document.getElementById('tileList');
+            list.innerHTML = '';
+            
+            let count = 0;
+            allTiles.forEach(tile => {
+                const item = document.createElement('div');
+                item.className = 'tile-item';
+                
+                if (calibratedTiles[tile.key]) {
+                    const c = calibratedTiles[tile.key];
+                    item.classList.add('done');
+                    item.innerHTML = `<span>${tile.name}</span><span>x:${c.x} y:${c.y} w:${c.w} h:${c.h}</span>`;
+                    count++;
+                } else {
+                    item.innerHTML = `<span>${tile.name}</span><span>-</span>`;
+                }
+                
+                list.appendChild(item);
+            });
+            
+            document.getElementById('doneCount').textContent = count;
+        }
+        
+        function updatePreview() {
+            const area = document.getElementById('previewArea');
+            area.innerHTML = '';
+            
+            // 显示已校准的牌预览
+            for (const key in calibratedTiles) {
+                const c = calibratedTiles[key];
+                const div = document.createElement('div');
+                div.className = 'preview-tile';
+                div.style.width = '50px';
+                div.style.height = '70px';
+                
+                // 计算缩放比例
+                const scaleX = 50 / c.w;
+                const scaleY = 70 / c.h;
+                
+                div.style.backgroundSize = `${512 * scaleX}px ${512 * scaleY}px`;
+                div.style.backgroundPosition = `${-c.x * scaleX}px ${-c.y * scaleY}px`;
+                div.title = key;
+                
+                area.appendChild(div);
+            }
+        }
+        
+        function generateCode() {
+            let code = `// 麻将牌精灵图位置映射 {x, y, w, h}\nconst TILE_SPRITE_POS = {\n`;
+            
+            for (const key in calibratedTiles) {
+                const c = calibratedTiles[key];
+                code += `    '${key}': { x: ${c.x}, y: ${c.y}, w: ${c.w}, h: ${c.h} },\n`;
+            }
+            
+            code += `};\n`;
+            
+            document.getElementById('output').textContent = code;
+        }
+        
+        function exportData() {
+            const data = JSON.stringify(calibratedTiles, null, 2);
+            document.getElementById('output').textContent = data;
+        }
+        
+        function clearCurrent() {
+            currentClick = 'first';
+            firstPoint = null;
+            clearMarkers();
+            document.getElementById('clickPos').textContent = '已清除，请重新点击';
+        }
+        
+        function undoLast() {
+            const keys = Object.keys(calibratedTiles);
+            if (keys.length > 0) {
+                delete calibratedTiles[keys[keys.length - 1]];
+                localStorage.setItem('mahjongCalibration', JSON.stringify(calibratedTiles));
+                updateList();
+                updatePreview();
+            }
+        }
+        
+        function clearAll() {
+            if (confirm('确定清空所有校准数据？')) {
+                calibratedTiles = {};
+                localStorage.removeItem('mahjongCalibration');
+                updateList();
+                updatePreview();
+                document.getElementById('output').textContent = '';
+            }
+        }
+        
+        init();
+    </script>
+</body>
+</html>
+
