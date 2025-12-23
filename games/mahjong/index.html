@@ -1215,8 +1215,14 @@
                 renderTile(tile, { small: true })
             ).join('');
             
-            // 显示花牌数量和听牌状态
-            let statusText = `🌸 花牌: ${flowerCount} (+${flowerCount * FLOWER_SCORE}分)`;
+            // 显示花牌数量、手牌数量和听牌状态
+            const handCount = gameState.players[0].hand.length;
+            const meldsCount = gameState.players[0].melds.length;
+            let statusText = `🃏 手牌: ${handCount}张`;
+            if (meldsCount > 0) {
+                statusText += ` (碰${meldsCount}组)`;
+            }
+            statusText += ` | 🌸 花牌: ${flowerCount} (+${flowerCount * FLOWER_SCORE}分)`;
             if (gameState.isTing) {
                 const tingNames = gameState.tingList.map(t => {
                     const d = getTileDisplay(t);
@@ -1709,9 +1715,16 @@
         
         // ==================== 听牌检测 ====================
         
-        // 检查是否听牌（13张牌时，只差一张就能胡）
-        function checkTingPai(hand) {
-            if (hand.length !== 13) return null;
+        // 检查是否听牌（只差一张就能胡）
+        function checkTingPai(hand, playerIndex = 0) {
+            // 考虑副露：手牌数 = 13 - 副露数*3 或更少
+            const player = gameState.players[playerIndex];
+            const meldsCount = player ? player.melds.length : 0;
+            const expectedSize = 13 - meldsCount * 3; // 等待摸牌的手牌数
+            
+            // 允许的手牌数量：等待摸牌状态
+            // 0碰: 13张, 1碰: 10张, 2碰: 7张, 3碰: 4张, 4碰: 1张
+            if (hand.length !== expectedSize) return null;
             
             const tingList = [];
             
@@ -1720,7 +1733,7 @@
             
             for (const tile of allPossibleTiles) {
                 const testHand = [...hand, tile];
-                if (canHu(testHand)) {
+                if (canHu(testHand, playerIndex)) {
                     tingList.push(tile);
                 }
             }
@@ -1750,10 +1763,13 @@
         // 检查当前是否听牌并显示提示
         function checkAndShowTing() {
             const hand = gameState.players[0].hand;
+            const meldsCount = gameState.players[0].melds.length;
+            const expectedSize = 13 - meldsCount * 3; // 出牌后的手牌数
             
-            // 打出一张牌后（13张），检查听牌
-            if (hand.length === 13) {
-                const tingList = checkTingPai(hand);
+            // 出牌后检查听牌
+            // 0碰: 13张, 1碰: 10张, 2碰: 7张, 3碰: 4张
+            if (hand.length === expectedSize) {
+                const tingList = checkTingPai(hand, 0);
                 
                 if (tingList && tingList.length > 0) {
                     gameState.isTing = true;
@@ -1767,7 +1783,7 @@
                     
                     showMessage('🎯 听牌了！', `你听：${tingNames}\n\n听牌后摸什么打什么，不能换牌！`);
                     showToast('听牌了！听：' + tingNames);
-                } else {
+            } else {
                     gameState.isTing = false;
                     gameState.tingList = null;
                 }
@@ -1954,13 +1970,28 @@
             }
         }
 
-        function canHu(hand) {
-            if (hand.length !== 14) return false;
+        function canHu(hand, playerIndex = 0) {
+            // 考虑副露的情况
+            // 有副露时，手牌 + 副露数*3 应该 = 14
+            const player = gameState.players[playerIndex];
+            const meldsCount = player ? player.melds.length : 0;
+            const expectedHandSize = 14 - meldsCount * 3;
             
-            // 检查七对子
-            if (isQiDui(hand)) return true;
+            // 允许有副露时手牌少于14张
+            // 碰1组: 14-3=11张, 碰2组: 14-6=8张, 碰3组: 14-9=5张, 碰4组: 14-12=2张
+            if (hand.length !== expectedHandSize && hand.length !== 14) {
+                // 也接受14张（用于听牌检测等）
+                if (hand.length < 2 || hand.length > 14) return false;
+            }
             
-            // 检查基本型（4面子1雀头）
+            // 七对子只能门清（无副露）
+            if (meldsCount === 0 && hand.length === 14 && isQiDui(hand)) return true;
+            
+            // 检查基本型（手牌部分的面子 + 1雀头）
+            // 需要的面子数 = (手牌数 - 2) / 3
+            const needMelds = (hand.length - 2) / 3;
+            if (needMelds !== Math.floor(needMelds) || needMelds < 0) return false;
+            
             if (isBasicHu(hand)) return true;
             
             return false;
