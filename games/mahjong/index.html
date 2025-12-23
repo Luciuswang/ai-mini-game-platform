@@ -1013,6 +1013,8 @@
         };
         
         let speechEnabled = true;
+        let speechReady = false;
+        let voiceList = [];
         
         // 获取牌的中文名称（用于语音）
         function getTileSpeechName(tile) {
@@ -1026,26 +1028,46 @@
         }
         
         // 语音播报
-        function speak(text, rate = 1.2) {
-            if (!speechEnabled || !window.speechSynthesis) return;
-            
-            // 取消之前的语音
-            window.speechSynthesis.cancel();
-            
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'zh-CN';
-            utterance.rate = rate;
-            utterance.pitch = 1.0;
-            utterance.volume = 1.0;
-            
-            // 尝试使用中文语音
-            const voices = window.speechSynthesis.getVoices();
-            const chineseVoice = voices.find(v => v.lang.includes('zh') || v.lang.includes('CN'));
-            if (chineseVoice) {
-                utterance.voice = chineseVoice;
+        function speak(text, rate = 1.0) {
+            if (!speechEnabled) {
+                console.log('语音已禁用');
+                return;
             }
             
-            window.speechSynthesis.speak(utterance);
+            if (!window.speechSynthesis) {
+                console.log('浏览器不支持语音合成');
+                return;
+            }
+            
+            try {
+                // 取消之前的语音
+                window.speechSynthesis.cancel();
+                
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'zh-CN';
+                utterance.rate = rate;
+                utterance.pitch = 1.0;
+                utterance.volume = 1.0;
+                
+                // 尝试使用中文语音
+                if (voiceList.length > 0) {
+                    const chineseVoice = voiceList.find(v => 
+                        v.lang.includes('zh') || v.lang.includes('CN') || v.lang.includes('Chinese')
+                    );
+                    if (chineseVoice) {
+                        utterance.voice = chineseVoice;
+                    }
+                }
+                
+                utterance.onstart = () => console.log('开始播报:', text);
+                utterance.onend = () => console.log('播报结束:', text);
+                utterance.onerror = (e) => console.log('语音错误:', e);
+                
+                window.speechSynthesis.speak(utterance);
+                speechReady = true;
+            } catch (e) {
+                console.error('语音播报失败:', e);
+            }
         }
         
         // 播报打出的牌
@@ -1077,30 +1099,63 @@
         
         // 初始化语音
         function initSpeech() {
-            if (window.speechSynthesis) {
-                // 预加载语音列表
-                window.speechSynthesis.getVoices();
-                window.speechSynthesis.onvoiceschanged = () => {
-                    window.speechSynthesis.getVoices();
-                };
+            if (!window.speechSynthesis) {
+                console.log('浏览器不支持语音合成API');
+                return;
+            }
+            
+            // 加载语音列表
+            function loadVoices() {
+                voiceList = window.speechSynthesis.getVoices();
+                console.log('可用语音数量:', voiceList.length);
+                if (voiceList.length > 0) {
+                    const chineseVoices = voiceList.filter(v => 
+                        v.lang.includes('zh') || v.lang.includes('CN')
+                    );
+                    console.log('中文语音:', chineseVoices.map(v => v.name + '(' + v.lang + ')'));
+                }
+            }
+            
+            loadVoices();
+            
+            // 有些浏览器需要等待事件
+            if (window.speechSynthesis.onvoiceschanged !== undefined) {
+                window.speechSynthesis.onvoiceschanged = loadVoices;
             }
         }
         
         // 页面加载时初始化语音
         initSpeech();
         
-        // 切换声音开关
+        // 切换声音开关（同时测试语音）
         function toggleSound() {
+            // 先尝试激活语音（解决浏览器自动播放限制）
+            if (!speechReady && speechEnabled) {
+                // 第一次点击时测试语音
+                speak('麻将');
+                showToast('语音已激活！');
+                return;
+            }
+            
             speechEnabled = !speechEnabled;
             const btn = document.getElementById('soundBtn');
             if (speechEnabled) {
                 btn.innerHTML = '<i class="fas fa-volume-up"></i> 声音';
                 btn.style.opacity = '1';
-                speak('语音已开启');
+                speak('语音开');
             } else {
                 btn.innerHTML = '<i class="fas fa-volume-mute"></i> 静音';
                 btn.style.opacity = '0.6';
+                showToast('语音已关闭');
             }
+        }
+        
+        // 测试语音（调试用）
+        function testSpeech() {
+            console.log('测试语音...');
+            console.log('speechSynthesis:', !!window.speechSynthesis);
+            console.log('voiceList:', voiceList.length);
+            speak('测试，一万，二筒，三条');
         }
 
         function renderTile(tile, options = {}) {
@@ -1163,6 +1218,11 @@
 
         // ==================== 游戏初始化 ====================
         function startGame(difficulty) {
+            // 用户点击开始游戏时激活语音
+            if (speechEnabled && !speechReady) {
+                speak('开始');
+            }
+            
             gameState.difficulty = difficulty;
             gameState.deck = createDeck();
             gameState.score = 0;
