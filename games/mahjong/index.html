@@ -1143,6 +1143,11 @@
             speakAs(0, '杠');
         }
         
+        // 播报听牌
+        function speakTing() {
+            speakAs(0, '听');
+        }
+        
         // 播报胡牌
         function speakHu() {
             speakAs(0, '胡了');
@@ -2109,6 +2114,9 @@
                 if (tingList && tingList.length > 0) {
                     gameState.isTing = true;
                     gameState.tingList = tingList;
+                    
+                    // 语音播报"听"
+                    speakTing();
                     
                     // 显示听牌提示
                     const tingNames = tingList.map(t => {
