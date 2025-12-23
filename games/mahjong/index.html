@@ -1123,6 +1123,54 @@
             speakAs(0, '胡了');
         }
         
+        // 播报放炮（带爆炸音效）
+        function speakFangPao(loserIndex) {
+            // 先播放爆炸音效
+            playExplosionSound();
+            // 然后语音
+            setTimeout(() => {
+                const names = ['你', '东家', '南家', '北家'];
+                speak(`${names[loserIndex]}放炮`, 0.8, 0.5);
+            }, 300);
+        }
+        
+        // 简单的爆炸音效（使用Web Audio API）
+        function playExplosionSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // 创建噪音
+                const bufferSize = audioCtx.sampleRate * 0.3; // 0.3秒
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                
+                for (let i = 0; i < bufferSize; i++) {
+                    // 衰减的噪音
+                    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+                }
+                
+                const source = audioCtx.createBufferSource();
+                source.buffer = buffer;
+                
+                // 低通滤波器让声音更像爆炸
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 500;
+                
+                // 增益控制音量
+                const gain = audioCtx.createGain();
+                gain.gain.value = 0.5;
+                
+                source.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                source.start();
+            } catch (e) {
+                console.log('无法播放爆炸音效:', e);
+            }
+        }
+        
         // 初始化语音
         function initSpeech() {
             if (!window.speechSynthesis) {
@@ -1809,8 +1857,9 @@
         
         // 显示碰牌操作提示
         function showActionHints() {
-            const canPeng = checkPlayerCanPeng();
-            const canGang = checkPlayerCanGang();
+            // 听牌后只能胡，不能碰杠
+            const canPeng = gameState.isTing ? false : checkPlayerCanPeng();
+            const canGang = gameState.isTing ? false : checkPlayerCanGang();
             const canHuNow = checkPlayerCanHu();
             
             if (!canPeng && !canGang && !canHuNow) {
@@ -1929,7 +1978,10 @@
                 const flowerBonus = flowerCount * FLOWER_SCORE;
                 const fromPlayer = ['玩家','AI-东','AI-南','AI-北'][gameState.lastDiscardPlayer];
                 
-                endGame('🎊 胡牌！', `${fromPlayer}点炮！\n花牌: ${flowerCount}个 (+${flowerBonus}分)`);
+                // 放炮爆炸音效！
+                speakFangPao(gameState.lastDiscardPlayer);
+                
+                endGame('🎊 胡牌！', `${fromPlayer}点炮！💥\n花牌: ${flowerCount}个 (+${flowerBonus}分)`);
             }
         }
         
