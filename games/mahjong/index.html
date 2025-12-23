@@ -52,7 +52,25 @@
         .game-subtitle {
             font-size: 1.2rem;
             color: rgba(255,255,255,0.8);
-            margin-bottom: 40px;
+            margin-bottom: 20px;
+        }
+        
+        .scoreboard-preview {
+            background: linear-gradient(135deg, rgba(243,156,18,0.3) 0%, rgba(211,84,0,0.3) 100%);
+            border: 2px solid var(--gold);
+            border-radius: 15px;
+            padding: 15px 30px;
+            margin-bottom: 20px;
+            display: inline-block;
+            font-size: 1.1rem;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        .scoreboard-preview .score-big {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--gold);
         }
 
         .menu-container {
@@ -609,6 +627,9 @@
         <h1 class="game-logo">🀄 上海敲麻</h1>
         <p class="game-subtitle">哈灵规则 · 不能吃牌 · 门清翻倍</p>
         
+        <!-- 积分榜概览 -->
+        <div id="scoreboardPreview" class="scoreboard-preview"></div>
+        
         <div class="menu-container">
             <button class="menu-btn" onclick="startGame('easy')">
                 <i class="fas fa-play"></i> 开始游戏（简单）
@@ -621,6 +642,9 @@
             </button>
             <button class="menu-btn secondary" onclick="showRules()">
                 <i class="fas fa-book"></i> 游戏规则
+            </button>
+            <button class="menu-btn secondary" onclick="showFullScoreboard()">
+                <i class="fas fa-trophy"></i> 完整积分榜
             </button>
             <button class="menu-btn secondary" onclick="window.location.href='../../index.html'">
                 <i class="fas fa-home"></i> 返回主页
@@ -812,6 +836,9 @@
                 </button>
                 <button class="action-btn secondary" id="soundBtn" onclick="toggleSound()">
                     <i class="fas fa-volume-up"></i> 声音
+                </button>
+                <button class="action-btn secondary" onclick="showFullScoreboard()" style="background: linear-gradient(135deg, #f39c12 0%, #d35400 100%);">
+                    <i class="fas fa-trophy"></i> 积分榜
                 </button>
             </div>
         </div>
@@ -2582,11 +2609,131 @@
             if (title.includes('胡') || title.includes('自摸')) {
                 speakHu();
             } else if (title.includes('流局')) {
-                speak('流局');
+                speak('流局', 1.0, 1.0);
             }
             
-            showMessage(title, message);
+            // 更新积分榜
+            updateScoreboard(title);
+            
+            // 显示结果和积分
+            const scoreInfo = getScoreboardInfo();
+            const fullMessage = message + '\n\n' + scoreInfo;
+            
+            showMessage(title, fullMessage);
             updateUI();
+        }
+        
+        // ==================== 积分榜系统 ====================
+        
+        // 从localStorage加载积分
+        function loadScoreboard() {
+            const saved = localStorage.getItem('mahjong_scoreboard');
+            if (saved) {
+                return JSON.parse(saved);
+            }
+            return {
+                wins: 0,           // 胡牌次数
+                losses: 0,         // 被胡次数
+                draws: 0,          // 流局次数
+                fangPao: 0,        // 放炮次数
+                ziMo: 0,           // 自摸次数
+                totalScore: 0,     // 总积分
+                maxScore: 0,       // 单局最高分
+                gamesPlayed: 0,    // 总场次
+                winStreak: 0,      // 连胜
+                maxWinStreak: 0    // 最高连胜
+            };
+        }
+        
+        // 保存积分
+        function saveScoreboard(data) {
+            localStorage.setItem('mahjong_scoreboard', JSON.stringify(data));
+        }
+        
+        // 更新积分榜
+        function updateScoreboard(result) {
+            const scoreboard = loadScoreboard();
+            scoreboard.gamesPlayed++;
+            
+            const flowerCount = gameState.players[0].flowers.length;
+            const flowerBonus = flowerCount * FLOWER_SCORE;
+            
+            if (result.includes('胡牌') || result.includes('自摸')) {
+                // 玩家胡牌
+                scoreboard.wins++;
+                scoreboard.winStreak++;
+                
+                if (result.includes('自摸')) {
+                    scoreboard.ziMo++;
+                    scoreboard.totalScore += 10 + flowerBonus; // 自摸基础10分
+                } else {
+                    scoreboard.totalScore += 5 + flowerBonus; // 点炮基础5分
+                }
+                
+                if (scoreboard.winStreak > scoreboard.maxWinStreak) {
+                    scoreboard.maxWinStreak = scoreboard.winStreak;
+                }
+                
+                const thisScore = (result.includes('自摸') ? 10 : 5) + flowerBonus;
+                if (thisScore > scoreboard.maxScore) {
+                    scoreboard.maxScore = thisScore;
+                }
+            } else if (result.includes('AI胡牌')) {
+                // AI胡牌，玩家输
+                scoreboard.losses++;
+                scoreboard.winStreak = 0;
+                scoreboard.totalScore -= 5;
+                
+                // 检查是否是玩家放炮
+                if (gameState.lastDiscardPlayer === 0) {
+                    scoreboard.fangPao++;
+                }
+            } else if (result.includes('流局')) {
+                // 流局
+                scoreboard.draws++;
+                // 连胜不中断
+            }
+            
+            saveScoreboard(scoreboard);
+        }
+        
+        // 获取积分榜信息
+        function getScoreboardInfo() {
+            const s = loadScoreboard();
+            const winRate = s.gamesPlayed > 0 ? Math.round(s.wins / s.gamesPlayed * 100) : 0;
+            
+            return `📊 战绩统计\n` +
+                   `胜${s.wins} 负${s.losses} 平${s.draws} | 胜率${winRate}%\n` +
+                   `总积分: ${s.totalScore} | 连胜: ${s.winStreak}`;
+        }
+        
+        // 显示完整积分榜
+        function showFullScoreboard() {
+            const s = loadScoreboard();
+            const winRate = s.gamesPlayed > 0 ? Math.round(s.wins / s.gamesPlayed * 100) : 0;
+            
+            const info = 
+                `🏆 积分榜\n\n` +
+                `📈 总积分: ${s.totalScore}\n` +
+                `🎮 总场次: ${s.gamesPlayed}\n\n` +
+                `✅ 胜场: ${s.wins} (胜率${winRate}%)\n` +
+                `❌ 负场: ${s.losses}\n` +
+                `➖ 流局: ${s.draws}\n\n` +
+                `🀄 自摸次数: ${s.ziMo}\n` +
+                `💥 放炮次数: ${s.fangPao}\n\n` +
+                `🔥 当前连胜: ${s.winStreak}\n` +
+                `👑 最高连胜: ${s.maxWinStreak}\n` +
+                `⭐ 单局最高分: ${s.maxScore}`;
+            
+            showMessage('🏆 积分榜', info);
+        }
+        
+        // 重置积分榜
+        function resetScoreboard() {
+            if (confirm('确定要清空所有战绩吗？')) {
+                localStorage.removeItem('mahjong_scoreboard');
+                showToast('战绩已清空');
+            }
         }
 
         // ==================== UI辅助 ====================
@@ -2671,6 +2818,28 @@
                 sortHand();
             }
         });
+        
+        // 页面加载时显示积分榜概览
+        function initScoreboardPreview() {
+            const s = loadScoreboard();
+            const winRate = s.gamesPlayed > 0 ? Math.round(s.wins / s.gamesPlayed * 100) : 0;
+            
+            const preview = document.getElementById('scoreboardPreview');
+            if (preview) {
+                if (s.gamesPlayed === 0) {
+                    preview.innerHTML = `🏆 还没有战绩，开始第一局吧！`;
+                } else {
+                    preview.innerHTML = 
+                        `🏆 总积分: <span class="score-big">${s.totalScore}</span> ` +
+                        `| 胜${s.wins} 负${s.losses} 平${s.draws} ` +
+                        `| 胜率${winRate}% ` +
+                        `${s.winStreak > 0 ? '🔥' + s.winStreak + '连胜' : ''}`;
+                }
+            }
+        }
+        
+        // 初始化
+        initScoreboardPreview();
     </script>
 </body>
 </html>
