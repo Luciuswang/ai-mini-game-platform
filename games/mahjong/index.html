@@ -794,9 +794,6 @@
                 <button class="action-btn success" id="huBtn" onclick="checkHu()" disabled>
                     <i class="fas fa-trophy"></i> 胡牌
                 </button>
-                <button class="action-btn secondary" onclick="sortHand()">
-                    <i class="fas fa-sort"></i> 理牌
-                </button>
                 <button class="action-btn secondary" onclick="showTips()">
                     <i class="fas fa-lightbulb"></i> 提示
                 </button>
@@ -1324,10 +1321,14 @@
         }
 
         function sortHand() {
+            sortHandSilent();
+            showToast('手牌已整理');
+        }
+        
+        // 静默理牌（不显示提示）
+        function sortHandSilent() {
             sortTiles(gameState.players[0].hand);
             gameState.selectedTile = -1;
-            updateUI();
-            showToast('手牌已整理');
         }
         
         // 处理起手花牌
@@ -1625,6 +1626,9 @@
             // 语音播报打出的牌（玩家音调）
             speakDiscard(tile, 0);
             
+            // 自动理牌
+            sortHandSilent();
+            
             updateUI();
             
             // 打牌后检测听牌（13张牌时）
@@ -1691,14 +1695,18 @@
                     
                     // 继续摸牌直到非花牌
                     setTimeout(() => playerAutoDrawTile(), 400);
-                } else {
-                    // 普通牌，加入手牌
-                    gameState.players[0].hand.push(tile);
-                    gameState.hasDrawn = true;
-                    updateUI();
-                    
-                    const display = getTileDisplay(tile);
-                    showToast(`摸到: ${display.value}${display.suit}`);
+            } else {
+                // 普通牌，加入手牌
+                gameState.players[0].hand.push(tile);
+                gameState.hasDrawn = true;
+                
+                // 自动理牌
+                sortHandSilent();
+                
+                updateUI();
+                
+                const display = getTileDisplay(tile);
+                showToast(`摸到: ${display.value}${display.suit}`);
                     
                     // 检查是否能自摸胡牌
                     if (canHu(gameState.players[0].hand)) {
