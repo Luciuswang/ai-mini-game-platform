@@ -231,6 +231,19 @@
             border-color: var(--gold);
             box-shadow: 0 0 20px rgba(212,175,55,0.6);
         }
+        
+        /* 刚摸的牌 - 突出显示 */
+        .tile.new-tile {
+            margin-left: 15px;
+            border-color: #3498db;
+            box-shadow: 0 0 15px rgba(52,152,219,0.8);
+            animation: newTilePulse 1s ease-in-out infinite;
+        }
+        
+        @keyframes newTilePulse {
+            0%, 100% { box-shadow: 0 0 15px rgba(52,152,219,0.8); }
+            50% { box-shadow: 0 0 25px rgba(52,152,219,1); }
+        }
 
         .tile.disabled {
             opacity: 0.5;
@@ -1177,13 +1190,14 @@
         }
 
         function renderTile(tile, options = {}) {
-            const { small = false, back = false, selectable = false, index = -1 } = options;
+            const { small = false, back = false, selectable = false, index = -1, isNew = false } = options;
             const display = getTileDisplay(tile);
             
             let classes = ['tile', display.class];
             if (small) classes.push('small');
             if (back) classes.push('back');
             if (selectable && gameState.selectedTile === index) classes.push('selected');
+            if (isNew) classes.push('new-tile');
             
             if (back) {
                 return `<div class="${classes.join(' ')}"></div>`;
@@ -1392,9 +1406,13 @@
             
             // 渲染玩家手牌
             const playerHand = document.getElementById('playerHand');
-            playerHand.innerHTML = gameState.players[0].hand.map((tile, index) => 
-                renderTile(tile, { selectable: true, index })
-            ).join('');
+            const handLength = gameState.players[0].hand.length;
+            const isLastTileNew = gameState.hasDrawn && handLength > 0;
+            
+            playerHand.innerHTML = gameState.players[0].hand.map((tile, index) => {
+                const isNewTile = isLastTileNew && index === handLength - 1;
+                return renderTile(tile, { selectable: true, index, isNew: isNewTile });
+            }).join('');
             
             // 渲染玩家花牌
             const playerFlowers = document.getElementById('playerFlowers');
@@ -1696,13 +1714,11 @@
                     // 继续摸牌直到非花牌
                     setTimeout(() => playerAutoDrawTile(), 400);
             } else {
-                // 普通牌，加入手牌
+                // 普通牌，加入手牌（放在最右边，不理牌）
                 gameState.players[0].hand.push(tile);
                 gameState.hasDrawn = true;
                 
-                // 自动理牌
-                sortHandSilent();
-                
+                // 不自动理牌，让摸到的牌显示在最右边
                 updateUI();
                 
                 const display = getTileDisplay(tile);
