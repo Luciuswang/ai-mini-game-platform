@@ -1027,12 +1027,12 @@
             }
         }
         
-        // 不同玩家的音调配置（模拟不同声音）
+        // 不同玩家的音调配置（加大差异，更容易区分）
         const PLAYER_VOICE = {
-            0: { pitch: 1.0, rate: 1.1 },   // 玩家：正常女声
-            1: { pitch: 0.7, rate: 1.0 },   // 东家AI：低沉男声
-            2: { pitch: 1.3, rate: 1.2 },   // 南家AI：高音
-            3: { pitch: 0.5, rate: 0.9 }    // 北家AI：更低沉
+            0: { pitch: 1.2, rate: 1.0 },   // 玩家：较高女声
+            1: { pitch: 0.5, rate: 0.85 },  // 东家AI：很低沉男声
+            2: { pitch: 1.8, rate: 1.3 },   // 南家AI：很高音快速
+            3: { pitch: 0.3, rate: 0.7 }    // 北家AI：超低沉慢速
         };
         
         // 语音播报
@@ -1086,6 +1086,13 @@
         // 播报打出的牌（只报牌名，用不同音调区分玩家）
         function speakDiscard(tile, playerIndex = 0) {
             const tileName = getTileSpeechName(tile);
+            
+            // 显示谁出的牌（帮助区分）
+            const playerNames = ['你', '东家', '南家', '北家'];
+            if (playerIndex > 0) {
+                showToast(`${playerNames[playerIndex]}：${tileName}`, 800);
+            }
+            
             speakAs(playerIndex, tileName);
         }
         
@@ -2517,8 +2524,9 @@
             document.getElementById('modal').classList.remove('active');
         }
 
-        function showToast(message) {
+        function showToast(message, duration = 2000) {
             const toast = document.createElement('div');
+            const animDuration = duration / 1000;
             toast.style.cssText = `
                 position: fixed;
                 top: 20%;
@@ -2529,12 +2537,13 @@
                 padding: 15px 30px;
                 border-radius: 10px;
                 z-index: 2000;
-                animation: fadeInOut 2s ease forwards;
+                animation: fadeInOut ${animDuration}s ease forwards;
+                font-size: 1.2rem;
             `;
             toast.textContent = message;
             document.body.appendChild(toast);
             
-            setTimeout(() => toast.remove(), 2000);
+            setTimeout(() => toast.remove(), duration);
         }
 
         function showRules() {
