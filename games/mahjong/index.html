@@ -1161,42 +1161,77 @@
             }, 300);
         }
         
+        // 全局AudioContext（需要用户交互后才能创建）
+        let audioContext = null;
+        
+        function getAudioContext() {
+            if (!audioContext) {
+                try {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    console.log('无法创建AudioContext:', e);
+                }
+            }
+            // 如果被暂停，恢复它
+            if (audioContext && audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            return audioContext;
+        }
+        
         // 简单的爆炸音效（使用Web Audio API）
         function playExplosionSound() {
+            const ctx = getAudioContext();
+            if (!ctx) {
+                // 备用方案：用语音说"砰"
+                speak('砰', 0.5, 0.3);
+                return;
+            }
+            
             try {
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                
                 // 创建噪音
-                const bufferSize = audioCtx.sampleRate * 0.3; // 0.3秒
-                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const bufferSize = ctx.sampleRate * 0.4; // 0.4秒
+                const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
                 const data = buffer.getChannelData(0);
                 
                 for (let i = 0; i < bufferSize; i++) {
-                    // 衰减的噪音
-                    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+                    // 衰减的噪音 + 低频震动
+                    const decay = Math.pow(1 - i / bufferSize, 1.5);
+                    const noise = (Math.random() * 2 - 1) * decay;
+                    const lowFreq = Math.sin(i * 0.05) * decay * 0.5;
+                    data[i] = noise + lowFreq;
                 }
                 
-                const source = audioCtx.createBufferSource();
+                const source = ctx.createBufferSource();
                 source.buffer = buffer;
                 
                 // 低通滤波器让声音更像爆炸
-                const filter = audioCtx.createBiquadFilter();
+                const filter = ctx.createBiquadFilter();
                 filter.type = 'lowpass';
-                filter.frequency.value = 500;
+                filter.frequency.value = 400;
                 
                 // 增益控制音量
-                const gain = audioCtx.createGain();
-                gain.gain.value = 0.5;
+                const gain = ctx.createGain();
+                gain.gain.value = 0.8;
                 
                 source.connect(filter);
                 filter.connect(gain);
-                gain.connect(audioCtx.destination);
+                gain.connect(ctx.destination);
                 
                 source.start();
+                console.log('爆炸音效已播放');
             } catch (e) {
-                console.log('无法播放爆炸音效:', e);
+                console.log('爆炸音效播放失败:', e);
+                // 备用方案
+                speak('砰', 0.5, 0.3);
             }
         }
+        
+        // 在用户第一次交互时初始化AudioContext
+        document.addEventListener('click', function initAudio() {
+            getAudioContext();
+            document.removeEventListener('click', initAudio);
+        }, { once: true });
         
         // 初始化语音
         function initSpeech() {
@@ -1827,6 +1862,9 @@
             gameState.lastDiscard = discardTile;
             gameState.lastDiscardPlayer = 0;
             gameState.hasDrawn = false;
+            
+            // 语音播报打出的牌
+            speakDiscard(discardTile, 0);
             
             const display = getTileDisplay(discardTile);
             showToast(`听牌中，自动打出: ${display.value}${display.suit}`);
@@ -2612,15 +2650,72 @@
                 speak('流局', 1.0, 1.0);
             }
             
+            // 计算本局各家得分
+            const roundScores = calculateRoundScores(title);
+            
             // 更新积分榜
             updateScoreboard(title);
             
-            // 显示结果和积分
+            // 显示结果、本局积分和战绩
             const scoreInfo = getScoreboardInfo();
-            const fullMessage = message + '\n\n' + scoreInfo;
+            const fullMessage = message + '\n\n' + roundScores + '\n\n' + scoreInfo;
             
             showMessage(title, fullMessage);
             updateUI();
+        }
+        
+        // 计算本局各家得分
+        function calculateRoundScores(result) {
+            const players = ['你', 'AI-东', 'AI-南', 'AI-北'];
+            const scores = [0, 0, 0, 0];
+            const flowers = gameState.players.map(p => p.flowers.length);
+            
+            if (result.includes('胡牌') || result.includes('自摸')) {
+                // 玩家胡牌
+                const baseScore = result.includes('自摸') ? 3 : 1; // 自摸三家付
+                const flowerBonus = flowers[0];
+                const isMenQing = gameState.players[0].melds.length === 0;
+                const menQingBonus = isMenQing ? 1 : 0;
+                
+                const winScore = (baseScore + flowerBonus + menQingBonus) * (result.includes('自摸') ? 3 : 1);
+                
+                if (result.includes('自摸')) {
+                    // 自摸：其他三家各扣分
+                    scores[0] = winScore;
+                    scores[1] = scores[2] = scores[3] = -Math.ceil(winScore / 3);
+                } else {
+                    // 点炮：放炮者扣分
+                    scores[0] = winScore;
+                    scores[gameState.lastDiscardPlayer] = -winScore;
+                }
+            } else if (result.includes('AI胡牌')) {
+                // AI胡牌
+                const winnerIndex = gameState.currentPlayer || 1;
+                const baseScore = 3;
+                scores[winnerIndex] = baseScore + flowers[winnerIndex];
+                
+                if (gameState.lastDiscardPlayer === 0) {
+                    // 玩家放炮
+                    scores[0] = -(baseScore + flowers[winnerIndex]);
+                } else {
+                    // AI自摸
+                    for (let i = 0; i < 4; i++) {
+                        if (i !== winnerIndex) {
+                            scores[i] = -Math.ceil(scores[winnerIndex] / 3);
+                        }
+                    }
+                }
+            }
+            // 流局各家0分
+            
+            let text = '📊 本局积分：\n';
+            for (let i = 0; i < 4; i++) {
+                const sign = scores[i] > 0 ? '+' : '';
+                const flower = flowers[i] > 0 ? ` 🌸×${flowers[i]}` : '';
+                text += `${players[i]}: ${sign}${scores[i]}${flower}\n`;
+            }
+            
+            return text;
         }
         
         // ==================== 积分榜系统 ====================
