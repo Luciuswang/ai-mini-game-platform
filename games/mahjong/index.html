@@ -1573,11 +1573,11 @@
                 statusText += ` (碰${meldsCount}组)`;
             }
             statusText += ` | 🌸 花牌: ${flowerCount} (+${flowerCount * FLOWER_SCORE}分)`;
-            if (gameState.isTing) {
-                const tingNames = gameState.tingList.map(t => {
-                    const d = getTileDisplay(t);
-                    return d.value + d.suit;
-                }).slice(0, 4).join('、');
+            if (gameState.isTing && gameState.tingList) {
+                const tingNames = gameState.tingList.map(item => {
+                    const d = getTileDisplay(item.tile);
+                    return `${d.value}${d.suit}×${item.remaining}`;
+                }).slice(0, 4).join(' ');
                 statusText += ` | 🎯 <span style="color: #ffd700; font-weight: bold;">听牌中！</span> 听：${tingNames}`;
             }
             document.getElementById('flowerCount').innerHTML = statusText;
@@ -2105,11 +2105,56 @@
             for (const tile of allPossibleTiles) {
                 const testHand = [...hand, tile];
                 if (canHu(testHand, playerIndex)) {
-                    tingList.push(tile);
+                    // 计算这张牌还剩多少
+                    const remaining = countRemainingTiles(tile);
+                    tingList.push({ tile, remaining });
                 }
             }
             
             return tingList.length > 0 ? tingList : null;
+        }
+        
+        // 计算某张牌还剩多少张
+        function countRemainingTiles(targetTile) {
+            const targetKey = tileKey(targetTile);
+            let total = 4; // 每种牌最多4张
+            
+            // 减去自己手牌中的
+            gameState.players[0].hand.forEach(t => {
+                if (tileKey(t) === targetKey) total--;
+            });
+            
+            // 减去自己副露中的
+            gameState.players[0].melds.forEach(meld => {
+                meld.tiles.forEach(t => {
+                    if (tileKey(t) === targetKey) total--;
+                });
+            });
+            
+            // 减去所有玩家的弃牌
+            gameState.players.forEach(player => {
+                player.discards.forEach(t => {
+                    if (tileKey(t) === targetKey) total--;
+                });
+            });
+            
+            // 减去所有玩家的花牌区（如果是花牌/中发白的话）
+            gameState.players.forEach(player => {
+                player.flowers.forEach(t => {
+                    if (tileKey(t) === targetKey) total--;
+                });
+            });
+            
+            // 减去其他玩家的副露
+            for (let i = 1; i < 4; i++) {
+                gameState.players[i].melds.forEach(meld => {
+                    meld.tiles.forEach(t => {
+                        if (tileKey(t) === targetKey) total--;
+                    });
+                });
+            }
+            
+            return Math.max(0, total);
         }
         
         // 获取所有可能的牌（用于听牌检测）
@@ -2149,10 +2194,10 @@
                     // 语音播报"听"
                     speakTing();
                     
-                    // 显示听牌提示
-                    const tingNames = tingList.map(t => {
-                        const display = getTileDisplay(t);
-                        return display.value + display.suit;
+                    // 显示听牌提示（包含剩余张数）
+                    const tingNames = tingList.map(item => {
+                        const display = getTileDisplay(item.tile);
+                        return `${display.value}${display.suit}(剩${item.remaining}张)`;
                     }).join('、');
                     
                     showMessage('🎯 听牌了！', `你听：${tingNames}\n\n听牌后摸什么打什么，不能换牌！`);
@@ -2584,9 +2629,9 @@
             
             // 如果已经听牌
             if (gameState.isTing && gameState.tingList) {
-                const tingNames = gameState.tingList.map(t => {
-                    const display = getTileDisplay(t);
-                    return display.value + display.suit;
+                const tingNames = gameState.tingList.map(item => {
+                    const display = getTileDisplay(item.tile);
+                    return `${display.value}${display.suit}(剩${item.remaining}张)`;
                 }).join('、');
                 tips += `🎯 【已听牌】听：${tingNames}\n\n`;
                 tips += '⚠️ 听牌后只能打刚摸的牌！\n';
