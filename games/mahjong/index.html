@@ -1064,24 +1064,32 @@
             }
         }
         
-        // 不同玩家的音调配置（更自然的声音）
+        // 不同玩家的音调配置
         const PLAYER_VOICE = {
-            0: { pitch: 1.15, rate: 0.9 },  // 玩家：自然女声
-            1: { pitch: 0.85, rate: 0.95 }, // 东家：自然男声1
-            2: { pitch: 0.95, rate: 1.0 },  // 南家：自然男声2
-            3: { pitch: 0.75, rate: 0.9 }   // 北家：稍低男声
+            0: { pitch: 1.2, rate: 0.95, gender: 'female' },  // 玩家：女声
+            1: { pitch: 0.8, rate: 0.9, gender: 'male' },     // 东家：男声1
+            2: { pitch: 0.9, rate: 1.0, gender: 'male' },     // 南家：男声2
+            3: { pitch: 0.7, rate: 0.85, gender: 'male' }     // 北家：男声3
         };
         
-        // 优先使用的高质量语音名称
-        const PREFERRED_VOICES = [
-            'Microsoft Xiaoxiao', 'Microsoft Yunxi', // Windows 神经网络语音
-            'Tingting', 'Meijia',  // iOS/macOS 高质量语音
-            'Google 普通话', 'Google Mandarin',
-            'zh-CN-XiaoxiaoNeural', 'zh-CN-YunxiNeural' // Azure神经网络语音
+        // 女声语音关键词
+        const FEMALE_VOICE_KEYWORDS = [
+            'Xiaoxiao', 'Tingting', 'Meijia', 'Hanhan', 'Xiaoyi', 'Xiaomo',
+            'female', 'Female', 'woman', 'Woman', '女'
         ];
         
-        // 语音播报（优化：选择最自然的声音）
-        function speak(text, rate = 1.0, pitch = 1.0) {
+        // 男声语音关键词
+        const MALE_VOICE_KEYWORDS = [
+            'Yunxi', 'Yunyang', 'Yunjian', 'Yunze',
+            'male', 'Male', 'man', 'Man', '男'
+        ];
+        
+        // 缓存找到的男女声音
+        let femaleVoice = null;
+        let maleVoice = null;
+        
+        // 语音播报（根据性别选择不同语音）
+        function speak(text, rate = 1.0, pitch = 1.0, gender = 'female') {
             if (!speechEnabled) {
                 return;
             }
@@ -1100,35 +1108,11 @@
                 utterance.pitch = pitch;
                 utterance.volume = 1.0;
                 
-                // 选择最自然的中文语音
-                if (voiceList.length > 0) {
-                    // 优先找高质量神经网络语音
-                    let bestVoice = null;
-                    
-                    // 1. 先找优先列表中的语音
-                    for (const prefName of PREFERRED_VOICES) {
-                        bestVoice = voiceList.find(v => v.name.includes(prefName));
-                        if (bestVoice) break;
-                    }
-                    
-                    // 2. 找带 Neural 或 Natural 的语音
-                    if (!bestVoice) {
-                        bestVoice = voiceList.find(v => 
-                            (v.lang.includes('zh') || v.lang.includes('CN')) &&
-                            (v.name.includes('Neural') || v.name.includes('Natural') || v.name.includes('Premium'))
-                        );
-                    }
-                    
-                    // 3. 找任意中文语音
-                    if (!bestVoice) {
-                        bestVoice = voiceList.find(v => 
-                            v.lang.includes('zh') || v.lang.includes('CN') || v.lang.includes('Chinese')
-                        );
-                    }
-                    
-                    if (bestVoice) {
-                        utterance.voice = bestVoice;
-                    }
+                // 根据性别选择语音
+                if (gender === 'female' && femaleVoice) {
+                    utterance.voice = femaleVoice;
+                } else if (gender === 'male' && maleVoice) {
+                    utterance.voice = maleVoice;
                 }
                 
                 window.speechSynthesis.speak(utterance);
@@ -1138,10 +1122,10 @@
             }
         }
         
-        // 用指定玩家的声音播报
+        // 用指定玩家的声音播报（女声给玩家，男声给AI）
         function speakAs(playerIndex, text) {
             const voice = PLAYER_VOICE[playerIndex] || PLAYER_VOICE[0];
-            speak(text, voice.rate, voice.pitch);
+            speak(text, voice.rate, voice.pitch, voice.gender);
         }
         
         // 播报打出的牌（只报牌名，用不同音调区分玩家）
@@ -1272,22 +1256,33 @@
                 voiceList = window.speechSynthesis.getVoices();
                 
                 if (voiceList.length > 0) {
-                    // 找最佳中文语音
+                    // 找中文语音
                     const chineseVoices = voiceList.filter(v => 
                         v.lang.includes('zh') || v.lang.includes('CN')
                     );
                     
-                    // 找高质量语音
-                    const neuralVoices = chineseVoices.filter(v =>
-                        v.name.includes('Neural') || v.name.includes('Natural') || 
-                        v.name.includes('Xiaoxiao') || v.name.includes('Tingting')
+                    // 找女声
+                    femaleVoice = chineseVoices.find(v => 
+                        FEMALE_VOICE_KEYWORDS.some(k => v.name.includes(k))
                     );
                     
-                    if (neuralVoices.length > 0) {
-                        console.log('🎤 使用高质量语音:', neuralVoices[0].name);
-                    } else if (chineseVoices.length > 0) {
-                        console.log('🎤 使用中文语音:', chineseVoices[0].name);
+                    // 找男声
+                    maleVoice = chineseVoices.find(v => 
+                        MALE_VOICE_KEYWORDS.some(k => v.name.includes(k))
+                    );
+                    
+                    // 如果没找到特定性别，用第一个和第二个中文语音
+                    if (!femaleVoice && chineseVoices.length > 0) {
+                        femaleVoice = chineseVoices[0];
                     }
+                    if (!maleVoice && chineseVoices.length > 1) {
+                        maleVoice = chineseVoices[1];
+                    } else if (!maleVoice) {
+                        maleVoice = femaleVoice; // 实在没有就用同一个
+                    }
+                    
+                    console.log('🎤 女声:', femaleVoice?.name || '无');
+                    console.log('🎤 男声:', maleVoice?.name || '无');
                 }
             }
             
