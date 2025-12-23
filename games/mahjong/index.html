@@ -1133,16 +1133,14 @@
             speakAs(playerIndex, tileName);
         }
         
-        // 播报碰牌
+        // 播报碰牌（只说"碰"，不重复牌名，因为AI已经播报过了）
         function speakPeng(tile) {
-            const tileName = getTileSpeechName(tile);
-            speakAs(0, `碰，${tileName}`);
+            speakAs(0, '碰');
         }
         
-        // 播报杠牌
+        // 播报杠牌（只说"杠"）
         function speakGang(tile) {
-            const tileName = getTileSpeechName(tile);
-            speakAs(0, `杠，${tileName}`);
+            speakAs(0, '杠');
         }
         
         // 播报胡牌
