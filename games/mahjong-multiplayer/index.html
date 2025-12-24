@@ -457,59 +457,102 @@
             border-radius: 5px;
         }
 
-        /* 麻将牌样式 */
+        /* 麻将牌样式 - 使用精灵图 */
         .tile {
-            width: 32px;
-            height: 44px;
-            background: linear-gradient(180deg, #fff 0%, var(--tile-bg) 100%);
-            border: 1px solid var(--tile-border);
-            border-radius: 4px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.7rem;
-            color: #333;
+            width: 45px;
+            height: 63px;
+            background-color: #f5f0e1;
+            background-image: url('../mahjong/img/majiang.png');
+            background-repeat: no-repeat;
+            border: 2px solid var(--tile-border);
+            border-radius: 5px;
             cursor: pointer;
             transition: all 0.2s ease;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
             position: relative;
+            user-select: none;
         }
 
         .tile:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transform: translateY(-8px);
+            box-shadow: 2px 8px 15px rgba(0,0,0,0.4);
         }
 
         .tile.selected {
-            transform: translateY(-10px);
-            box-shadow: 0 8px 20px rgba(212,175,55,0.5);
+            transform: translateY(-12px);
             border-color: var(--gold);
+            box-shadow: 0 0 20px rgba(212,175,55,0.6);
+        }
+        
+        /* 刚摸的牌 - 突出显示 */
+        .tile.new-tile {
+            margin-left: 15px;
+            border-color: #3498db;
+            box-shadow: 0 0 15px rgba(52,152,219,0.8);
+            animation: newTilePulse 1s ease-in-out infinite;
+        }
+        
+        @keyframes newTilePulse {
+            0%, 100% { box-shadow: 0 0 15px rgba(52,152,219,0.8); }
+            50% { box-shadow: 0 0 25px rgba(52,152,219,1); }
         }
 
         .tile.back {
-            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            background-image: none;
+            background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
+            border-color: #1b5e20;
+        }
+
+        .tile.back::after {
+            content: '🀫';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.2rem;
+            opacity: 0.5;
         }
 
         .tile.small {
-            width: 24px;
-            height: 32px;
-            font-size: 0.55rem;
+            width: 28px;
+            height: 39px;
+        }
+
+        .tile.small.back::after {
+            font-size: 0.8rem;
         }
 
         .tile.discarded {
-            width: 28px;
-            height: 38px;
-            font-size: 0.6rem;
+            width: 32px;
+            height: 45px;
+        }
+
+        /* 文字备用显示 */
+        .tile-text {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        .tile.text-mode {
+            background-image: none !important;
+            background: linear-gradient(180deg, #fff 0%, var(--tile-bg) 100%);
+        }
+
+        .tile.text-mode .tile-text {
+            display: flex;
         }
 
         .tile-value {
-            font-size: 1.1em;
+            font-size: 1.4rem;
             font-weight: bold;
         }
 
         .tile-type {
-            font-size: 0.8em;
+            font-size: 0.8rem;
         }
 
         .tile.wan .tile-value { color: #c0392b; }
@@ -691,10 +734,13 @@
             .lobby-title { font-size: 2.5rem; }
             .room-code { font-size: 2rem; letter-spacing: 4px; }
             .players-grid { grid-template-columns: 1fr; }
-            .tile { width: 28px; height: 38px; }
-            .tile.small { width: 20px; height: 28px; }
+            .tile { width: 36px; height: 50px; }
+            .tile.small { width: 22px; height: 31px; }
+            .tile.discarded { width: 26px; height: 36px; }
+            .tile.new-tile { margin-left: 10px; }
             .chat-area { display: none; }
             .mahjong-table { aspect-ratio: 3/4; }
+            .my-hand { gap: 2px; }
         }
     </style>
 </head>
@@ -829,7 +875,6 @@
             <div class="my-melds" id="myMelds"></div>
             
             <div class="action-buttons" id="actionButtons">
-                <button class="action-btn draw" id="drawBtn" onclick="drawTile()">摸牌</button>
                 <button class="action-btn discard" id="discardBtn" onclick="discardTile()" disabled>出牌</button>
             </div>
             
@@ -893,11 +938,55 @@
         let gameState = null;
         let isReady = false;
         let username = '';
+        let lastDrawnTileId = null; // 记录刚摸的牌
 
         // 牌面显示
         const TYPE_NAMES = { wan: '万', tiao: '条', tong: '筒' };
         const NUM_NAMES = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
         const WIND_NAMES = { east: '东', south: '南', west: '西', north: '北' };
+        
+        // 精灵图位置映射 (8列×6行网格)
+        const TILE_SPRITE_MAP = {
+            // 第0行: 万子 1-8
+            'wan1': [0, 0], 'wan2': [0, 1], 'wan3': [0, 2], 'wan4': [0, 3],
+            'wan5': [0, 4], 'wan6': [0, 5], 'wan7': [0, 6], 'wan8': [0, 7],
+            
+            // 第1行: 筒子 1-8
+            'tong1': [1, 0], 'tong2': [1, 1], 'tong3': [1, 2], 'tong4': [1, 3],
+            'tong5': [1, 4], 'tong6': [1, 5], 'tong7': [1, 6], 'tong8': [1, 7],
+            
+            // 第2行: 条子 1-8
+            'tiao1': [2, 0], 'tiao2': [2, 1], 'tiao3': [2, 2], 'tiao4': [2, 3],
+            'tiao5': [2, 4], 'tiao6': [2, 5], 'tiao7': [2, 6], 'tiao8': [2, 7],
+            
+            // 第3行: 字牌 东南西北中发白
+            'dong': [3, 0], 'nan': [3, 1], 'xi': [3, 2], 'bei': [3, 3],
+            'zhong': [3, 4], 'fa': [3, 5], 'bai': [3, 6],
+            
+            // 第4行: 花牌
+            'qiu': [4, 0], 'lan': [4, 1], 'zhu': [4, 2], 'mei': [4, 3],
+            'chun': [4, 4], 'xia': [4, 5], 'dong_hua': [4, 6], 'ju': [4, 7],
+            
+            // 第5行: 9万 9筒 9条
+            'wan9': [5, 0], 'tong9': [5, 1], 'tiao9': [5, 2]
+        };
+        
+        // 获取精灵图背景位置
+        function getSpritePosition(tile) {
+            const key = `${tile.type}${tile.value}`;
+            const pos = TILE_SPRITE_MAP[key];
+            
+            if (!pos) return '';
+            
+            const cols = 8;
+            const rows = 6;
+            
+            // 使用百分比定位
+            const posX = pos[1] === 0 ? 0 : (pos[1] / (cols - 1)) * 100;
+            const posY = pos[0] === 0 ? 0 : (pos[0] / (rows - 1)) * 100;
+            
+            return `background-size: ${cols * 100}% ${rows * 100}%; background-position: ${posX}% ${posY}%;`;
+        }
 
         // 连接服务器
         let isConnected = false;
@@ -977,9 +1066,18 @@
             socket.on('game_state_update', (data) => {
                 gameState = data.gameState;
                 updateGameUI();
+                
+                // 自动摸牌：轮到玩家且是摸牌阶段时自动摸牌
+                const isMyTurn = gameState.currentPlayerIndex === mySeatIndex;
+                if (isMyTurn && gameState.turnPhase === 'draw') {
+                    setTimeout(() => {
+                        autoDrawTile();
+                    }, 500);
+                }
             });
 
             socket.on('tile_drawn', (data) => {
+                lastDrawnTileId = data.tile.id; // 记录刚摸的牌
                 showToast(`摸到: ${getTileName(data.tile)}`);
             });
 
@@ -1193,8 +1291,11 @@
             const container = document.getElementById('myHand');
             container.innerHTML = '';
 
-            hand.forEach(tile => {
-                const tileEl = createTileElement(tile);
+            hand.forEach((tile, index) => {
+                // 判断是否是刚摸的牌（最后一张且刚摸过牌）
+                const isNewTile = (tile.id === lastDrawnTileId);
+                const tileEl = createTileElement(tile, { isNew: isNewTile });
+                
                 tileEl.onclick = () => selectTile(tile.id);
                 if (tile.id === selectedTileId) {
                     tileEl.classList.add('selected');
@@ -1204,13 +1305,33 @@
         }
 
         // 创建麻将牌元素
-        function createTileElement(tile, small = false) {
+        function createTileElement(tile, options = {}) {
+            const { small = false, isNew = false, discarded = false } = options;
             const el = document.createElement('div');
-            el.className = `tile ${tile.type}` + (small ? ' small' : '');
-            el.innerHTML = `
-                <span class="tile-value">${NUM_NAMES[tile.value]}</span>
-                <span class="tile-type">${TYPE_NAMES[tile.type]}</span>
-            `;
+            
+            let classes = ['tile', tile.type];
+            if (small) classes.push('small');
+            if (discarded) classes.push('discarded');
+            if (isNew) classes.push('new-tile');
+            
+            el.className = classes.join(' ');
+            
+            // 应用精灵图位置
+            const spritePos = getSpritePosition(tile);
+            if (spritePos) {
+                el.style.cssText = spritePos;
+            } else {
+                // 备用文字显示
+                el.classList.add('text-mode');
+                el.innerHTML = `
+                    <div class="tile-text">
+                        <span class="tile-value">${NUM_NAMES[tile.value]}</span>
+                        <span class="tile-type">${TYPE_NAMES[tile.type]}</span>
+                    </div>
+                `;
+            }
+            
+            el.title = `${NUM_NAMES[tile.value]}${TYPE_NAMES[tile.type]}`;
             return el;
         }
 
@@ -1223,7 +1344,7 @@
                 const group = document.createElement('div');
                 group.className = 'meld-group';
                 meld.tiles.forEach(tile => {
-                    group.appendChild(createTileElement(tile, true));
+                    group.appendChild(createTileElement(tile, { small: true }));
                 });
                 container.appendChild(group);
             });
@@ -1237,17 +1358,23 @@
             // 显示所有玩家的弃牌
             gameState.players.forEach(player => {
                 player.discards.forEach(tile => {
-                    const tileEl = createTileElement(tile);
-                    tileEl.classList.add('discarded');
+                    const tileEl = createTileElement(tile, { discarded: true });
                     container.appendChild(tileEl);
                 });
             });
         }
 
-        // 选择手牌
+        // 选择手牌（双击直接出牌）
         function selectTile(tileId) {
+            // 只能在出牌阶段选牌
+            if (gameState.currentPlayerIndex !== mySeatIndex || gameState.turnPhase !== 'discard') {
+                return;
+            }
+            
             if (selectedTileId === tileId) {
-                selectedTileId = null;
+                // 双击直接出牌
+                discardTile();
+                return;
             } else {
                 selectedTileId = tileId;
             }
@@ -1272,10 +1399,10 @@
             const isMyTurn = gameState.currentPlayerIndex === mySeatIndex;
             const actionBtns = document.getElementById('actionButtons');
             
-            if (isMyTurn && gameState.turnPhase !== 'action') {
+            // 只在出牌阶段显示出牌按钮（摸牌是自动的）
+            if (isMyTurn && gameState.turnPhase === 'discard') {
                 actionBtns.classList.add('active');
-                document.getElementById('drawBtn').disabled = gameState.turnPhase !== 'draw';
-                document.getElementById('discardBtn').disabled = gameState.turnPhase !== 'discard' || !selectedTileId;
+                document.getElementById('discardBtn').disabled = !selectedTileId;
             } else {
                 actionBtns.classList.remove('active');
             }
@@ -1302,8 +1429,17 @@
             document.getElementById('actionButtons').classList.add('active');
         }
 
-        // 摸牌
+        // 手动摸牌（备用）
         function drawTile() {
+            socket.emit('draw_tile');
+        }
+        
+        // 自动摸牌
+        function autoDrawTile() {
+            if (!gameState || gameState.currentPlayerIndex !== mySeatIndex) return;
+            if (gameState.turnPhase !== 'draw') return;
+            
+            console.log('自动摸牌...');
             socket.emit('draw_tile');
         }
 
@@ -1313,6 +1449,10 @@
                 showToast('请先选择要打出的牌');
                 return;
             }
+            
+            // 清除刚摸的牌标记
+            lastDrawnTileId = null;
+            
             socket.emit('discard_tile', { tileId: selectedTileId });
             selectedTileId = null;
         }
