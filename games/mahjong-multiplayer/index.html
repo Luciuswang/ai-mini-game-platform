@@ -1041,6 +1041,196 @@
             
             return `background-size: ${cols * 100}% ${rows * 100}%; background-position: ${posX}% ${posY}%;`;
         }
+        
+        // ==================== 听牌检测 ====================
+        let isTing = false;
+        let tingList = [];
+        
+        // 检测是否能胡牌（3N+2结构）
+        function canHuHand(tiles) {
+            if (tiles.length === 0) return true;
+            if (tiles.length === 2) {
+                return tiles[0].type === tiles[1].type && tiles[0].value === tiles[1].value;
+            }
+            if (tiles.length < 3) return false;
+            
+            // 排序
+            const sorted = [...tiles].sort((a, b) => {
+                if (a.type !== b.type) return a.type.localeCompare(b.type);
+                return a.value - b.value;
+            });
+            
+            // 尝试作为将（对子）
+            for (let i = 0; i < sorted.length - 1; i++) {
+                if (sorted[i].type === sorted[i+1].type && sorted[i].value === sorted[i+1].value) {
+                    const remaining = [...sorted];
+                    remaining.splice(i, 2);
+                    if (canFormMelds(remaining)) return true;
+                }
+            }
+            return false;
+        }
+        
+        function canFormMelds(tiles) {
+            if (tiles.length === 0) return true;
+            if (tiles.length % 3 !== 0) return false;
+            
+            const sorted = [...tiles].sort((a, b) => {
+                if (a.type !== b.type) return a.type.localeCompare(b.type);
+                return a.value - b.value;
+            });
+            
+            // 尝试刻子
+            if (sorted.length >= 3 &&
+                sorted[0].type === sorted[1].type && sorted[1].type === sorted[2].type &&
+                sorted[0].value === sorted[1].value && sorted[1].value === sorted[2].value) {
+                return canFormMelds(sorted.slice(3));
+            }
+            
+            // 尝试顺子
+            if (sorted.length >= 3) {
+                const first = sorted[0];
+                const secondIdx = sorted.findIndex(t => t.type === first.type && t.value === first.value + 1);
+                const thirdIdx = sorted.findIndex(t => t.type === first.type && t.value === first.value + 2);
+                
+                if (secondIdx !== -1 && thirdIdx !== -1) {
+                    const remaining = [...sorted];
+                    [thirdIdx, secondIdx, 0].sort((a,b) => b-a).forEach(idx => remaining.splice(idx, 1));
+                    if (canFormMelds(remaining)) return true;
+                }
+            }
+            return false;
+        }
+        
+        // 检测听哪些牌
+        function checkTingPai(hand) {
+            const tingTiles = [];
+            const allTileTypes = ['wan', 'tiao', 'tong'];
+            
+            for (const type of allTileTypes) {
+                for (let value = 1; value <= 9; value++) {
+                    const testTile = { type, value };
+                    const testHand = [...hand, testTile];
+                    if (canHuHand(testHand)) {
+                        tingTiles.push(testTile);
+                    }
+                }
+            }
+            return tingTiles;
+        }
+        
+        // 检查并显示听牌状态
+        function checkAndShowTing() {
+            if (!gameState) return;
+            
+            const myPlayer = gameState.players.find(p => p.seatIndex === mySeatIndex);
+            if (!myPlayer || !myPlayer.hand) return;
+            
+            // 只有13张牌时检测听牌（或10张有1碰，7张有2碰...）
+            const expectedSize = 13 - (myPlayer.melds?.length || 0) * 3;
+            if (myPlayer.hand.length !== expectedSize) return;
+            
+            const newTingList = checkTingPai(myPlayer.hand);
+            
+            if (newTingList.length > 0 && !isTing) {
+                isTing = true;
+                tingList = newTingList;
+                
+                // 语音播报
+                speakTing();
+                
+                // 显示听牌信息
+                const tingNames = newTingList.map(t => `${NUM_NAMES[t.value]}${TYPE_NAMES[t.type]}`).join('、');
+                showToast(`🎯 听牌！听：${tingNames}`, 3000);
+            }
+        }
+        
+        // ==================== 语音播报系统 ====================
+        let speechEnabled = true;
+        let audioContext = null;
+        
+        // 获取牌的语音名称
+        function getTileSpeechName(tile) {
+            const numNames = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+            return numNames[tile.value] + TYPE_NAMES[tile.type];
+        }
+        
+        // 语音播报
+        function speak(text, rate = 1.0, pitch = 1.0) {
+            if (!speechEnabled || !window.speechSynthesis) return;
+            
+            try {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'zh-CN';
+                utterance.rate = rate;
+                utterance.pitch = pitch;
+                utterance.volume = 1.0;
+                window.speechSynthesis.speak(utterance);
+            } catch (e) {
+                console.error('语音播报失败:', e);
+            }
+        }
+        
+        // 播报出牌
+        function speakDiscard(tile, isMe = true) {
+            const name = getTileSpeechName(tile);
+            speak(name, isMe ? 1.0 : 0.9, isMe ? 1.2 : 0.8);
+        }
+        
+        // 播报听牌
+        function speakTing() {
+            speak('听', 1.0, 1.3);
+        }
+        
+        // 播报碰
+        function speakPeng() {
+            speak('碰', 1.0, 1.0);
+        }
+        
+        // 播报杠
+        function speakGang() {
+            speak('杠', 1.0, 1.0);
+        }
+        
+        // 播报胡牌
+        function speakHu(isZimo = false) {
+            speak(isZimo ? '自摸' : '胡了', 0.9, 1.2);
+        }
+        
+        // 播放爆炸音效（放炮时）
+        function playExplosionSound() {
+            try {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioContext.state === 'suspended') audioContext.resume();
+                
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(150, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(40, audioContext.currentTime + 0.3);
+                
+                gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.4);
+            } catch (e) {
+                console.log('音效播放失败:', e);
+            }
+        }
+        
+        // 播报放炮
+        function speakFangPao() {
+            playExplosionSound();
+            setTimeout(() => speak('放炮', 0.8, 0.6), 300);
+        }
 
         // 连接服务器
         let isConnected = false;
@@ -1112,18 +1302,34 @@
             socket.on('game_started', (data) => {
                 mySeatIndex = data.yourSeat;
                 gameState = data.gameState;
+                
+                // 重置听牌状态
+                isTing = false;
+                tingList = [];
+                lastDrawnTileId = null;
+                selectedTileId = null;
+                
                 showGameScreen();
                 updateGameUI();
                 showToast('游戏开始！');
             });
 
             socket.on('game_state_update', (data) => {
+                const prevPhase = gameState?.turnPhase;
+                const prevPlayer = gameState?.currentPlayerIndex;
+                
                 gameState = data.gameState;
                 updateGameUI();
                 
+                console.log('游戏状态更新:', '玩家:', gameState.currentPlayerIndex, '阶段:', gameState.turnPhase, '我的座位:', mySeatIndex);
+                
                 // 自动摸牌：轮到玩家且是摸牌阶段时自动摸牌
+                // 只在状态变化时触发，防止重复
                 const isMyTurn = gameState.currentPlayerIndex === mySeatIndex;
-                if (isMyTurn && gameState.turnPhase === 'draw') {
+                const phaseChanged = prevPhase !== gameState.turnPhase || prevPlayer !== gameState.currentPlayerIndex;
+                
+                if (isMyTurn && gameState.turnPhase === 'draw' && phaseChanged) {
+                    console.log('触发自动摸牌...');
                     setTimeout(() => {
                         autoDrawTile();
                     }, 500);
@@ -1133,14 +1339,24 @@
             socket.on('tile_drawn', (data) => {
                 lastDrawnTileId = data.tile.id; // 记录刚摸的牌
                 showToast(`摸到: ${getTileName(data.tile)}`);
+                
+                // 重新渲染手牌以显示新牌高亮
+                if (gameState) {
+                    const myPlayer = gameState.players.find(p => p.seatIndex === mySeatIndex);
+                    if (myPlayer && myPlayer.hand) {
+                        renderMyHand(myPlayer.hand);
+                    }
+                }
             });
 
             socket.on('tile_discarded', (data) => {
                 const playerName = gameState.players[data.playerIndex]?.username || '玩家';
-                if (data.playerIndex !== mySeatIndex) {
-                    showToast(`${playerName} 打出 ${data.tileName}`);
+                const isMe = data.playerIndex === mySeatIndex;
+                if (!isMe) {
+                    showToast(`${playerName}: ${data.tileName}`);
                 }
-                speakTile(data.tile);
+                // 语音播报出牌
+                speakDiscard(data.tile, isMe);
             });
 
             socket.on('action_available', (data) => {
@@ -1149,7 +1365,15 @@
 
             socket.on('action_executed', (data) => {
                 const playerName = gameState.players[data.playerIndex]?.username || '玩家';
-                showToast(`${playerName} ${data.action === 'peng' ? '碰' : '杠'} ${data.tileName}`);
+                const isMe = data.playerIndex === mySeatIndex;
+                
+                if (data.action === 'peng') {
+                    showToast(`${isMe ? '你' : playerName} 碰！`);
+                    speakPeng();
+                } else if (data.action === 'gang') {
+                    showToast(`${isMe ? '你' : playerName} 杠！`);
+                    speakGang();
+                }
             });
 
             socket.on('ai_draw', (data) => {
@@ -1157,6 +1381,16 @@
             });
 
             socket.on('game_ended', (data) => {
+                // 检测是否有人胡牌
+                if (data.result.includes('胡')) {
+                    const isZimo = data.result.includes('自摸');
+                    speakHu(isZimo);
+                    
+                    // 如果是点炮，播放爆炸音效
+                    if (!isZimo && data.result.includes('胡牌')) {
+                        setTimeout(() => playExplosionSound(), 500);
+                    }
+                }
                 showResult(data.result, data.players);
             });
 
@@ -1428,8 +1662,17 @@
 
         // 选择手牌（双击直接出牌）
         function selectTile(tileId) {
-            // 只能在出牌阶段选牌
-            if (gameState.currentPlayerIndex !== mySeatIndex || gameState.turnPhase !== 'discard') {
+            console.log('选牌:', tileId, '当前玩家:', gameState.currentPlayerIndex, '我的座位:', mySeatIndex, '阶段:', gameState.turnPhase);
+            
+            // 只能在自己的回合选牌
+            if (gameState.currentPlayerIndex !== mySeatIndex) {
+                showToast('不是你的回合');
+                return;
+            }
+            
+            // 必须是出牌阶段
+            if (gameState.turnPhase !== 'discard') {
+                showToast('请等待摸牌...');
                 return;
             }
             
@@ -1512,11 +1755,24 @@
                 return;
             }
             
+            // 如果已听牌，只能打刚摸的牌
+            if (isTing && selectedTileId !== lastDrawnTileId) {
+                showToast('已听牌，只能打刚摸的牌！');
+                return;
+            }
+            
             // 清除刚摸的牌标记
             lastDrawnTileId = null;
             
             socket.emit('discard_tile', { tileId: selectedTileId });
             selectedTileId = null;
+            
+            // 出牌后检测听牌（延迟等待服务器更新）
+            setTimeout(() => {
+                if (!isTing) {
+                    checkAndShowTing();
+                }
+            }, 500);
         }
 
         // 执行动作
@@ -1596,12 +1852,12 @@
         }
 
         // Toast提示
-        function showToast(message) {
+        function showToast(message, duration = 2000) {
             const toast = document.createElement('div');
             toast.className = 'toast';
             toast.textContent = message;
             document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 2000);
+            setTimeout(() => toast.remove(), duration);
         }
 
         // 回车发送聊天
