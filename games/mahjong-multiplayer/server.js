@@ -534,6 +534,9 @@ class MahjongRoom {
 
     // 解析所有动作，执行优先级最高的
     resolveActions() {
+        // 通知所有玩家隐藏动作按钮
+        this.broadcast('action_timeout', {});
+        
         // 优先级：胡 > 杠 > 碰
         const priority = { hu: 3, gang: 2, peng: 1, pass: 0 };
         

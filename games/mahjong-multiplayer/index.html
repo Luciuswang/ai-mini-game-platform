@@ -1183,14 +1183,14 @@
             speak('听', 1.0, 1.3);
         }
         
-        // 播报碰
-        function speakPeng() {
-            speak('碰', 1.0, 1.0);
+        // 播报碰（根据玩家使用不同音调）
+        function speakPeng(isMe = true) {
+            speak('碰', isMe ? 1.0 : 0.9, isMe ? 1.2 : 0.8);
         }
         
-        // 播报杠
-        function speakGang() {
-            speak('杠', 1.0, 1.0);
+        // 播报杠（根据玩家使用不同音调）
+        function speakGang(isMe = true) {
+            speak('杠', isMe ? 1.0 : 0.9, isMe ? 1.2 : 0.8);
         }
         
         // 播报胡牌
@@ -1360,19 +1360,35 @@
             });
 
             socket.on('action_available', (data) => {
+                console.log('收到可执行动作:', data.actions);
                 showResponseButtons(data.actions);
+            });
+            
+            socket.on('action_timeout', () => {
+                console.log('动作超时，隐藏按钮');
+                hideResponseButtons();
+            });
+            
+            socket.on('action_error', (data) => {
+                console.log('动作错误:', data.message);
+                showToast('操作超时，请等待下次机会');
+                hideResponseButtons();
             });
 
             socket.on('action_executed', (data) => {
-                const playerName = gameState.players[data.playerIndex]?.username || '玩家';
+                const player = gameState.players.find(p => p.seatIndex === data.playerIndex);
+                const playerName = player?.username || '玩家';
                 const isMe = data.playerIndex === mySeatIndex;
                 
                 if (data.action === 'peng') {
                     showToast(`${isMe ? '你' : playerName} 碰！`);
-                    speakPeng();
+                    speakPeng(isMe);
                 } else if (data.action === 'gang') {
                     showToast(`${isMe ? '你' : playerName} 杠！`);
-                    speakGang();
+                    speakGang(isMe);
+                } else if (data.action === 'hu') {
+                    showToast(`${isMe ? '你' : playerName} 胡了！`);
+                    speakHu(false);
                 }
             });
 
@@ -1392,10 +1408,6 @@
                     }
                 }
                 showResult(data.result, data.players);
-            });
-
-            socket.on('action_error', (data) => {
-                showToast(data.message);
             });
 
             // 聊天
@@ -1777,8 +1789,18 @@
 
         // 执行动作
         function doAction(action) {
+            console.log('执行动作:', action);
             socket.emit('player_action', { action });
             hideResponseButtons();
+            
+            // 显示提示
+            if (action === 'peng') {
+                showToast('碰！');
+            } else if (action === 'gang') {
+                showToast('杠！');
+            } else if (action === 'hu') {
+                showToast('胡！');
+            }
         }
 
         // 获取牌名
