@@ -14,6 +14,8 @@ const io = socketIo(server, {
 
 // 静态文件服务
 app.use(express.static(path.join(__dirname)));
+// 提供麻将牌图片（从单人版目录）
+app.use('/img', express.static(path.join(__dirname, '../mahjong/img')));
 
 // 游戏常量
 const TILE_TYPES = ['wan', 'tiao', 'tong']; // 万、条、筒

@@ -462,7 +462,7 @@
             width: 45px;
             height: 63px;
             background-color: #f5f0e1;
-            background-image: url('../mahjong/img/majiang.png');
+            background-image: url('/img/majiang.png');
             background-repeat: no-repeat;
             border: 2px solid var(--tile-border);
             border-radius: 5px;
@@ -486,15 +486,66 @@
         
         /* 刚摸的牌 - 突出显示 */
         .tile.new-tile {
-            margin-left: 15px;
-            border-color: #3498db;
-            box-shadow: 0 0 15px rgba(52,152,219,0.8);
+            margin-left: 25px;
+            border: 3px solid #3498db;
+            box-shadow: 0 0 20px rgba(52,152,219,0.9), 0 0 40px rgba(52,152,219,0.5);
             animation: newTilePulse 1s ease-in-out infinite;
+            position: relative;
+        }
+        
+        .tile.new-tile::before {
+            content: '新';
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #e74c3c;
+            color: white;
+            font-size: 10px;
+            padding: 2px 5px;
+            border-radius: 8px;
+            font-weight: bold;
         }
         
         @keyframes newTilePulse {
-            0%, 100% { box-shadow: 0 0 15px rgba(52,152,219,0.8); }
-            50% { box-shadow: 0 0 25px rgba(52,152,219,1); }
+            0%, 100% { box-shadow: 0 0 20px rgba(52,152,219,0.9), 0 0 40px rgba(52,152,219,0.5); }
+            50% { box-shadow: 0 0 30px rgba(52,152,219,1), 0 0 60px rgba(52,152,219,0.7); }
+        }
+        
+        /* 每个座位的弃牌区 */
+        .seat-discards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+            justify-content: center;
+            margin-top: 8px;
+            padding: 5px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            min-height: 35px;
+            max-width: 200px;
+        }
+        
+        .seat-top .seat-discards {
+            margin-top: 5px;
+        }
+        
+        .seat-left .seat-discards,
+        .seat-right .seat-discards {
+            margin-top: 5px;
+            max-width: 120px;
+        }
+        
+        .my-discards {
+            max-width: 350px;
+            min-height: 45px;
+        }
+        
+        .deck-info {
+            background: rgba(0,0,0,0.4);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            color: var(--gold);
         }
 
         .tile.back {
@@ -830,6 +881,7 @@
                     <span class="seat-wind" id="wind-2">西</span>
                 </div>
                 <div class="seat-tiles" id="tiles-2"></div>
+                <div class="seat-discards" id="discards-2"></div>
             </div>
 
             <!-- 左家 -->
@@ -840,12 +892,12 @@
                     <span class="seat-wind" id="wind-3">北</span>
                 </div>
                 <div class="seat-tiles" id="tiles-3"></div>
+                <div class="seat-discards" id="discards-3"></div>
             </div>
 
-            <!-- 中央出牌区 -->
+            <!-- 中央区域（剩余牌数等信息） -->
             <div class="table-center">
-                <div class="last-discard-label">出牌区</div>
-                <div class="discard-area" id="discardArea"></div>
+                <div class="deck-info">🀄 剩余: <span id="centerDeckCount">0</span></div>
             </div>
 
             <!-- 右家 -->
@@ -856,6 +908,7 @@
                     <span class="seat-wind" id="wind-1">南</span>
                 </div>
                 <div class="seat-tiles" id="tiles-1"></div>
+                <div class="seat-discards" id="discards-1"></div>
             </div>
 
             <!-- 自己（下方） -->
@@ -865,6 +918,7 @@
                     <span class="seat-name" id="name-0">我</span>
                     <span class="seat-wind" id="wind-0">东</span>
                 </div>
+                <div class="seat-discards my-discards" id="discards-0"></div>
             </div>
         </div>
 
@@ -1352,13 +1406,21 @@
 
         // 更新出牌区
         function updateDiscardArea() {
-            const container = document.getElementById('discardArea');
-            container.innerHTML = '';
-
-            // 显示所有玩家的弃牌
+            // 更新中央剩余牌数
+            const centerDeckCount = document.getElementById('centerDeckCount');
+            if (centerDeckCount) {
+                centerDeckCount.textContent = gameState.deckRemaining;
+            }
+            
+            // 每个玩家的弃牌显示在自己门前
             gameState.players.forEach(player => {
+                const displaySeat = getDisplaySeat(player.seatIndex);
+                const container = document.getElementById(`discards-${displaySeat}`);
+                if (!container) return;
+                
+                container.innerHTML = '';
                 player.discards.forEach(tile => {
-                    const tileEl = createTileElement(tile, { discarded: true });
+                    const tileEl = createTileElement(tile, { small: true });
                     container.appendChild(tileEl);
                 });
             });
