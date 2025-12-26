@@ -14,8 +14,18 @@ const io = socketIo(server, {
 
 // 静态文件服务
 app.use(express.static(path.join(__dirname)));
-// 提供麻将牌图片（从单人版目录）
-app.use('/img', express.static(path.join(__dirname, '../mahjong/img')));
+
+// 提供麻将牌图片
+// 优先从本地 img 目录加载，如果不存在则从单人版目录加载
+const localImgPath = path.join(__dirname, 'img');
+const fallbackImgPath = path.join(__dirname, '../mahjong/img');
+const fs = require('fs');
+
+if (fs.existsSync(localImgPath)) {
+    app.use('/img', express.static(localImgPath));
+} else {
+    app.use('/img', express.static(fallbackImgPath));
+}
 
 // 游戏常量
 const TILE_TYPES = ['wan', 'tiao', 'tong']; // 万、条、筒
