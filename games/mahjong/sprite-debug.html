@@ -24,16 +24,6 @@
             gap: 30px;
             margin: 20px 0;
         }
-        .original {
-            border: 2px solid #d4af37;
-            padding: 10px;
-            background: white;
-        }
-        .original img {
-            width: 512px;
-            height: 512px;
-            display: block;
-        }
         .grid-overlay {
             position: relative;
             width: 512px;
@@ -49,7 +39,6 @@
             left: 0;
             width: 100%;
             height: 100%;
-            pointer-events: none;
         }
         .grid-cell {
             position: absolute;
@@ -61,6 +50,7 @@
             color: red;
             background: rgba(255,255,255,0.1);
             cursor: pointer;
+            box-sizing: border-box;
         }
         .grid-cell:hover {
             background: rgba(255,255,0,0.3);
@@ -68,6 +58,13 @@
         .grid-cell.selected {
             background: rgba(0,255,0,0.3);
             border-color: lime;
+        }
+        .grid-cell.mapped {
+            background: rgba(100,149,237,0.3);
+            border-color: cornflowerblue;
+        }
+        .grid-cell.mapped.selected {
+            background: rgba(0,255,0,0.5);
         }
         .controls {
             background: #2d2d4d;
@@ -147,7 +144,7 @@
             <h3>网格设置</h3>
             <div class="control-row">
                 <label>列数:</label>
-                <input type="number" id="cols" value="9" min="1" max="20" onchange="updateGrid()">
+                <input type="number" id="cols" value="8" min="1" max="20" onchange="updateGrid()">
                 <label>行数:</label>
                 <input type="number" id="rows" value="6" min="1" max="20" onchange="updateGrid()">
             </div>
@@ -157,7 +154,7 @@
             <div>
                 <h3>原图（点击单元格选择位置）</h3>
                 <div class="grid-overlay" id="gridOverlay">
-                    <img src="img/majiang.png" alt="麻将精灵图">
+                    <img src="img/majiang.png" alt="麻将精灵图" onerror="handleImageError(this)">
                     <div class="grid-lines" id="gridLines"></div>
                 </div>
             </div>
@@ -177,16 +174,26 @@
         
         <div class="controls">
             <button onclick="generateMapping()">生成位置映射代码</button>
+            <button onclick="copyToClipboard()">复制代码</button>
             <button onclick="testAllTiles()">测试所有牌</button>
+            <button onclick="assignSelectedToTile()">将选中位置分配给牌</button>
+            <button onclick="clearMapping()">清空映射</button>
         </div>
     </div>
 
     <script>
-        let cols = 9;
-        let rows = 6;
-        let selectedCell = null;
+        // ==================== 配置常量 ====================
+        // 与 index.html 保持一致：8列×6行网格，512x512像素
+        const SPRITE_CONFIG = {
+            imageSize: 512,        // 精灵图尺寸（像素）
+            cols: 8,               // 列数（与主游戏一致）
+            rows: 6,               // 行数（与主游戏一致）
+            // 用于预览牌的背景尺寸
+            bgWidth: 400,          // 8列 × 50px
+            bgHeight: 420          // 6行 × 70px
+        };
         
-        // 牌的定义
+        // ==================== 牌的定义 ====================
         const allTiles = [
             // 筒子
             { key: 'tong1', name: '一筒' }, { key: 'tong2', name: '二筒' },
@@ -218,18 +225,71 @@
             { key: 'zhu', name: '竹' }, { key: 'ju', name: '菊' }
         ];
         
-        // 当前映射
-        let tileMapping = {};
+        // ==================== 状态变量 ====================
+        let cols = SPRITE_CONFIG.cols;
+        let rows = SPRITE_CONFIG.rows;
+        let selectedCell = null;
+        
+        // 牌位置映射（与 index.html 保持一致）
+        // 布局（8列×6行）：
+        // Row 0: 1万 2万 3万 4万 5万 6万 7万 8万
+        // Row 1: 1筒 2筒 3筒 4筒 5筒 6筒 7筒 8筒
+        // Row 2: 1条 2条 3条 4条 5条 6条 7条 8条
+        // Row 3: 东 南 西 北 中 发 白 [空]
+        // Row 4: 秋 兰 竹 梅 春 夏 冬 菊
+        // Row 5: 9万 9筒 9条 ...
+        let tileMapping = {
+            // 第0行: 万子 1-8
+            'wan1': [0, 0], 'wan2': [0, 1], 'wan3': [0, 2], 'wan4': [0, 3],
+            'wan5': [0, 4], 'wan6': [0, 5], 'wan7': [0, 6], 'wan8': [0, 7],
+            
+            // 第1行: 筒子 1-8
+            'tong1': [1, 0], 'tong2': [1, 1], 'tong3': [1, 2], 'tong4': [1, 3],
+            'tong5': [1, 4], 'tong6': [1, 5], 'tong7': [1, 6], 'tong8': [1, 7],
+            
+            // 第2行: 条子 1-8
+            'tiao1': [2, 0], 'tiao2': [2, 1], 'tiao3': [2, 2], 'tiao4': [2, 3],
+            'tiao5': [2, 4], 'tiao6': [2, 5], 'tiao7': [2, 6], 'tiao8': [2, 7],
+            
+            // 第3行: 字牌 东南西北中发白
+            'dong': [3, 0], 'nan': [3, 1], 'xi': [3, 2], 'bei': [3, 3],
+            'zhong': [3, 4], 'fa': [3, 5], 'bai': [3, 6],
+            
+            // 第4行: 花牌 秋兰竹梅春夏冬菊
+            'qiu': [4, 0], 'lan': [4, 1], 'zhu': [4, 2], 'mei': [4, 3],
+            'chun': [4, 4], 'xia': [4, 5], 'dong_hua': [4, 6], 'ju': [4, 7],
+            
+            // 第5行: 9万 9筒 9条
+            'wan9': [5, 0], 'tong9': [5, 1], 'tiao9': [5, 2]
+        };
         
         function updateGrid() {
-            cols = parseInt(document.getElementById('cols').value);
-            rows = parseInt(document.getElementById('rows').value);
+            // 输入验证
+            const colsInput = parseInt(document.getElementById('cols').value);
+            const rowsInput = parseInt(document.getElementById('rows').value);
+            
+            if (isNaN(colsInput) || colsInput < 1 || colsInput > 20) {
+                alert('列数必须在 1-20 之间');
+                document.getElementById('cols').value = cols;
+                return;
+            }
+            if (isNaN(rowsInput) || rowsInput < 1 || rowsInput > 20) {
+                alert('行数必须在 1-20 之间');
+                document.getElementById('rows').value = rows;
+                return;
+            }
+            
+            cols = colsInput;
+            rows = rowsInput;
             
             const gridLines = document.getElementById('gridLines');
             gridLines.innerHTML = '';
             
-            const cellWidth = 512 / cols;
-            const cellHeight = 512 / rows;
+            const cellWidth = SPRITE_CONFIG.imageSize / cols;
+            const cellHeight = SPRITE_CONFIG.imageSize / rows;
+            
+            // 使用 DocumentFragment 优化性能
+            const fragment = document.createDocumentFragment();
             
             for (let r = 0; r < rows; r++) {
                 for (let c = 0; c < cols; c++) {
@@ -243,51 +303,80 @@
                     cell.dataset.row = r;
                     cell.dataset.col = c;
                     cell.onclick = () => selectCell(r, c, cell);
-                    gridLines.appendChild(cell);
+                    fragment.appendChild(cell);
                 }
             }
             
+            gridLines.appendChild(fragment);
+            
+            // 高亮已分配的网格
+            highlightMappedCells();
+            
+            // 更新预览
             testAllTiles();
         }
         
+        // 高亮已分配映射的网格单元
+        function highlightMappedCells() {
+            // 构建已映射位置的集合
+            const mappedPositions = new Set();
+            Object.values(tileMapping).forEach(pos => {
+                if (pos && Array.isArray(pos)) {
+                    mappedPositions.add(`${pos[0]},${pos[1]}`);
+                }
+            });
+            
+            // 更新网格单元的样式
+            document.querySelectorAll('.grid-cell').forEach(cell => {
+                const key = `${cell.dataset.row},${cell.dataset.col}`;
+                cell.classList.toggle('mapped', mappedPositions.has(key));
+            });
+        }
+        
         function selectCell(row, col, element) {
+            // 清除之前的选择
             document.querySelectorAll('.grid-cell').forEach(c => c.classList.remove('selected'));
             element.classList.add('selected');
             selectedCell = [row, col];
             
+            // 计算背景位置
+            const bgX = -col * (SPRITE_CONFIG.bgWidth / cols);
+            const bgY = -row * (SPRITE_CONFIG.bgHeight / rows);
+            
+            // 查找该位置对应的牌
+            const tilesAtPosition = allTiles.filter(t => {
+                const pos = tileMapping[t.key];
+                return pos && pos[0] === row && pos[1] === col;
+            });
+            
             const info = document.getElementById('tileInfo');
-            info.innerHTML = `
+            let infoHtml = `
                 <strong>选中位置:</strong> [${row}, ${col}]<br>
-                <strong>背景位置:</strong> ${-col * (450/cols)}px, ${-row * (510/rows)}px
+                <strong>背景位置:</strong> ${bgX.toFixed(2)}px, ${bgY.toFixed(2)}px
             `;
+            
+            if (tilesAtPosition.length > 0) {
+                infoHtml += `<br><strong>已分配的牌:</strong> ${tilesAtPosition.map(t => t.name).join(', ')}`;
+            } else {
+                infoHtml += `<br><em style="color: #888;">该位置未分配任何牌</em>`;
+            }
+            
+            info.innerHTML = infoHtml;
         }
         
         function testAllTiles() {
             const preview = document.getElementById('tilePreview');
             preview.innerHTML = '';
             
-            // 当前映射（可以从代码中复制）
-            const mapping = {
-                'tong1': [0, 0], 'tong2': [0, 1], 'tong3': [0, 2], 'tong4': [0, 3],
-                'tong5': [0, 4], 'tong6': [0, 5], 'tong7': [0, 6],
-                'tong8': [1, 0], 'tong9': [1, 1],
-                'tiao1': [2, 0], 'tiao2': [2, 1], 'tiao3': [2, 2], 'tiao4': [2, 3],
-                'tiao5': [2, 4], 'tiao6': [2, 5], 'tiao7': [3, 0], 'tiao8': [3, 1],
-                'tiao9': [3, 2],
-                'wan1': [5, 0], 'wan2': [5, 1], 'wan3': [5, 2], 'wan4': [5, 3],
-                'wan5': [5, 4], 'wan6': [5, 5], 'wan7': [5, 6], 'wan8': [5, 7],
-                'wan9': [4, 6],
-                'zhong': [4, 0], 'fa': [4, 1], 'bai': [3, 3],
-                'dong': [4, 2], 'nan': [4, 3], 'xi': [4, 4], 'bei': [4, 5],
-                'qiu': [0, 7], 'lan': [0, 8], 'zhu': [1, 7], 'mei': [1, 8],
-                'chun': [2, 8], 'xia': [3, 8], 'dong_hua': [2, 7], 'ju': [3, 7]
-            };
+            // 使用统一的映射数据
+            const bgWidth = SPRITE_CONFIG.bgWidth;
+            const bgHeight = SPRITE_CONFIG.bgHeight;
             
-            const bgWidth = 450;
-            const bgHeight = 510;
+            // 使用 DocumentFragment 优化性能
+            const fragment = document.createDocumentFragment();
             
             allTiles.forEach(tile => {
-                const pos = mapping[tile.key];
+                const pos = tileMapping[tile.key];
                 const container = document.createElement('div');
                 container.style.textAlign = 'center';
                 
@@ -295,7 +384,7 @@
                 div.className = 'tile';
                 div.style.backgroundSize = `${bgWidth}px ${bgHeight}px`;
                 
-                if (pos) {
+                if (pos && Array.isArray(pos) && pos.length === 2) {
                     const bgX = -pos[1] * (bgWidth / cols);
                     const bgY = -pos[0] * (bgHeight / rows);
                     div.style.backgroundPosition = `${bgX}px ${bgY}px`;
@@ -310,43 +399,123 @@
                 
                 container.appendChild(div);
                 container.appendChild(label);
-                preview.appendChild(container);
+                fragment.appendChild(container);
             });
+            
+            preview.appendChild(fragment);
+        }
+        
+        // 牌类型常量
+        const TILE_CATEGORIES = {
+            tong: { prefix: 'tong', label: '筒子 1-9' },
+            tiao: { prefix: 'tiao', label: '条子 1-9' },
+            wan: { prefix: 'wan', label: '万子 1-9' },
+            honor: { keys: ['zhong', 'fa', 'bai', 'dong', 'nan', 'xi', 'bei'], label: '字牌' },
+            flower: { keys: ['chun', 'xia', 'qiu', 'dong_hua', 'mei', 'lan', 'zhu', 'ju'], label: '花牌' }
+        };
+        
+        // 生成单个类别的映射代码
+        function generateCategoryCode(tiles, label) {
+            const mappedTiles = tiles
+                .map(t => {
+                    const pos = tileMapping[t.key];
+                    return pos ? `    '${t.key}': [${pos[0]}, ${pos[1]}]` : null;
+                })
+                .filter(Boolean);
+            
+            if (mappedTiles.length === 0) return '';
+            return `    // ${label}\n${mappedTiles.join(',\n')}`;
         }
         
         function generateMapping() {
             const output = document.getElementById('mappingOutput');
-            output.textContent = `// 麻将牌精灵图位置映射 [row, col]
-const TILE_SPRITE_MAP = {
-    // 筒子 1-9
-    'tong1': [0, 0], 'tong2': [0, 1], 'tong3': [0, 2], 'tong4': [0, 3],
-    'tong5': [0, 4], 'tong6': [0, 5], 'tong7': [0, 6],
-    'tong8': [1, 0], 'tong9': [1, 1],
-    
-    // 条子 1-9
-    'tiao1': [2, 0], 'tiao2': [2, 1], 'tiao3': [2, 2], 'tiao4': [2, 3],
-    'tiao5': [2, 4], 'tiao6': [2, 5], 'tiao7': [3, 0], 'tiao8': [3, 1],
-    'tiao9': [3, 2],
-    
-    // 万子 1-9
-    'wan1': [5, 0], 'wan2': [5, 1], 'wan3': [5, 2], 'wan4': [5, 3],
-    'wan5': [5, 4], 'wan6': [5, 5], 'wan7': [5, 6], 'wan8': [5, 7],
-    'wan9': [4, 6],
-    
-    // 字牌
-    'zhong': [4, 0], 'fa': [4, 1], 'bai': [3, 3],
-    'dong': [4, 2], 'nan': [4, 3], 'xi': [4, 4], 'bei': [4, 5],
-    
-    // 花牌
-    'qiu': [0, 7], 'lan': [0, 8], 'zhu': [1, 7], 'mei': [1, 8],
-    'chun': [2, 8], 'xia': [3, 8], 'dong_hua': [2, 7], 'ju': [3, 7]
-};`;
+            
+            // 按类别分组
+            const categories = [
+                { tiles: allTiles.filter(t => t.key.startsWith('tong')), label: TILE_CATEGORIES.tong.label },
+                { tiles: allTiles.filter(t => t.key.startsWith('tiao')), label: TILE_CATEGORIES.tiao.label },
+                { tiles: allTiles.filter(t => t.key.startsWith('wan')), label: TILE_CATEGORIES.wan.label },
+                { tiles: allTiles.filter(t => TILE_CATEGORIES.honor.keys.includes(t.key)), label: TILE_CATEGORIES.honor.label },
+                { tiles: allTiles.filter(t => TILE_CATEGORIES.flower.keys.includes(t.key)), label: TILE_CATEGORIES.flower.label }
+            ];
+            
+            // 生成代码
+            const categoryCode = categories
+                .map(cat => generateCategoryCode(cat.tiles, cat.label))
+                .filter(Boolean)
+                .join(',\n\n');
+            
+            const code = `// 麻将牌精灵图位置映射 [row, col]\nconst TILE_SPRITE_MAP = {\n${categoryCode}\n};`;
+            
+            output.textContent = code;
         }
         
-        // 初始化
+        function copyToClipboard() {
+            const output = document.getElementById('mappingOutput');
+            navigator.clipboard.writeText(output.textContent).then(() => {
+                alert('代码已复制到剪贴板！');
+            }).catch(err => {
+                // 降级方案
+                const textarea = document.createElement('textarea');
+                textarea.value = output.textContent;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                alert('代码已复制到剪贴板！');
+            });
+        }
+        
+        // ==================== 辅助函数 ====================
+        function handleImageError(img) {
+            img.style.display = 'none';
+            const overlay = document.getElementById('gridOverlay');
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = 'width: 512px; height: 512px; background: #333; color: #f00; display: flex; align-items: center; justify-content: center;';
+            errorDiv.textContent = '图片加载失败: ' + img.src;
+            overlay.appendChild(errorDiv);
+        }
+        
+        function assignSelectedToTile() {
+            if (!selectedCell) {
+                alert('请先选择一个网格位置');
+                return;
+            }
+            
+            // 显示牌选择对话框
+            const tileKeys = allTiles.map(t => t.key);
+            const selectedKey = prompt(`请输入要分配的牌键名（如 tong1, wan5 等）:\n可用: ${tileKeys.slice(0, 10).join(', ')}...`);
+            
+            if (selectedKey && tileKeys.includes(selectedKey)) {
+                tileMapping[selectedKey] = [...selectedCell];
+                highlightMappedCells();
+                testAllTiles();
+                generateMapping();
+                alert(`已将位置 [${selectedCell[0]}, ${selectedCell[1]}] 分配给 ${selectedKey}`);
+            } else if (selectedKey) {
+                alert('无效的牌键名');
+            }
+        }
+        
+        function clearMapping() {
+            if (confirm('确定要清空所有映射吗？')) {
+                tileMapping = {};
+                highlightMappedCells();
+                testAllTiles();
+                generateMapping();
+            }
+        }
+        
+        // ==================== 初始化 ====================
+        // 初始化输入框默认值
+        document.getElementById('cols').value = SPRITE_CONFIG.cols;
+        document.getElementById('rows').value = SPRITE_CONFIG.rows;
+        
+        // 初始化网格
         updateGrid();
+        
+        // 初始化时生成映射代码
+        generateMapping();
     </script>
 </body>
 </html>
-
-
